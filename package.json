@@ -1,0 +1,51 @@
+{
+  "name": "com.strada.core",
+  "version": "1.0.0-alpha.1",
+  "displayName": "Strada Framework Core",
+  "description": "The world's first truly unified MVCS+ECS framework for Unity. Combines enterprise-grade dependency injection with performance-critical ECS simulation, wrapped in a ScriptableObject-driven modular architecture.",
+  "unity": "6000.0",
+  "unityRelease": "0f1",
+  "documentationUrl": "https://github.com/strada-framework/strada-core/wiki",
+  "changelogUrl": "https://github.com/strada-framework/strada-core/blob/main/CHANGELOG.md",
+  "licensesUrl": "https://github.com/strada-framework/strada-core/blob/main/LICENSE.md",
+  "keywords": [
+    "framework",
+    "architecture",
+    "mvcs",
+    "ecs",
+    "dependency-injection",
+    "di-container",
+    "scriptable-objects",
+    "modular",
+    "performance",
+    "solid"
+  ],
+  "author": {
+    "name": "Strada Framework Team",
+    "email": "contact@strada-framework.dev",
+    "url": "https://strada-framework.dev"
+  },
+  "type": "library",
+  "dependencies": {
+    "com.unity.entities": "1.0.16",
+    "com.unity.burst": "1.8.12",
+    "com.unity.collections": "2.1.4"
+  },
+  "samples": [
+    {
+      "displayName": "Getting Started",
+      "description": "Simple example showing basic MVCS setup with DI container",
+      "path": "Samples~/GettingStarted"
+    },
+    {
+      "displayName": "ECS Integration",
+      "description": "Example demonstrating ECS system integration with MVCS",
+      "path": "Samples~/ECSIntegration"
+    },
+    {
+      "displayName": "Hybrid Architecture",
+      "description": "Complete example with MVCS+ECS unified architecture",
+      "path": "Samples~/HybridArchitecture"
+    }
+  ]
+}

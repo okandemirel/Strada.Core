@@ -1,0 +1,25 @@
+{
+    "name": "Strada.Core.Editor.Tests",
+    "rootNamespace": "Strada.Core.Editor.Tests",
+    "references": [
+        "Strada.Core",
+        "Strada.Core.Editor",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

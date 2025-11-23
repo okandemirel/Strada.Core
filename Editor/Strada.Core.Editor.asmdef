@@ -1,0 +1,20 @@
+{
+    "name": "Strada.Core.Editor",
+    "rootNamespace": "Strada.Core.Editor",
+    "references": [
+        "Strada.Core",
+        "Unity.Entities.Editor",
+        "Unity.Entities"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
