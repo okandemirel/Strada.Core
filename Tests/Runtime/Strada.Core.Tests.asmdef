@@ -5,6 +5,7 @@
         "Strada.Core",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
+        "Unity.Collections",
         "Unity.Entities",
         "Unity.Entities.Tests",
         "Unity.PerformanceTesting"
