@@ -4,7 +4,8 @@
     "references": [
         "Strada.Core",
         "Unity.Entities.Editor",
-        "Unity.Entities"
+        "Unity.Entities",
+        "Unity.Collections"
     ],
     "includePlatforms": [
         "Editor"
