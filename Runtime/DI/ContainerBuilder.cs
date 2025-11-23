@@ -1,15 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Strada.Core.ECS;
 
 namespace Strada.Core.DI
 {
     /// <summary>
     /// Builder for configuring and creating a dependency injection container.
     /// </summary>
-    public class ContainerBuilder : IContainerBuilder
+    public class ContainerBuilder : IECSContainerBuilder
     {
         private readonly Dictionary<Type, Registration> _registrations;
+        private readonly Dictionary<string, List<Type>> _ecsWorlds;
 
         /// <summary>
         /// Creates a new container builder.
@@ -17,6 +19,7 @@ namespace Strada.Core.DI
         public ContainerBuilder()
         {
             _registrations = new Dictionary<Type, Registration>();
+            _ecsWorlds = new Dictionary<string, List<Type>>();
         }
 
         /// <summary>
@@ -223,6 +226,59 @@ namespace Strada.Core.DI
 
             recursionStack.Pop();
             return false;
+        }
+
+        public IECSContainerBuilder RegisterWorld(string worldName)
+        {
+            if (string.IsNullOrWhiteSpace(worldName))
+                throw new ArgumentException("World name cannot be null or empty", nameof(worldName));
+
+            if (!_ecsWorlds.ContainsKey(worldName))
+            {
+                _ecsWorlds[worldName] = new List<Type>();
+            }
+
+            RegisterFactory<IStradaWorld>(container =>
+            {
+                var world = StradaWorld.Create(worldName);
+                if (_ecsWorlds.TryGetValue(worldName, out var systemTypes))
+                {
+                    foreach (var systemType in systemTypes)
+                    {
+                        world.RegisterSystem(systemType);
+                    }
+                }
+                world.Initialize();
+                return world;
+            }, Lifetime.Singleton);
+
+            return this;
+        }
+
+        public IECSContainerBuilder RegisterSystem<TSystem>(string worldName) where TSystem : IStradaSystem
+        {
+            return RegisterSystem(typeof(TSystem), worldName);
+        }
+
+        public IECSContainerBuilder RegisterSystem(Type systemType, string worldName)
+        {
+            if (systemType == null)
+                throw new ArgumentNullException(nameof(systemType));
+
+            if (string.IsNullOrWhiteSpace(worldName))
+                throw new ArgumentException("World name cannot be null or empty", nameof(worldName));
+
+            if (!typeof(IStradaSystem).IsAssignableFrom(systemType))
+                throw new ArgumentException($"Type {systemType.Name} must implement IStradaSystem");
+
+            if (!_ecsWorlds.ContainsKey(worldName))
+            {
+                _ecsWorlds[worldName] = new List<Type>();
+            }
+
+            _ecsWorlds[worldName].Add(systemType);
+
+            return this;
         }
     }
 }
