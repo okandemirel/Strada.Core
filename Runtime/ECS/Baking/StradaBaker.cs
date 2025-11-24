@@ -274,13 +274,13 @@ namespace Strada.Core.ECS.Baking
             return _entityManager.CreateEntity();
         }
 
-        public void AddComponent<T>(Entity entity, T component) where T : struct, IStradaComponent
+        public void AddComponent<T>(Entity entity, T component) where T : unmanaged, IStradaComponent
         {
             _entityManager.AddComponent<T>(entity);
             _entityManager.SetComponent(entity, component);
         }
 
-        public void AddComponent<T>(Entity entity) where T : struct, IStradaComponent
+        public void AddComponent<T>(Entity entity) where T : unmanaged, IStradaComponent
         {
             _entityManager.AddComponent<T>(entity);
         }

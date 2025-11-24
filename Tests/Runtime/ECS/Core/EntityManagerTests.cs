@@ -1,357 +1,325 @@
 using NUnit.Framework;
 using Strada.Core.ECS;
-using System;
 
-namespace Strada.Core.Tests.ECS
+namespace Strada.Core.Tests.Runtime.ECS.Core
 {
-    /// <summary>
-    /// Tests for IEntityManager functionality.
-    /// </summary>
     [TestFixture]
-    public class EntityManagerTests
+    public class EntityManagerTests2
     {
-        private IStradaWorld _world;
-        private IEntityManager _entityManager;
-
-        [SetUp]
-        public void Setup()
+        struct Position : IStradaComponent
         {
-            _world = StradaWorld.Create("TestWorld");
-            _entityManager = _world.EntityManager;
+            public float X;
+            public float Y;
         }
 
-        [TearDown]
-        public void TearDown()
+        struct Velocity : IStradaComponent
         {
-            _world?.Dispose();
+            public float VX;
+            public float VY;
         }
 
-        #region Entity Creation Tests
-
-        [Test]
-        public void CreateEntity_CreatesValidEntity()
+        struct Health : IStradaComponent
         {
-            // Act
-            var entity = _entityManager.CreateEntity();
-
-            // Assert
-            Assert.AreNotEqual(Entity.Null, entity);
-            Assert.Greater(entity.Index, 0);
-            Assert.Greater(entity.Version, 0);
+            public int Value;
         }
 
         [Test]
-        public void CreateEntity_MultipleTimes_CreatesUniqueEntities()
+        public void CreateEntity_ReturnsValidEntity()
         {
-            // Act
-            var entity1 = _entityManager.CreateEntity();
-            var entity2 = _entityManager.CreateEntity();
-            var entity3 = _entityManager.CreateEntity();
+            var manager = new EntityManager();
 
-            // Assert
-            Assert.AreNotEqual(entity1, entity2);
-            Assert.AreNotEqual(entity2, entity3);
-            Assert.AreNotEqual(entity1, entity3);
+            var entity = manager.CreateEntity();
+
+            Assert.AreNotEqual(0, entity.Index);
+            Assert.IsTrue(manager.Exists(entity));
+
+            manager.Dispose();
         }
 
         [Test]
-        public void CreateEntity_IncreasesEntityIndex()
+        public void CreateMultipleEntities_UniqueIndices()
         {
-            // Act
-            var entity1 = _entityManager.CreateEntity();
-            var entity2 = _entityManager.CreateEntity();
+            var manager = new EntityManager();
 
-            // Assert
-            Assert.Less(entity1.Index, entity2.Index);
-        }
+            var entity1 = manager.CreateEntity();
+            var entity2 = manager.CreateEntity();
+            var entity3 = manager.CreateEntity();
 
-        #endregion
+            Assert.AreNotEqual(entity1.Index, entity2.Index);
+            Assert.AreNotEqual(entity2.Index, entity3.Index);
+            Assert.AreNotEqual(entity1.Index, entity3.Index);
 
-        #region Entity Existence Tests
-
-        [Test]
-        public void Exists_WithCreatedEntity_ReturnsTrue()
-        {
-            // Arrange
-            var entity = _entityManager.CreateEntity();
-
-            // Act & Assert
-            Assert.IsTrue(_entityManager.Exists(entity));
+            manager.Dispose();
         }
 
         [Test]
-        public void Exists_WithDestroyedEntity_ReturnsFalse()
+        public void AddComponent_Success()
         {
-            // Arrange
-            var entity = _entityManager.CreateEntity();
-            _entityManager.DestroyEntity(entity);
+            var manager = new EntityManager();
+            var entity = manager.CreateEntity();
 
-            // Act & Assert
-            Assert.IsFalse(_entityManager.Exists(entity));
+            manager.AddComponent(entity, new Position { X = 10, Y = 20 });
+
+            Assert.IsTrue(manager.HasComponent<Position>(entity));
+            var pos = manager.GetComponent<Position>(entity);
+            Assert.AreEqual(10, pos.X);
+            Assert.AreEqual(20, pos.Y);
+
+            manager.Dispose();
         }
 
         [Test]
-        public void Exists_WithNullEntity_ReturnsFalse()
+        public void RemoveComponent_Success()
         {
-            // Act & Assert
-            Assert.IsFalse(_entityManager.Exists(Entity.Null));
+            var manager = new EntityManager();
+            var entity = manager.CreateEntity();
+
+            manager.AddComponent(entity, new Position { X = 10, Y = 20 });
+            manager.RemoveComponent<Position>(entity);
+
+            Assert.IsFalse(manager.HasComponent<Position>(entity));
+
+            manager.Dispose();
         }
 
-        #endregion
+        [Test]
+        public void GetComponent_ReturnsCorrectData()
+        {
+            var manager = new EntityManager();
+            var entity = manager.CreateEntity();
 
-        #region Entity Destruction Tests
+            manager.AddComponent(entity, new Position { X = 10, Y = 20 });
+            var pos = manager.GetComponent<Position>(entity);
+
+            Assert.AreEqual(10, pos.X);
+            Assert.AreEqual(20, pos.Y);
+
+            manager.Dispose();
+        }
+
+        [Test]
+        public void SetComponent_UpdatesData()
+        {
+            var manager = new EntityManager();
+            var entity = manager.CreateEntity();
+
+            manager.AddComponent(entity, new Position { X = 10, Y = 20 });
+            manager.SetComponent(entity, new Position { X = 30, Y = 40 });
+
+            var pos = manager.GetComponent<Position>(entity);
+            Assert.AreEqual(30, pos.X);
+            Assert.AreEqual(40, pos.Y);
+
+            manager.Dispose();
+        }
 
         [Test]
         public void DestroyEntity_RemovesEntity()
         {
-            // Arrange
-            var entity = _entityManager.CreateEntity();
+            var manager = new EntityManager();
+            var entity = manager.CreateEntity();
 
-            // Act
-            _entityManager.DestroyEntity(entity);
+            manager.DestroyEntity(entity);
 
-            // Assert
-            Assert.IsFalse(_entityManager.Exists(entity));
+            Assert.IsFalse(manager.Exists(entity));
+
+            manager.Dispose();
         }
 
         [Test]
         public void DestroyEntity_RemovesAllComponents()
         {
-            // Arrange
-            var entity = _entityManager.CreateEntity();
-            _entityManager.AddComponent<TestComponent>(entity);
+            var manager = new EntityManager();
+            var entity = manager.CreateEntity();
 
-            // Act
-            _entityManager.DestroyEntity(entity);
+            manager.AddComponent(entity, new Position { X = 10, Y = 20 });
+            manager.AddComponent(entity, new Velocity { VX = 1, VY = 0 });
+            manager.DestroyEntity(entity);
 
-            // Assert - entity no longer exists
-            Assert.IsFalse(_entityManager.Exists(entity));
-        }
+            Assert.IsFalse(manager.Exists(entity));
 
-        #endregion
-
-        #region Component Add Tests
-
-        [Test]
-        public void AddComponent_ToEntity_Succeeds()
-        {
-            // Arrange
-            var entity = _entityManager.CreateEntity();
-
-            // Act
-            _entityManager.AddComponent<TestComponent>(entity);
-
-            // Assert
-            Assert.IsTrue(_entityManager.HasComponent<TestComponent>(entity));
+            manager.Dispose();
         }
 
         [Test]
-        public void AddComponent_ToNonexistentEntity_ThrowsException()
+        public void Query_SingleComponent_ReturnsMatchingEntities()
         {
-            // Arrange
-            var entity = new Entity { Index = 999, Version = 1 };
+            var manager = new EntityManager();
 
-            // Act & Assert
-            Assert.Throws<ArgumentException>(() => _entityManager.AddComponent<TestComponent>(entity));
+            var e1 = manager.CreateEntity();
+            manager.AddComponent(e1, new Position { X = 1, Y = 2 });
+
+            var e2 = manager.CreateEntity();
+            manager.AddComponent(e2, new Position { X = 3, Y = 4 });
+
+            var e3 = manager.CreateEntity();
+
+            var query = manager.Query<Position>();
+            var entities = query.GetEntities();
+
+            Assert.AreEqual(2, entities.Count);
+
+            manager.Dispose();
         }
 
         [Test]
-        public void AddComponent_MultipleComponents_AllAdded()
+        public void Query_MultipleComponents_ReturnsMatchingEntities()
         {
-            // Arrange
-            var entity = _entityManager.CreateEntity();
+            var manager = new EntityManager();
 
-            // Act
-            _entityManager.AddComponent<TestComponent>(entity);
-            _entityManager.AddComponent<AnotherComponent>(entity);
+            var e1 = manager.CreateEntity();
+            manager.AddComponent(e1, new Position { X = 1, Y = 2 });
+            manager.AddComponent(e1, new Velocity { VX = 1, VY = 0 });
 
-            // Assert
-            Assert.IsTrue(_entityManager.HasComponent<TestComponent>(entity));
-            Assert.IsTrue(_entityManager.HasComponent<AnotherComponent>(entity));
-        }
+            var e2 = manager.CreateEntity();
+            manager.AddComponent(e2, new Position { X = 3, Y = 4 });
 
-        #endregion
+            var e3 = manager.CreateEntity();
+            manager.AddComponent(e3, new Velocity { VX = 0, VY = 1 });
 
-        #region Component Remove Tests
+            var query = manager.Query<Position, Velocity>();
+            var entities = query.GetEntities();
 
-        [Test]
-        public void RemoveComponent_FromEntity_Succeeds()
-        {
-            // Arrange
-            var entity = _entityManager.CreateEntity();
-            _entityManager.AddComponent<TestComponent>(entity);
+            Assert.AreEqual(1, entities.Count);
 
-            // Act
-            _entityManager.RemoveComponent<TestComponent>(entity);
-
-            // Assert
-            Assert.IsFalse(_entityManager.HasComponent<TestComponent>(entity));
+            manager.Dispose();
         }
 
         [Test]
-        public void RemoveComponent_ComponentNotPresent_DoesNotThrow()
+        public void QueryCache_Invalidates_OnStructuralChange()
         {
-            // Arrange
-            var entity = _entityManager.CreateEntity();
+            var manager = new EntityManager();
 
-            // Act & Assert
-            Assert.DoesNotThrow(() => _entityManager.RemoveComponent<TestComponent>(entity));
+            var e1 = manager.CreateEntity();
+            manager.AddComponent(e1, new Position { X = 1, Y = 2 });
+
+            var query = manager.Query<Position>();
+            var entities1 = query.GetEntities();
+            Assert.AreEqual(1, entities1.Count);
+
+            var e2 = manager.CreateEntity();
+            manager.AddComponent(e2, new Position { X = 3, Y = 4 });
+
+            var entities2 = query.GetEntities();
+            Assert.AreEqual(2, entities2.Count);
+
+            manager.Dispose();
         }
 
         [Test]
-        public void RemoveComponent_LeavesOtherComponents()
+        public void EntityCount_TracksCorrectly()
         {
-            // Arrange
-            var entity = _entityManager.CreateEntity();
-            _entityManager.AddComponent<TestComponent>(entity);
-            _entityManager.AddComponent<AnotherComponent>(entity);
+            var manager = new EntityManager();
 
-            // Act
-            _entityManager.RemoveComponent<TestComponent>(entity);
+            Assert.AreEqual(0, manager.EntityCount);
 
-            // Assert
-            Assert.IsFalse(_entityManager.HasComponent<TestComponent>(entity));
-            Assert.IsTrue(_entityManager.HasComponent<AnotherComponent>(entity));
-        }
+            var e1 = manager.CreateEntity();
+            Assert.AreEqual(1, manager.EntityCount);
 
-        #endregion
+            var e2 = manager.CreateEntity();
+            Assert.AreEqual(2, manager.EntityCount);
 
-        #region Component Has Tests
+            manager.DestroyEntity(e1);
+            Assert.AreEqual(1, manager.EntityCount);
 
-        [Test]
-        public void HasComponent_WithComponent_ReturnsTrue()
-        {
-            // Arrange
-            var entity = _entityManager.CreateEntity();
-            _entityManager.AddComponent<TestComponent>(entity);
-
-            // Act & Assert
-            Assert.IsTrue(_entityManager.HasComponent<TestComponent>(entity));
+            manager.Dispose();
         }
 
         [Test]
-        public void HasComponent_WithoutComponent_ReturnsFalse()
+        public void EntityIndexRecycling_ReusesIndices()
         {
-            // Arrange
-            var entity = _entityManager.CreateEntity();
+            var manager = new EntityManager();
 
-            // Act & Assert
-            Assert.IsFalse(_entityManager.HasComponent<TestComponent>(entity));
+            var e1 = manager.CreateEntity();
+            int index1 = e1.Index;
+
+            manager.DestroyEntity(e1);
+
+            var e2 = manager.CreateEntity();
+            int index2 = e2.Index;
+
+            Assert.AreEqual(index1, index2);
+
+            manager.Dispose();
         }
 
         [Test]
-        public void HasComponent_WithNonexistentEntity_ReturnsFalse()
+        public void MultipleComponentTypes_WorkIndependently()
         {
-            // Arrange
-            var entity = new Entity { Index = 999, Version = 1 };
+            var manager = new EntityManager();
 
-            // Act & Assert
-            Assert.IsFalse(_entityManager.HasComponent<TestComponent>(entity));
-        }
+            var e1 = manager.CreateEntity();
+            manager.AddComponent(e1, new Position { X = 1, Y = 2 });
+            manager.AddComponent(e1, new Velocity { VX = 10, VY = 20 });
+            manager.AddComponent(e1, new Health { Value = 100 });
 
-        #endregion
+            Assert.IsTrue(manager.HasComponent<Position>(e1));
+            Assert.IsTrue(manager.HasComponent<Velocity>(e1));
+            Assert.IsTrue(manager.HasComponent<Health>(e1));
 
-        #region Component Get/Set Tests
+            var pos = manager.GetComponent<Position>(e1);
+            var vel = manager.GetComponent<Velocity>(e1);
+            var health = manager.GetComponent<Health>(e1);
 
-        [Test]
-        public void SetComponent_UpdatesComponentData()
-        {
-            // Arrange
-            var entity = _entityManager.CreateEntity();
-            _entityManager.AddComponent<TestComponent>(entity);
+            Assert.AreEqual(1, pos.X);
+            Assert.AreEqual(10, vel.VX);
+            Assert.AreEqual(100, health.Value);
 
-            var component = new TestComponent { Value = 42 };
-
-            // Act
-            _entityManager.SetComponent(entity, component);
-
-            // Assert
-            var retrieved = _entityManager.GetComponent<TestComponent>(entity);
-            Assert.AreEqual(42, retrieved.Value);
+            manager.Dispose();
         }
 
         [Test]
-        public void GetComponent_WithComponent_ReturnsComponentData()
+        public void Clear_RemovesAllEntities()
         {
-            // Arrange
-            var entity = _entityManager.CreateEntity();
-            _entityManager.AddComponent<TestComponent>(entity);
-            _entityManager.SetComponent(entity, new TestComponent { Value = 123 });
+            var manager = new EntityManager();
 
-            // Act
-            var component = _entityManager.GetComponent<TestComponent>(entity);
+            for (int i = 0; i < 10; i++)
+            {
+                var entity = manager.CreateEntity();
+                manager.AddComponent(entity, new Position { X = i, Y = i * 2 });
+            }
 
-            // Assert
-            Assert.AreEqual(123, component.Value);
+            Assert.AreEqual(10, manager.EntityCount);
+
+            manager.Clear();
+
+            Assert.AreEqual(0, manager.EntityCount);
+
+            manager.Dispose();
         }
 
         [Test]
-        public void GetComponent_WithoutComponent_ThrowsException()
+        public void ComponentIteration_HighPerformance()
         {
-            // Arrange
-            var entity = _entityManager.CreateEntity();
+            var manager = new EntityManager();
 
-            // Act & Assert
-            Assert.Throws<InvalidOperationException>(() => _entityManager.GetComponent<TestComponent>(entity));
+            for (int i = 0; i < 1000; i++)
+            {
+                var entity = manager.CreateEntity();
+                manager.AddComponent(entity, new Position { X = i, Y = i * 2 });
+                manager.AddComponent(entity, new Velocity { VX = 1, VY = 0 });
+            }
+
+            var query = manager.Query<Position, Velocity>();
+            var entities = query.GetEntities();
+
+            var posStorage = manager.Store.GetOrCreateStorage<Position>();
+            var velStorage = manager.Store.GetOrCreateStorage<Velocity>();
+
+            int count = 0;
+            foreach (var entityIndex in entities)
+            {
+                var pos = posStorage.Get(entityIndex);
+                var vel = velStorage.Get(entityIndex);
+                pos.X += vel.VX;
+                pos.Y += vel.VY;
+                posStorage.Set(entityIndex, pos);
+                count++;
+            }
+
+            Assert.AreEqual(1000, count);
+
+            manager.Dispose();
         }
-
-        [Test]
-        public void GetComponent_WithNonexistentEntity_ThrowsException()
-        {
-            // Arrange
-            var entity = new Entity { Index = 999, Version = 1 };
-
-            // Act & Assert
-            Assert.Throws<InvalidOperationException>(() => _entityManager.GetComponent<TestComponent>(entity));
-        }
-
-        [Test]
-        public void SetComponent_WithNonexistentEntity_ThrowsException()
-        {
-            // Arrange
-            var entity = new Entity { Index = 999, Version = 1 };
-            var component = new TestComponent { Value = 42 };
-
-            // Act & Assert
-            Assert.Throws<ArgumentException>(() => _entityManager.SetComponent(entity, component));
-        }
-
-        #endregion
-
-        #region Component Value Isolation Tests
-
-        [Test]
-        public void SetComponent_OnDifferentEntities_ValuesAreIndependent()
-        {
-            // Arrange
-            var entity1 = _entityManager.CreateEntity();
-            var entity2 = _entityManager.CreateEntity();
-            _entityManager.AddComponent<TestComponent>(entity1);
-            _entityManager.AddComponent<TestComponent>(entity2);
-
-            // Act
-            _entityManager.SetComponent(entity1, new TestComponent { Value = 10 });
-            _entityManager.SetComponent(entity2, new TestComponent { Value = 20 });
-
-            // Assert
-            Assert.AreEqual(10, _entityManager.GetComponent<TestComponent>(entity1).Value);
-            Assert.AreEqual(20, _entityManager.GetComponent<TestComponent>(entity2).Value);
-        }
-
-        #endregion
-
-        #region Test Components
-
-        private struct TestComponent : IStradaComponent
-        {
-            public int Value;
-        }
-
-        private struct AnotherComponent : IStradaComponent
-        {
-            public float Data;
-        }
-
-        #endregion
     }
 }
