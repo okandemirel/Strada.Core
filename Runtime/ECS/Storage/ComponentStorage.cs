@@ -10,6 +10,7 @@ namespace Strada.Core.ECS.Storage
         bool Remove(int entityIndex);
         void Clear();
         int Count { get; }
+        IReadOnlyList<int> GetEntityIndices();
     }
 
     public class ComponentStorage<T> : IComponentStorage where T : unmanaged, IStradaComponent
@@ -56,6 +57,20 @@ namespace Strada.Core.ECS.Storage
         public ref SparseSet<T> GetSparseSet()
         {
             return ref _sparseSet;
+        }
+
+        public IReadOnlyList<int> GetEntityIndices()
+        {
+            var indices = new List<int>(_sparseSet.Count);
+            unsafe
+            {
+                int* densePtr = _sparseSet.GetDenseEntityReadOnlyPtr();
+                for (int i = 0; i < _sparseSet.Count; i++)
+                {
+                    indices.Add(densePtr[i]);
+                }
+            }
+            return indices;
         }
 
         public void Clear()

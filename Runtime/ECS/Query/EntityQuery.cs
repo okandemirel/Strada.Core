@@ -133,22 +133,7 @@ namespace Strada.Core.ECS.Query
 
         private List<int> GetEntitiesFromStorage(IComponentStorage storage)
         {
-            var result = new List<int>();
-            var method = storage.GetType().GetMethod("GetSparseSet");
-            var sparseSet = method.Invoke(storage, null);
-            var countProperty = sparseSet.GetType().GetProperty("Count");
-            int count = (int)countProperty.GetValue(sparseSet);
-
-            var denseMethod = sparseSet.GetType().GetMethod("GetDenseEntityReadOnlyPtr");
-            unsafe
-            {
-                int* densePtr = (int*)((IntPtr)denseMethod.Invoke(sparseSet, null));
-                for (int i = 0; i < count; i++)
-                {
-                    result.Add(densePtr[i]);
-                }
-            }
-            return result;
+            return new List<int>(storage.GetEntityIndices());
         }
     }
 

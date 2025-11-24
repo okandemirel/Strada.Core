@@ -4,7 +4,7 @@ using Strada.Core.ECS;
 namespace Strada.Core.Tests.Runtime.ECS.Core
 {
     [TestFixture]
-    public class EntityManagerTests2
+    public class EntityManagerTests
     {
         struct Position : IStradaComponent
         {
