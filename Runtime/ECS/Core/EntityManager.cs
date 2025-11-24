@@ -11,12 +11,12 @@ namespace Strada.Core.ECS
         private readonly HashSet<int> _activeEntities;
         private readonly ComponentStore _store;
         private readonly GroupRegistry _groups;
-        private readonly QueryCache _queryCache;
+        private readonly OptimizedQueryCache _queryCache;
         private readonly Queue<int> _recycledIndices;
 
         public int EntityCount => _activeEntities.Count;
         public ComponentStore Store => _store;
-        public QueryCache QueryCache => _queryCache;
+        public OptimizedQueryCache QueryCache => _queryCache;
 
         public EntityManager()
         {
@@ -24,7 +24,7 @@ namespace Strada.Core.ECS
             _activeEntities = new HashSet<int>();
             _store = new ComponentStore();
             _groups = new GroupRegistry(_store);
-            _queryCache = new QueryCache(_store);
+            _queryCache = new OptimizedQueryCache(_store);
             _recycledIndices = new Queue<int>();
         }
 
@@ -49,8 +49,6 @@ namespace Strada.Core.ECS
             _groups.RemoveEntity(entity.Index);
             _activeEntities.Remove(entity.Index);
             _recycledIndices.Enqueue(entity.Index);
-
-            _queryCache.OnStructuralChange();
         }
 
         public bool Exists(Entity entity)
@@ -99,12 +97,20 @@ namespace Strada.Core.ECS
             if (entities == null || entities.Length == 0) return;
 
             var storage = _store.GetOrCreateStorage<T>();
+            var validIndices = new List<int>(entities.Length);
+
             foreach (var entity in entities)
             {
                 if (!_activeEntities.Contains(entity.Index)) continue;
                 storage.Add(entity.Index, component);
-                _groups.UpdateEntityArchetype(entity.Index);
+                validIndices.Add(entity.Index);
             }
+
+            if (validIndices.Count > 0)
+            {
+                _groups.UpdateEntityArchetypeBatch(validIndices.ToArray(), typeof(T));
+            }
+
             _queryCache.InvalidateQueriesWithComponent(typeof(T));
         }
 

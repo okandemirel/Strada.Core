@@ -5,9 +5,64 @@ using UnityEngine;
 
 namespace Strada.Core.ECS.Communication
 {
+    internal interface IEventQueue
+    {
+        int Count { get; }
+        void Clear();
+        void DispatchTo(List<Delegate> handlers);
+    }
+
+    internal sealed class EventQueue<T> : IEventQueue where T : struct, IStradaEvent
+    {
+        private readonly ConcurrentQueue<T> _queue;
+
+        public int Count
+        {
+            get
+            {
+                int count = 0;
+                foreach (var _ in _queue) count++;
+                return count;
+            }
+        }
+
+        public EventQueue()
+        {
+            _queue = new ConcurrentQueue<T>();
+        }
+
+        public void Enqueue(T eventData)
+        {
+            _queue.Enqueue(eventData);
+        }
+
+        public void Clear()
+        {
+            while (_queue.TryDequeue(out _)) { }
+        }
+
+        public void DispatchTo(List<Delegate> handlers)
+        {
+            while (_queue.TryDequeue(out var eventData))
+            {
+                foreach (var handler in handlers)
+                {
+                    try
+                    {
+                        ((Action<T>)handler)(eventData);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"Error dispatching event {typeof(T).Name}: {ex.Message}\n{ex.StackTrace}");
+                    }
+                }
+            }
+        }
+    }
+
     public class StradaEventBus : IEventPublisher, IEventSubscriber, IEventDispatcher
     {
-        private readonly ConcurrentDictionary<Type, ConcurrentQueue<object>> _eventQueues;
+        private readonly ConcurrentDictionary<Type, IEventQueue> _eventQueues;
         private readonly Dictionary<Type, List<Delegate>> _subscribers;
         private readonly object _lockObject = new object();
 
@@ -26,19 +81,23 @@ namespace Strada.Core.ECS.Communication
 
         public StradaEventBus()
         {
-            _eventQueues = new ConcurrentDictionary<Type, ConcurrentQueue<object>>();
+            _eventQueues = new ConcurrentDictionary<Type, IEventQueue>();
             _subscribers = new Dictionary<Type, List<Delegate>>();
         }
 
         public void Raise<T>(T eventData) where T : struct, IStradaEvent
         {
             var type = typeof(T);
-            var queue = _eventQueues.GetOrAdd(type, _ => new ConcurrentQueue<object>());
+            var queue = (EventQueue<T>)_eventQueues.GetOrAdd(type, _ => new EventQueue<T>());
             queue.Enqueue(eventData);
         }
 
         public void Clear()
         {
+            foreach (var queue in _eventQueues.Values)
+            {
+                queue.Clear();
+            }
             _eventQueues.Clear();
         }
 
@@ -135,27 +194,14 @@ namespace Strada.Core.ECS.Communication
             {
                 if (!_subscribers.TryGetValue(eventType, out handlers) || handlers.Count == 0)
                 {
-                    while (queue.TryDequeue(out _)) { }
+                    queue.Clear();
                     return;
                 }
 
                 handlers = new List<Delegate>(handlers);
             }
 
-            while (queue.TryDequeue(out var eventObj))
-            {
-                foreach (var handler in handlers)
-                {
-                    try
-                    {
-                        handler.DynamicInvoke(eventObj);
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogError($"Error dispatching event {eventType.Name}: {ex.Message}\n{ex.StackTrace}");
-                    }
-                }
-            }
+            queue.DispatchTo(handlers);
         }
     }
 }

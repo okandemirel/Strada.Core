@@ -48,6 +48,63 @@ namespace Strada.Core.ECS.Storage
             _entityToArchetype[entityIndex] = newArchetype;
         }
 
+        public void UpdateEntityArchetypeBatch(int[] entityIndices, Type addedComponentType)
+        {
+            var archetypeTransitions = new Dictionary<Archetype, List<int>>();
+
+            foreach (var entityIndex in entityIndices)
+            {
+                if (_entityToArchetype.TryGetValue(entityIndex, out var oldArchetype))
+                {
+                    if (!archetypeTransitions.ContainsKey(oldArchetype))
+                    {
+                        archetypeTransitions[oldArchetype] = new List<int>();
+                    }
+                    archetypeTransitions[oldArchetype].Add(entityIndex);
+                }
+                else
+                {
+                    var emptyArchetype = new Archetype(Array.Empty<Type>());
+                    if (!archetypeTransitions.ContainsKey(emptyArchetype))
+                    {
+                        archetypeTransitions[emptyArchetype] = new List<int>();
+                    }
+                    archetypeTransitions[emptyArchetype].Add(entityIndex);
+                }
+            }
+
+            foreach (var transition in archetypeTransitions)
+            {
+                var oldArchetype = transition.Key;
+                var entities = transition.Value;
+
+                var newComponentTypes = new List<Type>(oldArchetype.ComponentTypes);
+                if (!newComponentTypes.Contains(addedComponentType))
+                {
+                    newComponentTypes.Add(addedComponentType);
+                }
+                var newArchetype = new Archetype(newComponentTypes.ToArray());
+
+                if (oldArchetype == newArchetype)
+                    continue;
+
+                if (_groups.TryGetValue(oldArchetype, out var oldGroup))
+                {
+                    foreach (var entityIndex in entities)
+                    {
+                        oldGroup.Remove(entityIndex);
+                    }
+                }
+
+                var newGroup = GetOrCreateGroup(newArchetype);
+                foreach (var entityIndex in entities)
+                {
+                    newGroup.Add(entityIndex);
+                    _entityToArchetype[entityIndex] = newArchetype;
+                }
+            }
+        }
+
         public void RemoveEntity(int entityIndex)
         {
             if (_entityToArchetype.TryGetValue(entityIndex, out var archetype))
