@@ -11,6 +11,7 @@ namespace Strada.Core.DI
         private readonly Dictionary<int, object> _singletons;
         private readonly Dictionary<Type, int> _typeToHash;
         private readonly HashSet<int> _singletonHashes;
+        private readonly HashSet<int> _scopedHashes;
         private readonly HashSet<int> _resolving;
         private readonly object _lock = new object();
         private bool _disposed;
@@ -22,6 +23,7 @@ namespace Strada.Core.DI
             _singletons = new Dictionary<int, object>(capacity);
             _typeToHash = new Dictionary<Type, int>(capacity);
             _singletonHashes = new HashSet<int>();
+            _scopedHashes = new HashSet<int>();
             _resolving = new HashSet<int>();
 
             BuildFactories(registrations);
@@ -33,6 +35,13 @@ namespace Strada.Core.DI
                 throw new ObjectDisposedException(nameof(FastContainer));
 
             var hash = GetTypeHash(typeof(T));
+
+            if (_scopedHashes.Contains(hash))
+            {
+                throw new InvalidOperationException(
+                    $"Cannot resolve scoped type '{typeof(T).Name}' from root container. " +
+                    $"Use CreateScope() first to create a scope, then resolve from the scope.");
+            }
 
             if (_singletons.TryGetValue(hash, out var singleton))
                 return (T)singleton;
@@ -64,6 +73,13 @@ namespace Strada.Core.DI
                 throw new ObjectDisposedException(nameof(FastContainer));
 
             var hash = GetTypeHash(type);
+
+            if (_scopedHashes.Contains(hash))
+            {
+                throw new InvalidOperationException(
+                    $"Cannot resolve scoped type '{type.Name}' from root container. " +
+                    $"Use CreateScope() first to create a scope, then resolve from the scope.");
+            }
 
             if (_singletons.TryGetValue(hash, out var singleton))
                 return singleton;
@@ -114,7 +130,7 @@ namespace Strada.Core.DI
             if (_disposed)
                 throw new ObjectDisposedException(nameof(FastContainer));
 
-            throw new NotImplementedException("Scopes not yet implemented in FastContainer");
+            return new FastContainerScope(this, _factories, _typeToHash, _scopedHashes);
         }
 
         public bool IsRegistered<T>() where T : class
@@ -169,6 +185,10 @@ namespace Strada.Core.DI
                     {
                         _singletonHashes.Add(hash);
                     }
+                    else if (registration.Lifetime == Lifetime.Scoped)
+                    {
+                        _scopedHashes.Add(hash);
+                    }
 
                     continue;
                 }
@@ -179,6 +199,10 @@ namespace Strada.Core.DI
                 if (registration.Lifetime == Lifetime.Singleton)
                 {
                     _singletonHashes.Add(hash);
+                }
+                else if (registration.Lifetime == Lifetime.Scoped)
+                {
+                    _scopedHashes.Add(hash);
                 }
             }
         }

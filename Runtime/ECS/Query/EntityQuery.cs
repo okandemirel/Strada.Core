@@ -92,9 +92,7 @@ namespace Strada.Core.ECS.Query
                 return;
             }
 
-            var potentialEntities = GetEntitiesFromStorage(firstStorage);
-
-            foreach (var entityIndex in potentialEntities)
+            foreach (var entityIndex in firstStorage.GetEntityIndices())
             {
                 if (MatchesQuery(entityIndex))
                 {
@@ -130,24 +128,17 @@ namespace Strada.Core.ECS.Query
             var genericMethod = method.MakeGenericMethod(componentType);
             return (IComponentStorage)genericMethod.Invoke(_store, null);
         }
-
-        private List<int> GetEntitiesFromStorage(IComponentStorage storage)
-        {
-            return new List<int>(storage.GetEntityIndices());
-        }
     }
 
     public class QueryCache
     {
         private readonly Dictionary<QueryDescriptor, EntityQuery> _queries;
         private readonly ComponentStore _store;
-        private readonly HashSet<QueryDescriptor> _dirtyQueries;
 
         public QueryCache(ComponentStore store)
         {
             _queries = new Dictionary<QueryDescriptor, EntityQuery>();
             _store = store;
-            _dirtyQueries = new HashSet<QueryDescriptor>();
         }
 
         public EntityQuery GetOrCreateQuery(QueryDescriptor descriptor)
@@ -200,7 +191,6 @@ namespace Strada.Core.ECS.Query
         public void Clear()
         {
             _queries.Clear();
-            _dirtyQueries.Clear();
         }
     }
 }

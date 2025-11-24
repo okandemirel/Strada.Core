@@ -398,5 +398,51 @@ namespace Strada.Core.Tests.Performance
 
             manager.Dispose();
         }
+
+        [Test, Performance]
+        public void EntityManager_AddComponentBatch_10k()
+        {
+            var manager = new EntityManager();
+            var entities = new Entity[10000];
+
+            for (int i = 0; i < 10000; i++)
+            {
+                entities[i] = manager.CreateEntity();
+            }
+
+            Measure.Method(() =>
+            {
+                manager.AddComponentBatch(entities, new TestComponent { X = 1, Y = 2, Z = 3 });
+            })
+            .WarmupCount(5)
+            .MeasurementCount(10)
+            .Run();
+
+            manager.Dispose();
+        }
+
+        [Test, Performance]
+        public void EntityManager_RemoveComponentBatch_10k()
+        {
+            var manager = new EntityManager();
+            var entities = new Entity[10000];
+
+            for (int i = 0; i < 10000; i++)
+            {
+                entities[i] = manager.CreateEntity();
+            }
+
+            manager.AddComponentBatch(entities, new TestComponent { X = 1, Y = 2, Z = 3 });
+
+            Measure.Method(() =>
+            {
+                manager.RemoveComponentBatch<TestComponent>(entities);
+            })
+            .WarmupCount(5)
+            .MeasurementCount(10)
+            .Run();
+
+            manager.Dispose();
+        }
     }
 }

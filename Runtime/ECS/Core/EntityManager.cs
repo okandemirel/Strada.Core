@@ -94,6 +94,34 @@ namespace Strada.Core.ECS
             _queryCache.InvalidateQueriesWithComponent(typeof(T));
         }
 
+        public void AddComponentBatch<T>(Entity[] entities, T component) where T : unmanaged, IStradaComponent
+        {
+            if (entities == null || entities.Length == 0) return;
+
+            var storage = _store.GetOrCreateStorage<T>();
+            foreach (var entity in entities)
+            {
+                if (!_activeEntities.Contains(entity.Index)) continue;
+                storage.Add(entity.Index, component);
+                _groups.UpdateEntityArchetype(entity.Index);
+            }
+            _queryCache.InvalidateQueriesWithComponent(typeof(T));
+        }
+
+        public void RemoveComponentBatch<T>(Entity[] entities) where T : unmanaged, IStradaComponent
+        {
+            if (entities == null || entities.Length == 0) return;
+
+            var storage = _store.GetOrCreateStorage<T>();
+            foreach (var entity in entities)
+            {
+                if (!_activeEntities.Contains(entity.Index)) continue;
+                storage.Remove(entity.Index);
+                _groups.UpdateEntityArchetype(entity.Index);
+            }
+            _queryCache.InvalidateQueriesWithComponent(typeof(T));
+        }
+
         public bool HasComponent<T>(Entity entity) where T : unmanaged, IStradaComponent
         {
             if (!_activeEntities.Contains(entity.Index))
