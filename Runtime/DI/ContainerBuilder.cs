@@ -12,6 +12,7 @@ namespace Strada.Core.DI
     {
         private readonly Dictionary<Type, Registration> _registrations;
         private readonly Dictionary<string, List<Type>> _ecsWorlds;
+        private bool _useFastContainer = true;
 
         /// <summary>
         /// Creates a new container builder.
@@ -20,6 +21,12 @@ namespace Strada.Core.DI
         {
             _registrations = new Dictionary<Type, Registration>();
             _ecsWorlds = new Dictionary<string, List<Type>>();
+        }
+
+        public ContainerBuilder UseFastContainer(bool useFast = true)
+        {
+            _useFastContainer = useFast;
+            return this;
         }
 
         /// <summary>
@@ -95,19 +102,18 @@ namespace Strada.Core.DI
         /// </summary>
         public IContainer Build()
         {
-            // Validate all registrations
             foreach (var registration in _registrations.Values)
             {
                 registration.Validate();
             }
 
-            // Detect circular dependencies
             DetectCircularDependencies();
 
-            // Create immutable container
-            // Pass a copy of registrations to prevent external modification
             var registrationsCopy = new Dictionary<Type, Registration>(_registrations);
-            return new Container(registrationsCopy);
+
+            return _useFastContainer
+                ? new FastContainer(registrationsCopy)
+                : new Container(registrationsCopy);
         }
 
         /// <summary>
