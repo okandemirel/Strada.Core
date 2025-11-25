@@ -66,14 +66,20 @@ namespace Strada.Core.Tests.Tests.Runtime.Performance
 
             UnityEngine.Debug.Log($"DirectFactory<Level1>.Delegate is null: {DirectFactory<Level1>.Delegate == null}");
 
+            // Warmup
+            for (int i = 0; i < 100; i++) _container.Resolve<Level1>();
+
+            // Validation (ensure correctness before benchmarking)
+            var checkInstance = _container.Resolve<Level1>();
+            Assert.NotNull(checkInstance);
+            Assert.NotNull(checkInstance.Dependency);
+            Assert.NotNull(checkInstance.Dependency.Dependency);
+            Assert.NotNull(checkInstance.Dependency.Dependency.Dependency);
+
             var sw = Stopwatch.StartNew();
             for (int i = 0; i < iterations; i++)
             {
                 var instance = _container.Resolve<Level1>();
-                Assert.NotNull(instance);
-                Assert.NotNull(instance.Dependency);
-                Assert.NotNull(instance.Dependency.Dependency);
-                Assert.NotNull(instance.Dependency.Dependency.Dependency);
             }
             sw.Stop();
 

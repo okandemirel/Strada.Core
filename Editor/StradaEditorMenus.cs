@@ -1,5 +1,6 @@
 using UnityEditor;
 using UnityEngine;
+using Strada.Core.Editor.Windows;
 
 namespace Strada.Core.Editor
 {
@@ -11,20 +12,33 @@ namespace Strada.Core.Editor
     {
         private const string MenuRoot = "Strada/";
         
+        // Tools
+        [MenuItem(MenuRoot + "Create Module...", priority = 50)]
+        private static void OpenModuleGenerator()
+        {
+            StradaModuleGeneratorWindow.ShowWindow();
+        }
+
+        [MenuItem(MenuRoot + "Debugger/Entity Inspector", priority = 100)]
+        private static void OpenEntityDebugger()
+        {
+            StradaEntityDebuggerWindow.ShowWindow();
+        }
+
         // Documentation
-        [MenuItem(MenuRoot + "Documentation/Getting Started", priority = 0)]
+        [MenuItem(MenuRoot + "Documentation/Getting Started", priority = 200)]
         private static void OpenGettingStarted()
         {
             Application.OpenURL("https://strada-framework.dev/docs/getting-started");
         }
 
-        [MenuItem(MenuRoot + "Documentation/API Reference", priority = 1)]
+        [MenuItem(MenuRoot + "Documentation/API Reference", priority = 201)]
         private static void OpenAPIReference()
         {
             Application.OpenURL("https://strada-framework.dev/docs/api");
         }
 
-        [MenuItem(MenuRoot + "Documentation/Examples", priority = 2)]
+        [MenuItem(MenuRoot + "Documentation/Examples", priority = 202)]
         private static void OpenExamples()
         {
             var examplesPath = "Packages/com.strada.core/Samples~";
@@ -32,19 +46,7 @@ namespace Strada.Core.Editor
         }
 
         // Quick Actions
-        [MenuItem(MenuRoot + "Quick Actions/Create InputModule", priority = 50)]
-        private static void CreateInputModule()
-        {
-            Debug.Log("Create InputModule - Template generation would happen here");
-        }
-
-        [MenuItem(MenuRoot + "Quick Actions/Create PlayerModule", priority = 51)]
-        private static void CreatePlayerModule()
-        {
-            Debug.Log("Create PlayerModule - Template generation would happen here");
-        }
-
-        [MenuItem(MenuRoot + "Quick Actions/Validate All Configs", priority = 52)]
+        [MenuItem(MenuRoot + "Tools/Validate All Configs", priority = 300)]
         private static void ValidateAllConfigs()
         {
             var configs = AssetDatabase.FindAssets("t:ScriptableObject");
@@ -68,47 +70,32 @@ namespace Strada.Core.Editor
             }
 
             AssetDatabase.SaveAssets();
-            Debug.Log($"Validated {validatedCount} config assets");
-        }
-
-        // Settings
-        [MenuItem(MenuRoot + "Settings/Framework Settings", priority = 100)]
-        private static void OpenSettings()
-        {
-            // Would open settings provider
-            Debug.Log("Open Strada Settings");
-        }
-
-        [MenuItem(MenuRoot + "Settings/Performance Targets", priority = 101)]
-        private static void OpenPerformanceTargets()
-        {
-            // Would show performance target configuration
-            Debug.Log("Open Performance Targets");
+            Debug.Log($"[Strada] Validated {validatedCount} config assets");
         }
 
         // About
-        [MenuItem(MenuRoot + "About Strada", priority = 200)]
+        [MenuItem(MenuRoot + "About Strada", priority = 1000)]
         private static void ShowAbout()
         {
             EditorUtility.DisplayDialog(
                 "Strada Framework",
                 "Version: 1.0.0-alpha\n\n" +
                 "Unified MVCS+ECS Framework\n\n" +
-                "Performance: Matches Unity DOTS\n" +
-                "Developer Experience: Better than all competitors\n" +
+                "Performance: World Class\n" +
+                "Developer Experience: Modular & Clean\n" +
                 "Architecture: Truly unified DI+MVCS+ECS\n\n" +
                 "© 2025 Strada Framework Team",
                 "OK");
         }
 
         // Help
-        [MenuItem(MenuRoot + "Help/Report Issue", priority = 201)]
+        [MenuItem(MenuRoot + "Help/Report Issue", priority = 1001)]
         private static void ReportIssue()
         {
             Application.OpenURL("https://github.com/strada-framework/strada-core/issues/new");
         }
 
-        [MenuItem(MenuRoot + "Help/Join Discord", priority = 202)]
+        [MenuItem(MenuRoot + "Help/Join Discord", priority = 1002)]
         private static void JoinDiscord()
         {
             Application.OpenURL("https://discord.gg/strada");

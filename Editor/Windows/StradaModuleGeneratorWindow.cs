@@ -19,7 +19,7 @@ namespace Strada.Core.Editor.Windows
         private string _targetPath = "Assets/Modules";
         private Vector2 _scrollPosition;
 
-        [MenuItem("Strada/Create Module...", priority = 50)]
+        // Menu item moved to StradaEditorMenus.cs
         public static void ShowWindow()
         {
             var window = GetWindow<StradaModuleGeneratorWindow>("Create Module");

@@ -4,10 +4,11 @@ using System.Threading;
 
 namespace Strada.Core.DI
 {
-    public sealed class FastContainerScope : IContainerScope
+    public sealed class FastContainerScope : IContainerScope, IIndexResolver
     {
         private readonly FastContainer _parent;
-        private readonly Func<object>[] _factories;
+        private readonly Func<IIndexResolver, object>[] _factories;
+        private readonly Func<IIndexResolver, object>[] _scopedFactories;
         private readonly Lifetime[] _lifetimes;
         private readonly int[] _typeIdToIndex;
         private readonly int _maxTypeId;
@@ -19,7 +20,8 @@ namespace Strada.Core.DI
 
         internal FastContainerScope(
             FastContainer parent,
-            Func<object>[] factories,
+            Func<IIndexResolver, object>[] factories,
+            Func<IIndexResolver, object>[] scopedFactories,
             Lifetime[] lifetimes,
             int[] typeIdToIndex,
             int maxTypeId,
@@ -27,6 +29,7 @@ namespace Strada.Core.DI
         {
             _parent = parent;
             _factories = factories;
+            _scopedFactories = scopedFactories;
             _lifetimes = lifetimes;
             _typeIdToIndex = typeIdToIndex;
             _maxTypeId = maxTypeId;
@@ -60,6 +63,12 @@ namespace Strada.Core.DI
             if (index < 0)
                 throw new InvalidOperationException($"Type with ID '{typeId}' is not registered");
 
+            return ResolveByIndex(index);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public object ResolveByIndex(int index)
+        {
             var lifetime = _lifetimes[index];
 
             if (lifetime == Lifetime.Singleton)
@@ -77,7 +86,8 @@ namespace Strada.Core.DI
                 if (existing != null)
                     return existing;
 
-                var instance = _factories[index]();
+                // Pass 'this' (the scope) to the factory so it can resolve dependencies from this scope
+                var instance = _scopedFactories[index](this);
 
                 var prev = Interlocked.CompareExchange(ref _scopedInstances[index], instance, null);
                 if (prev != null)
@@ -89,7 +99,8 @@ namespace Strada.Core.DI
                 return instance;
             }
 
-            return _factories[index]();
+            // Transient: Pass 'this' so dependencies come from this scope
+            return _factories[index](this);
         }
 
         public bool TryResolve<T>(out T instance) where T : class
@@ -117,7 +128,7 @@ namespace Strada.Core.DI
             if (_disposed)
                 throw new ObjectDisposedException(nameof(FastContainerScope));
 
-            return new FastContainerScope(_parent, _factories, _lifetimes, _typeIdToIndex, _maxTypeId, _parentSingletons);
+            return new FastContainerScope(_parent, _factories, _scopedFactories, _lifetimes, _typeIdToIndex, _maxTypeId, _parentSingletons);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

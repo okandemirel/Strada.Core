@@ -25,7 +25,7 @@ namespace Strada.Core.Editor.Windows
 
         private List<int> _entityIndices = new();
 
-        [MenuItem("Strada/Debugger/Entity Inspector", priority = 101)]
+        // Menu item moved to StradaEditorMenus.cs
         public static void ShowWindow()
         {
             var window = GetWindow<StradaEntityDebuggerWindow>("Entity Debugger");
