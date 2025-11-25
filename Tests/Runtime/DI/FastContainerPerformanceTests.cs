@@ -1,8 +1,8 @@
 using NUnit.Framework;
-using Unity.PerformanceTesting;
 using Strada.Core.DI;
+using Unity.PerformanceTesting;
 
-namespace Strada.Core.Tests.Performance
+namespace Strada.Core.Tests.Tests.Runtime.DI
 {
     [TestFixture]
     public class FastContainerPerformanceTests
@@ -30,7 +30,6 @@ namespace Strada.Core.Tests.Performance
         public void Benchmark_SingleResolution_Transient_1000()
         {
             var builder = new ContainerBuilder();
-            builder.UseFastContainer();
             builder.Register<IServiceA, ServiceA>(Lifetime.Transient);
             var container = builder.Build();
 
@@ -52,7 +51,6 @@ namespace Strada.Core.Tests.Performance
         public void Benchmark_SingleResolution_Singleton_1000()
         {
             var builder = new ContainerBuilder();
-            builder.UseFastContainer();
             builder.Register<IServiceA, ServiceA>(Lifetime.Singleton);
             var container = builder.Build();
 
@@ -74,7 +72,6 @@ namespace Strada.Core.Tests.Performance
         public void Benchmark_ComplexDependencyGraph_10000()
         {
             var builder = new ContainerBuilder();
-            builder.UseFastContainer();
             builder.Register<IServiceA, ServiceA>(Lifetime.Singleton);
             builder.Register<IServiceB, ServiceB>(Lifetime.Singleton);
             builder.Register<IServiceC, ServiceC>(Lifetime.Singleton);
@@ -99,7 +96,6 @@ namespace Strada.Core.Tests.Performance
         public void Benchmark_MemoryAllocation_Transient_1000()
         {
             var builder = new ContainerBuilder();
-            builder.UseFastContainer();
             builder.Register<IServiceA, ServiceA>(Lifetime.Transient);
             var container = builder.Build();
 
@@ -121,7 +117,6 @@ namespace Strada.Core.Tests.Performance
         public void Benchmark_MemoryAllocation_Singleton_1000()
         {
             var builder = new ContainerBuilder();
-            builder.UseFastContainer();
             builder.Register<IServiceA, ServiceA>(Lifetime.Singleton);
             var container = builder.Build();
 
@@ -145,7 +140,6 @@ namespace Strada.Core.Tests.Performance
             Measure.Method(() =>
             {
                 var builder = new ContainerBuilder();
-                builder.UseFastContainer();
 
                 for (int i = 0; i < 100; i++)
                 {
@@ -165,7 +159,6 @@ namespace Strada.Core.Tests.Performance
         public void Benchmark_ScopeCreation_1000()
         {
             var builder = new ContainerBuilder();
-            builder.UseFastContainer();
             builder.Register<IServiceA, ServiceA>(Lifetime.Scoped);
             var container = builder.Build();
 

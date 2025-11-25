@@ -2,285 +2,293 @@ using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Strada.Core.DI
 {
     public sealed class FastContainer : IContainer
     {
-        private readonly Dictionary<int, Func<IContainer, object>> _factories;
-        private readonly Dictionary<int, object> _singletons;
-        private readonly Dictionary<Type, int> _typeToHash;
-        private readonly HashSet<int> _singletonHashes;
-        private readonly HashSet<int> _scopedHashes;
-        private readonly HashSet<int> _resolving;
-        private readonly object _lock = new object();
+        private readonly Func<object>[] _factories;
+        private readonly object[] _singletons;
+        private readonly Lifetime[] _lifetimes;
+        private readonly int[] _typeIdToIndex;
+        private readonly int _maxTypeId;
+        private readonly Type[] _registeredTypes;
+        private int _registeredCount;
         private bool _disposed;
 
         internal FastContainer(Dictionary<Type, Registration> registrations)
         {
-            var capacity = registrations.Count;
-            _factories = new Dictionary<int, Func<IContainer, object>>(capacity);
-            _singletons = new Dictionary<int, object>(capacity);
-            _typeToHash = new Dictionary<Type, int>(capacity);
-            _singletonHashes = new HashSet<int>();
-            _scopedHashes = new HashSet<int>();
-            _resolving = new HashSet<int>();
+            var count = registrations.Count;
+            _registeredTypes = new Type[count];
+            _factories = new Func<object>[count];
+            _singletons = new object[count];
+            _lifetimes = new Lifetime[count];
 
-            BuildFactories(registrations);
+            var typeIdMap = BuildTypeIdMap(registrations, out _maxTypeId);
+            _typeIdToIndex = BuildIndexArray(_maxTypeId, typeIdMap);
+            BuildFactories(registrations, typeIdMap);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T Resolve<T>() where T : class
         {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(FastContainer));
-
-            var hash = GetTypeHash(typeof(T));
-
-            if (_scopedHashes.Contains(hash))
+            if (_disposed) ThrowDisposed();
+            var typeId = TypeId<T>.Id;
+            if (typeId <= _maxTypeId)
             {
-                throw new InvalidOperationException(
-                    $"Cannot resolve scoped type '{typeof(T).Name}' from root container. " +
-                    $"Use CreateScope() first to create a scope, then resolve from the scope.");
-            }
-
-            if (_singletons.TryGetValue(hash, out var singleton))
-                return (T)singleton;
-
-            if (_factories.TryGetValue(hash, out var factory))
-            {
-                if (_singletonHashes.Contains(hash))
+                var index = _typeIdToIndex[typeId];
+                if (index >= 0)
                 {
-                    lock (_lock)
-                    {
-                        if (_singletons.TryGetValue(hash, out singleton))
-                            return (T)singleton;
-
-                        var instance = factory(this);
-                        _singletons[hash] = instance;
-                        return (T)instance;
-                    }
+                    var singleton = _singletons[index];
+                    if (singleton != null) return (T)singleton;
+                    return (T)ResolveByIndexInternal(index);
                 }
-
-                return (T)factory(this);
             }
-
-            throw new InvalidOperationException($"Type '{typeof(T).Name}' is not registered");
+            ThrowNotRegistered<T>();
+            return default;
         }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void ThrowNotRegistered<T>() =>
+            throw new InvalidOperationException($"Type '{typeof(T).Name}' is not registered");
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void ThrowDisposed() =>
+            throw new ObjectDisposedException(nameof(FastContainer));
 
         public object Resolve(Type type)
         {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(FastContainer));
-
-            var hash = GetTypeHash(type);
-
-            if (_scopedHashes.Contains(hash))
-            {
-                throw new InvalidOperationException(
-                    $"Cannot resolve scoped type '{type.Name}' from root container. " +
-                    $"Use CreateScope() first to create a scope, then resolve from the scope.");
-            }
-
-            if (_singletons.TryGetValue(hash, out var singleton))
-                return singleton;
-
-            if (_factories.TryGetValue(hash, out var factory))
-            {
-                if (_singletonHashes.Contains(hash))
-                {
-                    lock (_lock)
-                    {
-                        if (_singletons.TryGetValue(hash, out singleton))
-                            return singleton;
-
-                        var instance = factory(this);
-                        _singletons[hash] = instance;
-                        return instance;
-                    }
-                }
-
-                return factory(this);
-            }
-
-            throw new InvalidOperationException($"Type '{type.Name}' is not registered");
+            if (_disposed) ThrowDisposed();
+            return ResolveByType(type);
         }
 
         public bool TryResolve<T>(out T instance) where T : class
         {
-            var hash = GetTypeHash(typeof(T));
-
-            if (_singletons.TryGetValue(hash, out var singleton))
+            var typeId = TypeId<T>.Id;
+            if (typeId <= _maxTypeId && _typeIdToIndex[typeId] >= 0)
             {
-                instance = (T)singleton;
+                instance = Resolve<T>();
                 return true;
             }
-
-            if (_factories.TryGetValue(hash, out var factory))
-            {
-                instance = (T)factory(this);
-                return true;
-            }
-
             instance = null;
             return false;
         }
 
         public IContainerScope CreateScope()
         {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(FastContainer));
-
-            return new FastContainerScope(this, _factories, _typeToHash, _scopedHashes);
+            if (_disposed) ThrowDisposed();
+            return new FastContainerScope(this, _factories, _lifetimes, _typeIdToIndex, _maxTypeId, _singletons);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsRegistered<T>() where T : class
         {
-            return _typeToHash.ContainsKey(typeof(T));
+            var typeId = TypeId<T>.Id;
+            return typeId <= _maxTypeId && _typeIdToIndex[typeId] >= 0;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsRegistered(Type type)
         {
-            return _typeToHash.ContainsKey(type);
+            var typeId = TypeRegistry.GetId(type);
+            return typeId <= _maxTypeId && _typeIdToIndex[typeId] >= 0;
         }
 
         public void Dispose()
         {
-            if (_disposed)
-                return;
-
+            if (_disposed) return;
             _disposed = true;
 
-            foreach (var singleton in _singletons.Values)
-            {
-                if (singleton is IDisposable disposable)
-                    disposable.Dispose();
-            }
+            for (int i = 0; i < _registeredCount; i++)
+                ClearFactory(_registeredTypes[i]);
 
-            _singletons.Clear();
-            _factories.Clear();
-            _typeToHash.Clear();
+            for (int i = 0; i < _singletons.Length; i++)
+            {
+                var obj = Volatile.Read(ref _singletons[i]);
+                if (obj is IDisposable d) d.Dispose();
+                _singletons[i] = null;
+            }
         }
 
-        private void BuildFactories(Dictionary<Type, Registration> registrations)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal object ResolveByIndex(int index)
+        {
+            var singleton = _singletons[index];
+            if (singleton != null) return singleton;
+            return ResolveByIndexInternal(index);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private object ResolveByIndexInternal(int index)
+        {
+            if (_lifetimes[index] == Lifetime.Scoped)
+                throw new InvalidOperationException("Cannot resolve scoped type from root container. Use CreateScope() first.");
+
+            var instance = _factories[index]();
+            if (_lifetimes[index] != Lifetime.Singleton) return instance;
+
+            var prev = Interlocked.CompareExchange(ref _singletons[index], instance, null);
+            if (prev != null)
+            {
+                if (instance is IDisposable d) d.Dispose();
+                return prev;
+            }
+            return instance;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private object ResolveByType(Type type)
+        {
+            var typeId = TypeRegistry.GetId(type);
+            if (typeId <= _maxTypeId)
+            {
+                var index = _typeIdToIndex[typeId];
+                if (index >= 0) return ResolveByIndex(index);
+            }
+            throw new InvalidOperationException($"Type '{type.Name}' is not registered");
+        }
+
+        private Dictionary<int, int> BuildTypeIdMap(Dictionary<Type, Registration> registrations, out int maxId)
+        {
+            var map = new Dictionary<int, int>(registrations.Count);
+            maxId = 0;
+            int index = 0;
+
+            foreach (var kvp in registrations)
+            {
+                int typeId = TypeRegistry.GetId(kvp.Key);
+                map[typeId] = index;
+                _registeredTypes[index] = kvp.Key;
+                index++;
+                if (typeId > maxId) maxId = typeId;
+            }
+            _registeredCount = index;
+            return map;
+        }
+
+        private static int[] BuildIndexArray(int maxId, Dictionary<int, int> typeIdMap)
+        {
+            var arr = new int[maxId + 1];
+            for (int i = 0; i <= maxId; i++) arr[i] = -1;
+            foreach (var kvp in typeIdMap) arr[kvp.Key] = kvp.Value;
+            return arr;
+        }
+
+        private void BuildFactories(Dictionary<Type, Registration> registrations, Dictionary<int, int> typeIdMap)
         {
             foreach (var kvp in registrations)
             {
-                var serviceType = kvp.Key;
-                var registration = kvp.Value;
-                var hash = GetTypeHash(serviceType);
+                var reg = kvp.Value;
+                int index = typeIdMap[TypeRegistry.GetId(kvp.Key)];
+                _lifetimes[index] = reg.Lifetime;
 
-                _typeToHash[serviceType] = hash;
-
-                if (registration.Instance != null)
+                if (reg.Instance != null)
                 {
-                    _singletons[hash] = registration.Instance;
-                    continue;
+                    _singletons[index] = reg.Instance;
+                    _factories[index] = () => reg.Instance;
                 }
-
-                if (registration.Factory != null)
+                else if (reg.Factory != null)
+                    _factories[index] = () => reg.Factory(this);
+                else
                 {
-                    _factories[hash] = registration.Factory;
-
-                    if (registration.Lifetime == Lifetime.Singleton)
-                    {
-                        _singletonHashes.Add(hash);
-                    }
-                    else if (registration.Lifetime == Lifetime.Scoped)
-                    {
-                        _scopedHashes.Add(hash);
-                    }
-
-                    continue;
-                }
-
-                var compiledFactory = CompileFactory(registration);
-                _factories[hash] = compiledFactory;
-
-                if (registration.Lifetime == Lifetime.Singleton)
-                {
-                    _singletonHashes.Add(hash);
-                }
-                else if (registration.Lifetime == Lifetime.Scoped)
-                {
-                    _scopedHashes.Add(hash);
+                    var directFactory = TryGetDirectFactory(kvp.Key);
+                    _factories[index] = directFactory ?? CompileFactory(reg.ImplementationType, registrations, typeIdMap);
                 }
             }
         }
 
-        private Func<IContainer, object> CompileFactory(Registration registration)
+        private Func<object> TryGetDirectFactory(Type serviceType)
         {
-            var implType = registration.ImplementationType;
-            var constructor = FindBestConstructor(implType);
-            var parameters = constructor.GetParameters();
+            var method = typeof(FastContainer).GetMethod(nameof(CreateDirectFactoryWrapper), BindingFlags.NonPublic | BindingFlags.Static);
+            var genericMethod = method.MakeGenericMethod(serviceType);
+            return (Func<object>)genericMethod.Invoke(null, new object[] { this });
+        }
+
+        private static Func<object> CreateDirectFactoryWrapper<T>(FastContainer container) where T : class
+        {
+            var factory = DirectFactory<T>.Delegate;
+            if (factory == null) return null;
+            return () => factory(container);
+        }
+
+        private Func<object> CompileFactory(Type implType, Dictionary<Type, Registration> regs, Dictionary<int, int> typeIdMap)
+        {
+            var ctor = GetBestConstructor(implType);
+            var parameters = ctor.GetParameters();
 
             if (parameters.Length == 0)
-            {
-                return _ => Activator.CreateInstance(implType);
-            }
+                return Expression.Lambda<Func<object>>(Expression.New(ctor)).Compile();
 
-            var containerParam = Expression.Parameter(typeof(IContainer), "container");
-            var resolveMethod = typeof(IContainer).GetMethod(nameof(IContainer.Resolve), new[] { typeof(Type) });
-
-            var argExpressions = new Expression[parameters.Length];
+            var args = new Expression[parameters.Length];
             for (int i = 0; i < parameters.Length; i++)
             {
-                var paramType = parameters[i].ParameterType;
-                var resolveCall = Expression.Call(
-                    containerParam,
-                    resolveMethod,
-                    Expression.Constant(paramType));
-                argExpressions[i] = Expression.Convert(resolveCall, paramType);
+                var pType = parameters[i].ParameterType;
+                if (!regs.TryGetValue(pType, out var depReg))
+                    throw new InvalidOperationException($"Dependency '{pType.Name}' not registered for '{implType.Name}'");
+                args[i] = BuildDependencyExpr(pType, depReg, regs, typeIdMap);
             }
-
-            var newExpression = Expression.New(constructor, argExpressions);
-            var lambda = Expression.Lambda<Func<IContainer, object>>(
-                Expression.Convert(newExpression, typeof(object)),
-                containerParam);
-
-            return lambda.Compile();
+            return Expression.Lambda<Func<object>>(Expression.New(ctor, args)).Compile();
         }
 
-        private ConstructorInfo FindBestConstructor(Type type)
+        private static ConstructorInfo GetBestConstructor(Type type)
         {
-            var constructors = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
+            var ctors = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
+            if (ctors.Length == 0)
+                throw new InvalidOperationException($"No public constructor for {type.Name}");
 
-            if (constructors.Length == 0)
-                throw new InvalidOperationException($"No public constructor found for {type.Name}");
+            if (ctors.Length == 1) return ctors[0];
 
-            ConstructorInfo best = constructors[0];
-            foreach (var ctor in constructors)
+            ConstructorInfo best = ctors[0];
+            int bestCount = best.GetParameters().Length;
+
+            for (int i = 1; i < ctors.Length; i++)
             {
-                if (ctor.GetParameters().Length > best.GetParameters().Length)
-                    best = ctor;
+                int count = ctors[i].GetParameters().Length;
+                if (count > bestCount)
+                {
+                    best = ctors[i];
+                    bestCount = count;
+                }
             }
-
             return best;
         }
 
-        private int GetTypeHash(Type type)
+        private Expression BuildDependencyExpr(Type serviceType, Registration reg, Dictionary<Type, Registration> regs, Dictionary<int, int> typeIdMap)
         {
-            if (_typeToHash.TryGetValue(type, out var hash))
-                return hash;
+            if (reg.Instance != null)
+                return Expression.Constant(reg.Instance, serviceType);
 
-            var typeName = type.FullName ?? type.Name;
-            return FNV1aHash(typeName);
+            if (reg.Lifetime == Lifetime.Singleton || reg.Factory != null)
+            {
+                int index = typeIdMap[TypeRegistry.GetId(serviceType)];
+                return Expression.Convert(
+                    Expression.Call(Expression.Constant(this), typeof(FastContainer).GetMethod(nameof(ResolveByIndex), BindingFlags.Instance | BindingFlags.NonPublic), Expression.Constant(index)),
+                    serviceType);
+            }
+
+            var ctor = GetBestConstructor(reg.ImplementationType);
+            var parameters = ctor.GetParameters();
+
+            if (parameters.Length == 0)
+                return Expression.New(ctor);
+
+            var depArgs = new Expression[parameters.Length];
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                var pType = parameters[i].ParameterType;
+                depArgs[i] = BuildDependencyExpr(pType, regs[pType], regs, typeIdMap);
+            }
+            return Expression.New(ctor, depArgs);
         }
 
-        private static int FNV1aHash(string text)
+        private static void ClearFactory(Type type) =>
+            typeof(DirectFactory<>).MakeGenericType(type).GetField(nameof(DirectFactory<object>.Delegate)).SetValue(null, null);
+
+        private static class TypeId<T>
         {
-            unchecked
-            {
-                const int fnvPrime = 16777619;
-                int hash = (int)2166136261;
-
-                foreach (char c in text)
-                {
-                    hash ^= c;
-                    hash *= fnvPrime;
-                }
-
-                return hash;
-            }
+            public static readonly int Id = TypeRegistry.GetId<T>();
         }
     }
 }

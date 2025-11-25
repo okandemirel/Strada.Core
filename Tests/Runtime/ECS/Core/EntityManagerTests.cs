@@ -1,24 +1,24 @@
 using NUnit.Framework;
 using Strada.Core.ECS;
 
-namespace Strada.Core.Tests.Runtime.ECS.Core
+namespace Strada.Core.Tests.ECS.Core
 {
     [TestFixture]
     public class EntityManagerTests
     {
-        struct Position : IStradaComponent
+        struct Position : IComponent
         {
             public float X;
             public float Y;
         }
 
-        struct Velocity : IStradaComponent
+        struct Velocity : IComponent
         {
             public float VX;
             public float VY;
         }
 
-        struct Health : IStradaComponent
+        struct Health : IComponent
         {
             public int Value;
         }
@@ -142,71 +142,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Core
         }
 
         [Test]
-        public void Query_SingleComponent_ReturnsMatchingEntities()
-        {
-            var manager = new EntityManager();
-
-            var e1 = manager.CreateEntity();
-            manager.AddComponent(e1, new Position { X = 1, Y = 2 });
-
-            var e2 = manager.CreateEntity();
-            manager.AddComponent(e2, new Position { X = 3, Y = 4 });
-
-            var e3 = manager.CreateEntity();
-
-            var query = manager.Query<Position>();
-            var entities = query.GetEntities();
-
-            Assert.AreEqual(2, entities.Count);
-
-            manager.Dispose();
-        }
-
-        [Test]
-        public void Query_MultipleComponents_ReturnsMatchingEntities()
-        {
-            var manager = new EntityManager();
-
-            var e1 = manager.CreateEntity();
-            manager.AddComponent(e1, new Position { X = 1, Y = 2 });
-            manager.AddComponent(e1, new Velocity { VX = 1, VY = 0 });
-
-            var e2 = manager.CreateEntity();
-            manager.AddComponent(e2, new Position { X = 3, Y = 4 });
-
-            var e3 = manager.CreateEntity();
-            manager.AddComponent(e3, new Velocity { VX = 0, VY = 1 });
-
-            var query = manager.Query<Position, Velocity>();
-            var entities = query.GetEntities();
-
-            Assert.AreEqual(1, entities.Count);
-
-            manager.Dispose();
-        }
-
-        [Test]
-        public void QueryCache_Invalidates_OnStructuralChange()
-        {
-            var manager = new EntityManager();
-
-            var e1 = manager.CreateEntity();
-            manager.AddComponent(e1, new Position { X = 1, Y = 2 });
-
-            var query = manager.Query<Position>();
-            var entities1 = query.GetEntities();
-            Assert.AreEqual(1, entities1.Count);
-
-            var e2 = manager.CreateEntity();
-            manager.AddComponent(e2, new Position { X = 3, Y = 4 });
-
-            var entities2 = query.GetEntities();
-            Assert.AreEqual(2, entities2.Count);
-
-            manager.Dispose();
-        }
-
-        [Test]
         public void EntityCount_TracksCorrectly()
         {
             var manager = new EntityManager();
@@ -284,40 +219,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Core
             manager.Clear();
 
             Assert.AreEqual(0, manager.EntityCount);
-
-            manager.Dispose();
-        }
-
-        [Test]
-        public void ComponentIteration_HighPerformance()
-        {
-            var manager = new EntityManager();
-
-            for (int i = 0; i < 1000; i++)
-            {
-                var entity = manager.CreateEntity();
-                manager.AddComponent(entity, new Position { X = i, Y = i * 2 });
-                manager.AddComponent(entity, new Velocity { VX = 1, VY = 0 });
-            }
-
-            var query = manager.Query<Position, Velocity>();
-            var entities = query.GetEntities();
-
-            var posStorage = manager.Store.GetOrCreateStorage<Position>();
-            var velStorage = manager.Store.GetOrCreateStorage<Velocity>();
-
-            int count = 0;
-            foreach (var entityIndex in entities)
-            {
-                var pos = posStorage.Get(entityIndex);
-                var vel = velStorage.Get(entityIndex);
-                pos.X += vel.VX;
-                pos.Y += vel.VY;
-                posStorage.Set(entityIndex, pos);
-                count++;
-            }
-
-            Assert.AreEqual(1000, count);
 
             manager.Dispose();
         }

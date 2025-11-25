@@ -1,8 +1,8 @@
-using NUnit.Framework;
 using System.Linq;
+using NUnit.Framework;
 using Strada.Core.Bootstrap;
 
-namespace Strada.Core.Tests.Bootstrap
+namespace Strada.Core.Tests.Tests.Runtime.Bootstrap
 {
     [TestFixture]
     public class BootstrapConfigTests

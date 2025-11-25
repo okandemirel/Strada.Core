@@ -1,103 +1,115 @@
 using System;
-using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Strada.Core.DI
 {
     public sealed class FastContainerScope : IContainerScope
     {
-        private readonly IContainer _parent;
-        private readonly Dictionary<int, Func<IContainer, object>> _factories;
-        private readonly Dictionary<int, object> _scoped;
-        private readonly Dictionary<Type, int> _typeToHash;
-        private readonly HashSet<int> _scopedHashes;
-        private readonly object _lock = new object();
+        private readonly FastContainer _parent;
+        private readonly Func<object>[] _factories;
+        private readonly Lifetime[] _lifetimes;
+        private readonly int[] _typeIdToIndex;
+        private readonly int _maxTypeId;
+        private readonly object[] _parentSingletons;
+        private readonly object[] _scopedInstances;
         private bool _disposed;
 
         public IContainer Parent => _parent;
 
         internal FastContainerScope(
-            IContainer parent,
-            Dictionary<int, Func<IContainer, object>> factories,
-            Dictionary<Type, int> typeToHash,
-            HashSet<int> scopedHashes)
+            FastContainer parent,
+            Func<object>[] factories,
+            Lifetime[] lifetimes,
+            int[] typeIdToIndex,
+            int maxTypeId,
+            object[] parentSingletons)
         {
-            _parent = parent ?? throw new ArgumentNullException(nameof(parent));
-            _factories = factories ?? throw new ArgumentNullException(nameof(factories));
-            _typeToHash = typeToHash ?? throw new ArgumentNullException(nameof(typeToHash));
-            _scopedHashes = scopedHashes ?? throw new ArgumentNullException(nameof(scopedHashes));
-            _scoped = new Dictionary<int, object>();
+            _parent = parent;
+            _factories = factories;
+            _lifetimes = lifetimes;
+            _typeIdToIndex = typeIdToIndex;
+            _maxTypeId = maxTypeId;
+            _parentSingletons = parentSingletons;
+            _scopedInstances = new object[factories.Length];
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T Resolve<T>() where T : class
         {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(FastContainerScope));
-
-            var hash = GetTypeHash(typeof(T));
-
-            if (_scoped.TryGetValue(hash, out var instance))
-                return (T)instance;
-
-            if (_scopedHashes.Contains(hash))
-            {
-                lock (_lock)
-                {
-                    if (_scoped.TryGetValue(hash, out instance))
-                        return (T)instance;
-
-                    if (_factories.TryGetValue(hash, out var factory))
-                    {
-                        instance = factory(this);
-                        _scoped[hash] = instance;
-                        return (T)instance;
-                    }
-                }
-            }
-
-            return _parent.Resolve<T>();
+            int typeId = TypeRegistry.GetId<T>();
+            return (T)ResolveById(typeId);
         }
 
         public object Resolve(Type type)
         {
+            int typeId = TypeRegistry.GetId(type);
+            return ResolveById(typeId);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private object ResolveById(int typeId)
+        {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(FastContainerScope));
 
-            var hash = GetTypeHash(type);
+            if (typeId > _maxTypeId)
+                throw new InvalidOperationException($"Type with ID '{typeId}' is not registered");
 
-            if (_scoped.TryGetValue(hash, out var instance))
-                return instance;
+            int index = _typeIdToIndex[typeId];
+            if (index < 0)
+                throw new InvalidOperationException($"Type with ID '{typeId}' is not registered");
 
-            if (_scopedHashes.Contains(hash))
+            var lifetime = _lifetimes[index];
+
+            if (lifetime == Lifetime.Singleton)
             {
-                lock (_lock)
-                {
-                    if (_scoped.TryGetValue(hash, out instance))
-                        return instance;
+                var existing = Volatile.Read(ref _parentSingletons[index]);
+                if (existing != null)
+                    return existing;
 
-                    if (_factories.TryGetValue(hash, out var factory))
-                    {
-                        instance = factory(this);
-                        _scoped[hash] = instance;
-                        return instance;
-                    }
-                }
+                return _parent.ResolveByIndex(index);
             }
 
-            return _parent.Resolve(type);
+            if (lifetime == Lifetime.Scoped)
+            {
+                var existing = Volatile.Read(ref _scopedInstances[index]);
+                if (existing != null)
+                    return existing;
+
+                var instance = _factories[index]();
+
+                var prev = Interlocked.CompareExchange(ref _scopedInstances[index], instance, null);
+                if (prev != null)
+                {
+                    (instance as IDisposable)?.Dispose();
+                    return prev;
+                }
+
+                return instance;
+            }
+
+            return _factories[index]();
         }
 
         public bool TryResolve<T>(out T instance) where T : class
         {
-            try
-            {
-                instance = Resolve<T>();
-                return true;
-            }
-            catch
+            if (_disposed)
             {
                 instance = null;
                 return false;
             }
+
+            int typeId = TypeRegistry.GetId<T>();
+
+            if (typeId > _maxTypeId || _typeIdToIndex[typeId] < 0)
+            {
+                instance = null;
+                return false;
+            }
+
+            instance = (T)ResolveById(typeId);
+            return true;
         }
 
         public IContainerScope CreateScope()
@@ -105,20 +117,20 @@ namespace Strada.Core.DI
             if (_disposed)
                 throw new ObjectDisposedException(nameof(FastContainerScope));
 
-            return new FastContainerScope(_parent, _factories, _typeToHash, _scopedHashes);
+            return new FastContainerScope(_parent, _factories, _lifetimes, _typeIdToIndex, _maxTypeId, _parentSingletons);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsRegistered<T>() where T : class
         {
-            return _typeToHash.ContainsKey(typeof(T));
+            int typeId = TypeRegistry.GetId<T>();
+            return typeId <= _maxTypeId && _typeIdToIndex[typeId] >= 0;
         }
 
         public bool IsRegistered(Type type)
         {
-            if (type == null)
-                throw new ArgumentNullException(nameof(type));
-
-            return _typeToHash.ContainsKey(type);
+            int typeId = TypeRegistry.GetId(type);
+            return typeId <= _maxTypeId && _typeIdToIndex[typeId] >= 0;
         }
 
         public void Dispose()
@@ -128,46 +140,11 @@ namespace Strada.Core.DI
 
             _disposed = true;
 
-            foreach (var instance in _scoped.Values)
+            for (int i = 0; i < _scopedInstances.Length; i++)
             {
-                if (instance is IDisposable disposable)
-                {
-                    try
-                    {
-                        disposable.Dispose();
-                    }
-                    catch
-                    {
-                    }
-                }
-            }
-
-            _scoped.Clear();
-        }
-
-        private int GetTypeHash(Type type)
-        {
-            if (_typeToHash.TryGetValue(type, out var hash))
-                return hash;
-
-            var typeName = type.FullName ?? type.Name;
-            return FNV1aHash(typeName);
-        }
-
-        private static int FNV1aHash(string text)
-        {
-            unchecked
-            {
-                const int fnvPrime = 16777619;
-                int hash = (int)2166136261;
-
-                foreach (char c in text)
-                {
-                    hash ^= c;
-                    hash *= fnvPrime;
-                }
-
-                return hash;
+                var instance = Volatile.Read(ref _scopedInstances[i]);
+                (instance as IDisposable)?.Dispose();
+                _scopedInstances[i] = null;
             }
         }
     }

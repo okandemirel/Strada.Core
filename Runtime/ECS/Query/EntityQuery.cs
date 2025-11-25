@@ -1,196 +1,186 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Runtime.CompilerServices;
 using Strada.Core.ECS.Storage;
 
 namespace Strada.Core.ECS.Query
 {
-    public struct QueryDescriptor : IEquatable<QueryDescriptor>
+    public readonly struct EntityQuery<T1> : IDisposable
+        where T1 : unmanaged, IComponent
     {
-        public Type[] RequiredComponents;
-        public Type[] ExcludedComponents;
+        private readonly ComponentStorage<T1> _storage1;
 
-        public QueryDescriptor(Type[] required, Type[] excluded = null)
+        internal EntityQuery(EntityManager entityManager, ComponentStorage<T1> storage1)
         {
-            RequiredComponents = required?.OrderBy(t => t.GetHashCode()).ToArray() ?? Array.Empty<Type>();
-            ExcludedComponents = excluded?.OrderBy(t => t.GetHashCode()).ToArray() ?? Array.Empty<Type>();
+            _storage1 = storage1;
         }
 
-        public bool Equals(QueryDescriptor other)
-        {
-            return RequiredComponents.SequenceEqual(other.RequiredComponents) &&
-                   ExcludedComponents.SequenceEqual(other.ExcludedComponents);
-        }
+        public int Count => _storage1.Count;
 
-        public override bool Equals(object obj)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void ForEach(QueryDelegate<T1> action)
         {
-            return obj is QueryDescriptor other && Equals(other);
-        }
+            ref var sparseSet = ref _storage1.GetSparseSet();
+            int count = sparseSet.Count;
 
-        public override int GetHashCode()
-        {
-            unchecked
+            unsafe
             {
-                int hash = 17;
-                foreach (var type in RequiredComponents)
-                    hash = hash * 31 + type.GetHashCode();
-                foreach (var type in ExcludedComponents)
-                    hash = hash * 31 + type.GetHashCode();
-                return hash;
-            }
-        }
-    }
+                int* entities = sparseSet.GetDenseEntityPtr();
+                T1* data = sparseSet.GetDataPtr();
 
-    public class EntityQuery
-    {
-        private readonly QueryDescriptor _descriptor;
-        private readonly ComponentStore _store;
-        private List<int> _cachedEntities;
-        private bool _isDirty;
-
-        public QueryDescriptor Descriptor => _descriptor;
-        public int EntityCount => _cachedEntities?.Count ?? 0;
-
-        public EntityQuery(QueryDescriptor descriptor, ComponentStore store)
-        {
-            _descriptor = descriptor;
-            _store = store;
-            _cachedEntities = new List<int>();
-            _isDirty = true;
-        }
-
-        public void Invalidate()
-        {
-            _isDirty = true;
-        }
-
-        public IReadOnlyList<int> GetEntities()
-        {
-            if (_isDirty)
-            {
-                RebuildCache();
-            }
-            return _cachedEntities;
-        }
-
-        private void RebuildCache()
-        {
-            _cachedEntities.Clear();
-
-            if (_descriptor.RequiredComponents.Length == 0)
-            {
-                _isDirty = false;
-                return;
-            }
-
-            var firstComponentType = _descriptor.RequiredComponents[0];
-            var firstStorage = GetStorage(firstComponentType);
-
-            if (firstStorage == null)
-            {
-                _isDirty = false;
-                return;
-            }
-
-            foreach (var entityIndex in firstStorage.GetEntityIndices())
-            {
-                if (MatchesQuery(entityIndex))
+                for (int i = 0; i < count; i++)
                 {
-                    _cachedEntities.Add(entityIndex);
-                }
-            }
-
-            _isDirty = false;
-        }
-
-        private bool MatchesQuery(int entityIndex)
-        {
-            foreach (var required in _descriptor.RequiredComponents)
-            {
-                var storage = GetStorage(required);
-                if (storage == null || !storage.Contains(entityIndex))
-                    return false;
-            }
-
-            foreach (var excluded in _descriptor.ExcludedComponents)
-            {
-                var storage = GetStorage(excluded);
-                if (storage != null && storage.Contains(entityIndex))
-                    return false;
-            }
-
-            return true;
-        }
-
-        private IComponentStorage GetStorage(Type componentType)
-        {
-            var method = _store.GetType().GetMethod("GetOrCreateStorage");
-            var genericMethod = method.MakeGenericMethod(componentType);
-            return (IComponentStorage)genericMethod.Invoke(_store, null);
-        }
-    }
-
-    public class QueryCache
-    {
-        private readonly Dictionary<QueryDescriptor, EntityQuery> _queries;
-        private readonly ComponentStore _store;
-
-        public QueryCache(ComponentStore store)
-        {
-            _queries = new Dictionary<QueryDescriptor, EntityQuery>();
-            _store = store;
-        }
-
-        public EntityQuery GetOrCreateQuery(QueryDescriptor descriptor)
-        {
-            if (!_queries.TryGetValue(descriptor, out var query))
-            {
-                query = new EntityQuery(descriptor, _store);
-                _queries[descriptor] = query;
-            }
-            return query;
-        }
-
-        public EntityQuery Query(params Type[] requiredComponents)
-        {
-            var descriptor = new QueryDescriptor(requiredComponents);
-            return GetOrCreateQuery(descriptor);
-        }
-
-        public EntityQuery QueryWithExclusions(Type[] required, Type[] excluded)
-        {
-            var descriptor = new QueryDescriptor(required, excluded);
-            return GetOrCreateQuery(descriptor);
-        }
-
-        public void InvalidateAll()
-        {
-            foreach (var query in _queries.Values)
-            {
-                query.Invalidate();
-            }
-        }
-
-        public void InvalidateQueriesWithComponent(Type componentType)
-        {
-            foreach (var kvp in _queries)
-            {
-                if (kvp.Key.RequiredComponents.Contains(componentType) ||
-                    kvp.Key.ExcludedComponents.Contains(componentType))
-                {
-                    kvp.Value.Invalidate();
+                    action(entities[i], ref data[i]);
                 }
             }
         }
 
-        public void OnStructuralChange()
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void ForEachReadOnly(QueryDelegateReadOnly<T1> action)
         {
-            InvalidateAll();
+            ref var sparseSet = ref _storage1.GetSparseSet();
+            int count = sparseSet.Count;
+
+            unsafe
+            {
+                int* entities = sparseSet.GetDenseEntityReadOnlyPtr();
+                T1* data = sparseSet.GetDataReadOnlyPtr();
+
+                for (int i = 0; i < count; i++)
+                {
+                    action(entities[i], in data[i]);
+                }
+            }
         }
 
-        public void Clear()
-        {
-            _queries.Clear();
-        }
+        public void Dispose() { }
     }
+
+    public readonly struct EntityQuery<T1, T2> : IDisposable
+        where T1 : unmanaged, IComponent
+        where T2 : unmanaged, IComponent
+    {
+        private readonly ComponentStorage<T1> _storage1;
+        private readonly ComponentStorage<T2> _storage2;
+
+        internal EntityQuery(EntityManager entityManager, ComponentStorage<T1> storage1, ComponentStorage<T2> storage2)
+        {
+            _storage1 = storage1;
+            _storage2 = storage2;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void ForEach(QueryDelegate<T1, T2> action)
+        {
+            ref var set1 = ref _storage1.GetSparseSet();
+            ref var set2 = ref _storage2.GetSparseSet();
+
+            bool useSet1 = set1.Count <= set2.Count;
+
+            unsafe
+            {
+                int* entities = useSet1 ? set1.GetDenseEntityPtr() : set2.GetDenseEntityPtr();
+                int count = useSet1 ? set1.Count : set2.Count;
+
+                for (int i = 0; i < count; i++)
+                {
+                    int entityIndex = entities[i];
+
+                    int idx1 = set1.GetDenseIndex(entityIndex);
+                    int idx2 = set2.GetDenseIndex(entityIndex);
+
+                    if (idx1 < 0 || idx2 < 0)
+                        continue;
+
+                    T1* ptr1 = set1.GetDataPtr() + idx1;
+                    T2* ptr2 = set2.GetDataPtr() + idx2;
+
+                    action(entityIndex, ref *ptr1, ref *ptr2);
+                }
+            }
+        }
+
+        public void Dispose() { }
+    }
+
+    public readonly struct EntityQuery<T1, T2, T3> : IDisposable
+        where T1 : unmanaged, IComponent
+        where T2 : unmanaged, IComponent
+        where T3 : unmanaged, IComponent
+    {
+        private readonly ComponentStorage<T1> _storage1;
+        private readonly ComponentStorage<T2> _storage2;
+        private readonly ComponentStorage<T3> _storage3;
+
+        internal EntityQuery(
+            EntityManager entityManager,
+            ComponentStorage<T1> storage1,
+            ComponentStorage<T2> storage2,
+            ComponentStorage<T3> storage3)
+        {
+            _storage1 = storage1;
+            _storage2 = storage2;
+            _storage3 = storage3;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void ForEach(QueryDelegate<T1, T2, T3> action)
+        {
+            ref var set1 = ref _storage1.GetSparseSet();
+            ref var set2 = ref _storage2.GetSparseSet();
+            ref var set3 = ref _storage3.GetSparseSet();
+
+            int count1 = set1.Count;
+            int count2 = set2.Count;
+            int count3 = set3.Count;
+
+            unsafe
+            {
+                int minCount;
+                int* entities;
+
+                if (count1 <= count2 && count1 <= count3)
+                {
+                    entities = set1.GetDenseEntityPtr();
+                    minCount = count1;
+                }
+                else if (count2 <= count3)
+                {
+                    entities = set2.GetDenseEntityPtr();
+                    minCount = count2;
+                }
+                else
+                {
+                    entities = set3.GetDenseEntityPtr();
+                    minCount = count3;
+                }
+
+                for (int i = 0; i < minCount; i++)
+                {
+                    int entityIndex = entities[i];
+
+                    int idx1 = set1.GetDenseIndex(entityIndex);
+                    int idx2 = set2.GetDenseIndex(entityIndex);
+                    int idx3 = set3.GetDenseIndex(entityIndex);
+
+                    if (idx1 < 0 || idx2 < 0 || idx3 < 0)
+                        continue;
+
+                    T1* ptr1 = set1.GetDataPtr() + idx1;
+                    T2* ptr2 = set2.GetDataPtr() + idx2;
+                    T3* ptr3 = set3.GetDataPtr() + idx3;
+
+                    action(entityIndex, ref *ptr1, ref *ptr2, ref *ptr3);
+                }
+            }
+        }
+
+        public void Dispose() { }
+    }
+
+    public delegate void QueryDelegate<T1>(int entityIndex, ref T1 c1) where T1 : unmanaged;
+    public delegate void QueryDelegateReadOnly<T1>(int entityIndex, in T1 c1) where T1 : unmanaged;
+    public delegate void QueryDelegate<T1, T2>(int entityIndex, ref T1 c1, ref T2 c2)
+        where T1 : unmanaged where T2 : unmanaged;
+    public delegate void QueryDelegate<T1, T2, T3>(int entityIndex, ref T1 c1, ref T2 c2, ref T3 c3)
+        where T1 : unmanaged where T2 : unmanaged where T3 : unmanaged;
 }

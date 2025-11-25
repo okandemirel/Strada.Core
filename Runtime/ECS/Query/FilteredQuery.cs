@@ -1,0 +1,286 @@
+using System;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using Strada.Core.ECS.Storage;
+
+namespace Strada.Core.ECS.Query
+{
+    public struct FilteredQueryBuilder<T1> where T1 : unmanaged, IComponent
+    {
+        private readonly EntityManager _manager;
+        private readonly ComponentStorage<T1> _storage;
+        private List<IComponentStorage> _withFilters;
+        private List<IComponentStorage> _withoutFilters;
+
+        internal FilteredQueryBuilder(EntityManager manager, ComponentStorage<T1> storage)
+        {
+            _manager = manager;
+            _storage = storage;
+            _withFilters = null;
+            _withoutFilters = null;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public FilteredQueryBuilder<T1> Also<TFilter>() where TFilter : unmanaged, IComponent
+        {
+            _withFilters ??= new List<IComponentStorage>(4);
+            _withFilters.Add(_manager.Store.GetOrCreateStorage<TFilter>());
+            return this;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public FilteredQueryBuilder<T1> None<TExclude>() where TExclude : unmanaged, IComponent
+        {
+            _withoutFilters ??= new List<IComponentStorage>(4);
+            _withoutFilters.Add(_manager.Store.GetOrCreateStorage<TExclude>());
+            return this;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void ForEach(QueryDelegate<T1> action)
+        {
+            ref var set = ref _storage.GetSparseSet();
+            int count = set.Count;
+
+            unsafe
+            {
+                int* entities = set.GetDenseEntityPtr();
+                T1* data = set.GetDataPtr();
+
+                for (int i = 0; i < count; i++)
+                {
+                    int entity = entities[i];
+
+                    if (!PassesFilters(entity))
+                        continue;
+
+                    action(entity, ref data[i]);
+                }
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool PassesFilters(int entity)
+        {
+            if (_withFilters != null)
+            {
+                foreach (var storage in _withFilters)
+                    if (!storage.Contains(entity))
+                        return false;
+            }
+
+            if (_withoutFilters != null)
+            {
+                foreach (var storage in _withoutFilters)
+                    if (storage.Contains(entity))
+                        return false;
+            }
+
+            return true;
+        }
+    }
+
+    public struct FilteredQueryBuilder<T1, T2>
+        where T1 : unmanaged, IComponent
+        where T2 : unmanaged, IComponent
+    {
+        private readonly EntityManager _manager;
+        private readonly ComponentStorage<T1> _storage1;
+        private readonly ComponentStorage<T2> _storage2;
+        private List<IComponentStorage> _withFilters;
+        private List<IComponentStorage> _withoutFilters;
+
+        internal FilteredQueryBuilder(EntityManager manager, ComponentStorage<T1> s1, ComponentStorage<T2> s2)
+        {
+            _manager = manager;
+            _storage1 = s1;
+            _storage2 = s2;
+            _withFilters = null;
+            _withoutFilters = null;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public FilteredQueryBuilder<T1, T2> Also<TFilter>() where TFilter : unmanaged, IComponent
+        {
+            _withFilters ??= new List<IComponentStorage>(4);
+            _withFilters.Add(_manager.Store.GetOrCreateStorage<TFilter>());
+            return this;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public FilteredQueryBuilder<T1, T2> None<TExclude>() where TExclude : unmanaged, IComponent
+        {
+            _withoutFilters ??= new List<IComponentStorage>(4);
+            _withoutFilters.Add(_manager.Store.GetOrCreateStorage<TExclude>());
+            return this;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void ForEach(QueryDelegate<T1, T2> action)
+        {
+            ref var set1 = ref _storage1.GetSparseSet();
+            ref var set2 = ref _storage2.GetSparseSet();
+
+            bool useFirst = set1.Count <= set2.Count;
+
+            unsafe
+            {
+                int* entities = useFirst ? set1.GetDenseEntityPtr() : set2.GetDenseEntityPtr();
+                int count = useFirst ? set1.Count : set2.Count;
+
+                for (int i = 0; i < count; i++)
+                {
+                    int entity = entities[i];
+
+                    int idx1 = set1.GetDenseIndex(entity);
+                    int idx2 = set2.GetDenseIndex(entity);
+
+                    if (idx1 < 0 || idx2 < 0)
+                        continue;
+
+                    if (!PassesFilters(entity))
+                        continue;
+
+                    T1* p1 = set1.GetDataPtr() + idx1;
+                    T2* p2 = set2.GetDataPtr() + idx2;
+
+                    action(entity, ref *p1, ref *p2);
+                }
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool PassesFilters(int entity)
+        {
+            if (_withFilters != null)
+            {
+                foreach (var storage in _withFilters)
+                    if (!storage.Contains(entity))
+                        return false;
+            }
+
+            if (_withoutFilters != null)
+            {
+                foreach (var storage in _withoutFilters)
+                    if (storage.Contains(entity))
+                        return false;
+            }
+
+            return true;
+        }
+    }
+
+    public struct FilteredQueryBuilder<T1, T2, T3>
+        where T1 : unmanaged, IComponent
+        where T2 : unmanaged, IComponent
+        where T3 : unmanaged, IComponent
+    {
+        private readonly EntityManager _manager;
+        private readonly ComponentStorage<T1> _storage1;
+        private readonly ComponentStorage<T2> _storage2;
+        private readonly ComponentStorage<T3> _storage3;
+        private List<IComponentStorage> _withFilters;
+        private List<IComponentStorage> _withoutFilters;
+
+        internal FilteredQueryBuilder(EntityManager manager, ComponentStorage<T1> s1, ComponentStorage<T2> s2, ComponentStorage<T3> s3)
+        {
+            _manager = manager;
+            _storage1 = s1;
+            _storage2 = s2;
+            _storage3 = s3;
+            _withFilters = null;
+            _withoutFilters = null;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public FilteredQueryBuilder<T1, T2, T3> Also<TFilter>() where TFilter : unmanaged, IComponent
+        {
+            _withFilters ??= new List<IComponentStorage>(4);
+            _withFilters.Add(_manager.Store.GetOrCreateStorage<TFilter>());
+            return this;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public FilteredQueryBuilder<T1, T2, T3> None<TExclude>() where TExclude : unmanaged, IComponent
+        {
+            _withoutFilters ??= new List<IComponentStorage>(4);
+            _withoutFilters.Add(_manager.Store.GetOrCreateStorage<TExclude>());
+            return this;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void ForEach(QueryDelegate<T1, T2, T3> action)
+        {
+            ref var set1 = ref _storage1.GetSparseSet();
+            ref var set2 = ref _storage2.GetSparseSet();
+            ref var set3 = ref _storage3.GetSparseSet();
+
+            int count1 = set1.Count;
+            int count2 = set2.Count;
+            int count3 = set3.Count;
+
+            unsafe
+            {
+                int minCount;
+                int* entities;
+
+                if (count1 <= count2 && count1 <= count3)
+                {
+                    entities = set1.GetDenseEntityPtr();
+                    minCount = count1;
+                }
+                else if (count2 <= count3)
+                {
+                    entities = set2.GetDenseEntityPtr();
+                    minCount = count2;
+                }
+                else
+                {
+                    entities = set3.GetDenseEntityPtr();
+                    minCount = count3;
+                }
+
+                for (int i = 0; i < minCount; i++)
+                {
+                    int entity = entities[i];
+
+                    int idx1 = set1.GetDenseIndex(entity);
+                    int idx2 = set2.GetDenseIndex(entity);
+                    int idx3 = set3.GetDenseIndex(entity);
+
+                    if (idx1 < 0 || idx2 < 0 || idx3 < 0)
+                        continue;
+
+                    if (!PassesFilters(entity))
+                        continue;
+
+                    T1* p1 = set1.GetDataPtr() + idx1;
+                    T2* p2 = set2.GetDataPtr() + idx2;
+                    T3* p3 = set3.GetDataPtr() + idx3;
+
+                    action(entity, ref *p1, ref *p2, ref *p3);
+                }
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool PassesFilters(int entity)
+        {
+            if (_withFilters != null)
+            {
+                foreach (var storage in _withFilters)
+                    if (!storage.Contains(entity))
+                        return false;
+            }
+
+            if (_withoutFilters != null)
+            {
+                foreach (var storage in _withoutFilters)
+                    if (storage.Contains(entity))
+                        return false;
+            }
+
+            return true;
+        }
+    }
+}

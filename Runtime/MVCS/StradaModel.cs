@@ -1,4 +1,5 @@
 using System;
+using Strada.Core.MVCS.Interfaces;
 
 namespace Strada.Core.MVCS
 {

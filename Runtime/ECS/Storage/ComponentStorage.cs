@@ -13,7 +13,7 @@ namespace Strada.Core.ECS.Storage
         IReadOnlyList<int> GetEntityIndices();
     }
 
-    public class ComponentStorage<T> : IComponentStorage where T : unmanaged, IStradaComponent
+    public class ComponentStorage<T> : IComponentStorage where T : unmanaged, IComponent
     {
         private SparseSet<T> _sparseSet;
 
@@ -97,7 +97,7 @@ namespace Strada.Core.ECS.Storage
             _defaultDenseCapacity = defaultDenseCapacity;
         }
 
-        public ComponentStorage<T> GetOrCreateStorage<T>() where T : unmanaged, IStradaComponent
+        public ComponentStorage<T> GetOrCreateStorage<T>() where T : unmanaged, IComponent
         {
             Type type = typeof(T);
             if (!_storages.TryGetValue(type, out var storage))
@@ -108,7 +108,7 @@ namespace Strada.Core.ECS.Storage
             return (ComponentStorage<T>)storage;
         }
 
-        public bool HasStorage<T>() where T : unmanaged, IStradaComponent
+        public bool HasStorage<T>() where T : unmanaged, IComponent
         {
             return _storages.ContainsKey(typeof(T));
         }
@@ -152,6 +152,46 @@ namespace Strada.Core.ECS.Storage
                     count++;
             }
             return count;
+        }
+
+        public bool HasComponent(int entityIndex, Type componentType)
+        {
+            return _storages.TryGetValue(componentType, out var storage) && storage.Contains(entityIndex);
+        }
+
+        public object GetComponentBoxed(int entityIndex, Type componentType)
+        {
+            if (!_storages.TryGetValue(componentType, out var storage))
+                return null;
+
+            var method = storage.GetType().GetMethod("Get");
+            if (method == null) return null;
+
+            try
+            {
+                return method.Invoke(storage, new object[] { entityIndex });
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public void SetComponentBoxed(int entityIndex, Type componentType, object value)
+        {
+            if (!_storages.TryGetValue(componentType, out var storage))
+                return;
+
+            var method = storage.GetType().GetMethod("Set");
+            if (method == null) return;
+
+            try
+            {
+                method.Invoke(storage, new object[] { entityIndex, value });
+            }
+            catch
+            {
+            }
         }
     }
 }
