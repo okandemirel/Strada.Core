@@ -1,0 +1,216 @@
+using System.Diagnostics;
+using NUnit.Framework;
+using Strada.Core.ECS;
+using Strada.Core.ECS.Jobs;
+using Strada.Core.ECS.Query;
+using Strada.Core.ECS.Storage;
+using Unity.Burst;
+using Unity.Jobs;
+
+namespace Strada.Core.Tests.Performance
+{
+    [BurstCompile]
+    public struct MoveJob : IJobComponent<Transform, Velocity>
+    {
+        public float DeltaTime;
+
+        [BurstCompile]
+        public void Execute(int entity, ref Transform t, ref Velocity v)
+        {
+            t.X += v.X * DeltaTime;
+            t.Y += v.Y * DeltaTime;
+            t.Z += v.Z * DeltaTime;
+        }
+    }
+
+    [BurstCompile]
+    public struct DamageJob : IJobComponent<Health>
+    {
+        public int Damage;
+
+        [BurstCompile]
+        public void Execute(int entity, ref Health h)
+        {
+            h.Current -= Damage;
+            if (h.Current < 0) h.Current = 0;
+        }
+    }
+
+    [BurstCompile]
+    public struct ComplexJob : IJobComponent<Transform, Velocity, Health>
+    {
+        public float DeltaTime;
+
+        [BurstCompile]
+        public void Execute(int entity, ref Transform t, ref Velocity v, ref Health h)
+        {
+            t.X += v.X * DeltaTime;
+            t.Y += v.Y * DeltaTime;
+            t.Z += v.Z * DeltaTime;
+
+            if (h.Current > 0)
+                h.Current -= 1;
+        }
+    }
+
+    [TestFixture]
+    [Category("Performance")]
+    public class ParallelJobPerformanceTests
+    {
+        private EntityManager _entityManager;
+
+        [SetUp]
+        public void Setup()
+        {
+            _entityManager = new EntityManager();
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            _entityManager?.Dispose();
+        }
+
+        [Test]
+        public void Benchmark_ParallelJob_100k_TwoComponents()
+        {
+            const int count = 100000;
+
+            for (int i = 0; i < count; i++)
+            {
+                var entity = _entityManager.CreateEntity();
+                _entityManager.AddComponent(entity, new Transform { X = i, Y = i, Z = i });
+                _entityManager.AddComponent(entity, new Velocity { X = 1, Y = 2, Z = 3 });
+            }
+
+            var job = new MoveJob { DeltaTime = 0.016f };
+
+            var warmup = _entityManager.ScheduleParallel<MoveJob, Transform, Velocity>(job);
+            warmup.Complete();
+
+            var sw = Stopwatch.StartNew();
+            for (int frame = 0; frame < 10; frame++)
+            {
+                var handle = _entityManager.ScheduleParallel<MoveJob, Transform, Velocity>(job);
+                handle.Complete();
+            }
+            sw.Stop();
+
+            UnityEngine.Debug.Log($"[STRADA PARALLEL] 10 frames of {count} entities (2 components):");
+            UnityEngine.Debug.Log($"  Total: {sw.ElapsedMilliseconds}ms");
+            UnityEngine.Debug.Log($"  Per frame: {sw.ElapsedMilliseconds / 10.0:F2}ms");
+
+            Assert.Less(sw.ElapsedMilliseconds, 100, "Parallel job too slow");
+        }
+
+        [Test]
+        public void Benchmark_ParallelJob_100k_ThreeComponents()
+        {
+            const int count = 100000;
+
+            for (int i = 0; i < count; i++)
+            {
+                var entity = _entityManager.CreateEntity();
+                _entityManager.AddComponent(entity, new Transform { X = i, Y = i, Z = i });
+                _entityManager.AddComponent(entity, new Velocity { X = 1, Y = 2, Z = 3 });
+                _entityManager.AddComponent(entity, new Health { Current = 100, Max = 100 });
+            }
+
+            var job = new ComplexJob { DeltaTime = 0.016f };
+
+            var warmup = _entityManager.ScheduleParallel<ComplexJob, Transform, Velocity, Health>(job);
+            warmup.Complete();
+
+            var sw = Stopwatch.StartNew();
+            for (int frame = 0; frame < 10; frame++)
+            {
+                var handle = _entityManager.ScheduleParallel<ComplexJob, Transform, Velocity, Health>(job);
+                handle.Complete();
+            }
+            sw.Stop();
+
+            UnityEngine.Debug.Log($"[STRADA PARALLEL] 10 frames of {count} entities (3 components):");
+            UnityEngine.Debug.Log($"  Total: {sw.ElapsedMilliseconds}ms");
+            UnityEngine.Debug.Log($"  Per frame: {sw.ElapsedMilliseconds / 10.0:F2}ms");
+
+            Assert.Less(sw.ElapsedMilliseconds, 150, "Complex parallel job too slow");
+        }
+
+        [Test]
+        public void Benchmark_ParallelVsSequential_100k()
+        {
+            const int count = 100000;
+            const int frames = 10;
+
+            for (int i = 0; i < count; i++)
+            {
+                var entity = _entityManager.CreateEntity();
+                _entityManager.AddComponent(entity, new Transform { X = i, Y = i, Z = i });
+                _entityManager.AddComponent(entity, new Velocity { X = 1, Y = 2, Z = 3 });
+            }
+
+            var swSequential = Stopwatch.StartNew();
+            for (int frame = 0; frame < frames; frame++)
+            {
+                _entityManager.ForEach<Transform, Velocity>((int e, ref Transform t, ref Velocity v) =>
+                {
+                    t.X += v.X * 0.016f;
+                    t.Y += v.Y * 0.016f;
+                    t.Z += v.Z * 0.016f;
+                });
+            }
+            swSequential.Stop();
+
+            var job = new MoveJob { DeltaTime = 0.016f };
+
+            var warmup = _entityManager.ScheduleParallel<MoveJob, Transform, Velocity>(job);
+            warmup.Complete();
+
+            var swParallel = Stopwatch.StartNew();
+            for (int frame = 0; frame < frames; frame++)
+            {
+                _entityManager.RunParallel<MoveJob, Transform, Velocity>(job);
+            }
+            swParallel.Stop();
+
+            float speedup = (float)swSequential.ElapsedMilliseconds / swParallel.ElapsedMilliseconds;
+
+            UnityEngine.Debug.Log($"[STRADA BENCHMARK] Sequential vs Parallel ({count} entities, {frames} frames):");
+            UnityEngine.Debug.Log($"  Sequential: {swSequential.ElapsedMilliseconds}ms");
+            UnityEngine.Debug.Log($"  Parallel:   {swParallel.ElapsedMilliseconds}ms");
+            UnityEngine.Debug.Log($"  Speedup:    {speedup:F2}x");
+
+            Assert.Greater(speedup, 1.0f, "Parallel should be faster than sequential");
+        }
+
+        [Test]
+        public void Benchmark_SingleComponent_100k()
+        {
+            const int count = 100000;
+
+            for (int i = 0; i < count; i++)
+            {
+                var entity = _entityManager.CreateEntity();
+                _entityManager.AddComponent(entity, new Health { Current = 100, Max = 100 });
+            }
+
+            var job = new DamageJob { Damage = 1 };
+
+            var warmup = _entityManager.ScheduleParallel<DamageJob, Health>(job);
+            warmup.Complete();
+
+            var sw = Stopwatch.StartNew();
+            for (int frame = 0; frame < 100; frame++)
+            {
+                _entityManager.RunParallel<DamageJob, Health>(job);
+            }
+            sw.Stop();
+
+            UnityEngine.Debug.Log($"[STRADA PARALLEL] 100 frames of {count} entities (1 component):");
+            UnityEngine.Debug.Log($"  Total: {sw.ElapsedMilliseconds}ms");
+            UnityEngine.Debug.Log($"  Per frame: {sw.ElapsedMilliseconds / 100.0:F2}ms");
+
+            Assert.Less(sw.ElapsedMilliseconds, 200, "Single component parallel job too slow");
+        }
+    }
+}

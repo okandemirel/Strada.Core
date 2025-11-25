@@ -3,12 +3,12 @@ using Strada.Core.ECS;
 using Strada.Core.ECS.Storage;
 using Unity.Collections;
 
-namespace Strada.Core.Tests.Runtime.ECS.Storage
+namespace Strada.Core.Tests.ECS.Storage
 {
     [TestFixture]
     public class SparseSetTests
     {
-        struct TestComponent : IStradaComponent
+        struct TestComponent : IComponent
         {
             public int Value;
         }
@@ -182,7 +182,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Storage
             int sum = 0;
             unsafe
             {
-                int* entities = set.GetDenseEntityReadOnlyPtr();
                 TestComponent* data = set.GetDataReadOnlyPtr();
 
                 for (int i = 0; i < set.Count; i++)

@@ -1,20 +1,20 @@
 using System;
 using System.Collections.Generic;
+using Strada.Core.Communication;
+using Strada.Core.Core.Data.UnityObjects;
 using Strada.Core.DI;
 using Strada.Core.ECS;
-using Strada.Core.Communication;
-using Strada.Core.Module;
 using Strada.Core.Execution;
-using Strada.Core.Data.UnityObjects;
+using Strada.Core.Module;
 
-namespace Strada.Core
+namespace Strada.Core.Core
 {
     public sealed class World : IDisposable
     {
-        private readonly FastContainer _container;
+        private readonly IContainer _container;
         private readonly EntityManager _entityManager;
         private readonly MessageBus _messageBus;
-        private readonly Execution.SystemExecutor _systemExecutor;
+        private readonly SystemExecutor _systemExecutor;
         private readonly List<IModule> _modules;
         private bool _initialized;
         private bool _disposed;
@@ -26,7 +26,7 @@ namespace Strada.Core
 
         public static World Current { get; private set; }
 
-        private World(FastContainer container, EntityManager entityManager, MessageBus messageBus, Execution.SystemExecutor systemExecutor, List<IModule> modules)
+        private World(IContainer container, EntityManager entityManager, MessageBus messageBus, SystemExecutor systemExecutor, List<IModule> modules)
         {
             _container = container;
             _entityManager = entityManager;
@@ -35,41 +35,40 @@ namespace Strada.Core
             _modules = modules;
         }
 
-        public static World Create(CD_World worldConfig)
+        public static World Create(CD_World world)
         {
+            var definition = world.Definition;
             var entityManager = new EntityManager();
             var messageBus = new MessageBus();
             var modules = new List<IModule>();
 
             var builder = new ContainerBuilder();
-            builder.UseFastContainer();
 
-            builder.RegisterInstance<EntityManager>(entityManager);
-            builder.RegisterInstance<MessageBus>(messageBus);
+            builder.RegisterInstance(entityManager);
+            builder.RegisterInstance(messageBus);
 
-            foreach (var moduleConfig in worldConfig.Config.Modules)
+            foreach (var moduleConfig in definition.Modules)
             {
                 if (!moduleConfig.Enabled) continue;
 
                 var module = CreateModule(moduleConfig.TypeName);
                 module.RegisterServices(builder);
-                module.RegisterSystems(entityManager);
                 modules.Add(module);
             }
 
-            var container = (FastContainer)builder.Build();
+            var container = builder.Build();
 
-            var systems = new List<IStradaSystem>();
+            var systemTypes = new List<Type>();
             foreach (var module in modules)
             {
-                systems.AddRange(module.GetSystems());
+                systemTypes.AddRange(module.GetSystemTypes());
             }
 
-            var systemExecutor = new Execution.SystemExecutor(systems, entityManager, container);
+            var systemExecutor = new SystemExecutor(systemTypes, entityManager, container);
 
-            var world = new World(container, entityManager, messageBus, systemExecutor, modules);
-            Current = world;
-            return world;
+            var worldInstance = new World(container, entityManager, messageBus, systemExecutor, modules);
+            Current = worldInstance;
+            return worldInstance;
         }
 
         public void Initialize()
@@ -91,9 +90,7 @@ namespace Strada.Core
             if (!_initialized || _disposed)
                 return;
 
-            _messageBus.ProcessCommands(_entityManager);
             _systemExecutor.Update(deltaTime);
-            _messageBus.DispatchEvents();
         }
 
         public void Dispose()
@@ -120,6 +117,10 @@ namespace Strada.Core
         private static IModule CreateModule(string typeName)
         {
             var type = Type.GetType(typeName);
+            if (type == null)
+            {
+                throw new InvalidOperationException($"[World] Module type '{typeName}' could not be found.");
+            }
             return (IModule)Activator.CreateInstance(type);
         }
     }

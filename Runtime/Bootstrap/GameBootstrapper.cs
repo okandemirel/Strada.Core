@@ -238,12 +238,6 @@ namespace Strada.Core.Bootstrap
                 {
                     Log($"Installing module: {module.Name}");
                     module.Installer.Install(builder);
-
-                    if (module.Installer is IECSModuleInstaller ecsInstaller)
-                    {
-                        Log($"Installing ECS components for module: {module.Name}");
-                        ecsInstaller.InstallECS((IECSContainerBuilder)builder);
-                    }
                 }
                 catch (Exception ex)
                 {

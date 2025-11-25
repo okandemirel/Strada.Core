@@ -1,290 +1,144 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using Strada.Core.ECS;
+using System.Reflection;
 
 namespace Strada.Core.DI
 {
-    /// <summary>
-    /// Builder for configuring and creating a dependency injection container.
-    /// </summary>
-    public class ContainerBuilder : IECSContainerBuilder
+    public sealed class ContainerBuilder : IContainerBuilder
     {
-        private readonly Dictionary<Type, Registration> _registrations;
-        private readonly Dictionary<string, List<Type>> _ecsWorlds;
-        private bool _useFastContainer = true;
+        private readonly Dictionary<Type, Registration> _registrations = new();
 
-        /// <summary>
-        /// Creates a new container builder.
-        /// </summary>
-        public ContainerBuilder()
-        {
-            _registrations = new Dictionary<Type, Registration>();
-            _ecsWorlds = new Dictionary<string, List<Type>>();
-        }
-
-        public ContainerBuilder UseFastContainer(bool useFast = true)
-        {
-            _useFastContainer = useFast;
-            return this;
-        }
-
-        /// <summary>
-        /// Registers a type with its implementation.
-        /// </summary>
-        public IContainerBuilder Register<TInterface, TImplementation>(Lifetime lifetime = Lifetime.Transient)
+        public ContainerBuilder Register<TInterface, TImplementation>(Lifetime lifetime = Lifetime.Singleton)
             where TInterface : class
             where TImplementation : class, TInterface
         {
-            var serviceType = typeof(TInterface);
-            var implementationType = typeof(TImplementation);
-
-            ValidateRegistration(serviceType, implementationType);
-
-            var registration = new Registration(serviceType, implementationType, lifetime);
-            _registrations[serviceType] = registration;
-
+            ValidateType(typeof(TImplementation));
+            _registrations[typeof(TInterface)] = Registration.FromType(
+                typeof(TInterface), typeof(TImplementation), lifetime);
             return this;
         }
 
-        /// <summary>
-        /// Registers a concrete type.
-        /// </summary>
-        public IContainerBuilder Register<T>(Lifetime lifetime = Lifetime.Transient) where T : class
+        public ContainerBuilder Register<T>(Lifetime lifetime = Lifetime.Singleton) where T : class
         {
-            var type = typeof(T);
-
-            ValidateConcreteType(type);
-
-            var registration = new Registration(type, type, lifetime);
-            _registrations[type] = registration;
-
+            ValidateType(typeof(T));
+            _registrations[typeof(T)] = Registration.FromType(typeof(T), typeof(T), lifetime);
             return this;
         }
 
-        /// <summary>
-        /// Registers a type with a factory function.
-        /// </summary>
-        public IContainerBuilder RegisterFactory<T>(Func<IContainer, T> factory, Lifetime lifetime = Lifetime.Transient)
+        public ContainerBuilder RegisterFactory<T>(Func<IContainer, T> factory, Lifetime lifetime = Lifetime.Transient)
             where T : class
         {
             if (factory == null)
                 throw new ArgumentNullException(nameof(factory));
 
-            var serviceType = typeof(T);
-
-            // Wrap the typed factory in an object-returning factory
-            Func<IContainer, object> objectFactory = container => factory(container);
-
-            var registration = new Registration(serviceType, objectFactory, lifetime);
-            _registrations[serviceType] = registration;
-
+            _registrations[typeof(T)] = Registration.FromFactory(typeof(T), c => factory(c), lifetime);
             return this;
         }
 
-        /// <summary>
-        /// Registers a specific instance (always singleton).
-        /// </summary>
-        public IContainerBuilder RegisterInstance<T>(T instance) where T : class
+        public ContainerBuilder RegisterInstance<T>(T instance) where T : class
         {
             if (instance == null)
                 throw new ArgumentNullException(nameof(instance));
 
-            var serviceType = typeof(T);
-            var registration = new Registration(serviceType, instance);
-            _registrations[serviceType] = registration;
-
+            _registrations[typeof(T)] = Registration.FromInstance(typeof(T), instance);
             return this;
         }
 
-        /// <summary>
-        /// Builds the immutable container from registered types.
-        /// </summary>
         public IContainer Build()
         {
-            foreach (var registration in _registrations.Values)
-            {
-                registration.Validate();
-            }
-
             DetectCircularDependencies();
-
-            var registrationsCopy = new Dictionary<Type, Registration>(_registrations);
-
-            return _useFastContainer
-                ? new FastContainer(registrationsCopy)
-                : new Container(registrationsCopy);
+            return new FastContainer(_registrations);
         }
 
-        /// <summary>
-        /// Validates that a registration is valid.
-        /// </summary>
-        private void ValidateRegistration(Type serviceType, Type implementationType)
+        private static void ValidateType(Type type)
         {
-            if (serviceType == null)
-                throw new ArgumentNullException(nameof(serviceType));
-
-            if (implementationType == null)
-                throw new ArgumentNullException(nameof(implementationType));
-
-            if (!serviceType.IsAssignableFrom(implementationType))
-            {
-                throw new ArgumentException(
-                    $"Type '{implementationType.Name}' does not implement interface '{serviceType.Name}'");
-            }
-
-            if (implementationType.IsAbstract || implementationType.IsInterface)
-            {
-                throw new ArgumentException(
-                    $"Implementation type '{implementationType.Name}' cannot be abstract or an interface");
-            }
-        }
-
-        /// <summary>
-        /// Validates that a concrete type can be instantiated.
-        /// </summary>
-        private void ValidateConcreteType(Type type)
-        {
-            if (type == null)
-                throw new ArgumentNullException(nameof(type));
-
             if (type.IsAbstract || type.IsInterface)
-            {
-                throw new ArgumentException(
-                    $"Type '{type.Name}' cannot be abstract or an interface. Use Register<TInterface, TImplementation>() instead.");
-            }
+                throw new ArgumentException($"Cannot register abstract type or interface '{type.Name}'");
         }
 
-        /// <summary>
-        /// Detects circular dependencies in the registration graph.
-        /// </summary>
         private void DetectCircularDependencies()
         {
+            var visiting = new HashSet<Type>();
             var visited = new HashSet<Type>();
-            var recursionStack = new Stack<Type>();
 
-            foreach (var type in _registrations.Keys)
+            foreach (var kvp in _registrations)
             {
-                if (!visited.Contains(type))
-                {
-                    if (HasCircularDependency(type, visited, recursionStack))
-                    {
-                        var cycle = string.Join(" -> ", recursionStack.Reverse().Select(t => t.Name));
-                        throw new InvalidOperationException(
-                            $"Circular dependency detected: {cycle}. " +
-                            $"Circular dependencies are not supported. Consider using factory registration or redesigning your dependencies.");
-                    }
-                }
-            }
-        }
+                var registration = kvp.Value;
 
-        /// <summary>
-        /// Recursively checks for circular dependencies using DFS.
-        /// </summary>
-        private bool HasCircularDependency(Type type, HashSet<Type> visited, Stack<Type> recursionStack)
-        {
-            visited.Add(type);
-            recursionStack.Push(type);
-
-            if (_registrations.TryGetValue(type, out var registration))
-            {
-                // Skip factory and instance registrations (no constructor dependencies)
                 if (registration.Factory != null || registration.Instance != null)
+                    continue;
+
+                if (!visited.Contains(kvp.Key))
                 {
-                    recursionStack.Pop();
-                    return false;
+                    DetectCycle(kvp.Key, registration.ImplementationType, visiting, visited);
                 }
+            }
+        }
 
-                // Get constructor parameters
-                var constructors = registration.ImplementationType
-                    .GetConstructors(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        private void DetectCycle(Type serviceType, Type implType, HashSet<Type> visiting, HashSet<Type> visited)
+        {
+            if (visited.Contains(serviceType))
+                return;
 
-                if (constructors.Length > 0)
+            if (visiting.Contains(serviceType))
+                throw new InvalidOperationException($"Circular dependency detected involving type '{serviceType.Name}'");
+
+            visiting.Add(serviceType);
+
+            var constructor = FindBestConstructor(implType);
+            var parameters = constructor.GetParameters();
+
+            foreach (var param in parameters)
+            {
+                var paramType = param.ParameterType;
+
+                if (_registrations.TryGetValue(paramType, out var depReg) &&
+                    depReg.Factory == null &&
+                    depReg.Instance == null)
                 {
-                    var constructor = constructors.OrderByDescending(c => c.GetParameters().Length).First();
-                    var parameters = constructor.GetParameters();
-
-                    foreach (var param in parameters)
-                    {
-                        var paramType = param.ParameterType;
-
-                        // If this parameter is in our recursion stack, we have a cycle
-                        if (recursionStack.Contains(paramType))
-                        {
-                            recursionStack.Push(paramType); // Add for complete cycle display
-                            return true;
-                        }
-
-                        // If this parameter is registered, check it recursively
-                        if (_registrations.ContainsKey(paramType))
-                        {
-                            if (!visited.Contains(paramType))
-                            {
-                                if (HasCircularDependency(paramType, visited, recursionStack))
-                                {
-                                    return true;
-                                }
-                            }
-                        }
-                    }
+                    DetectCycle(paramType, depReg.ImplementationType, visiting, visited);
                 }
             }
 
-            recursionStack.Pop();
-            return false;
+            visiting.Remove(serviceType);
+            visited.Add(serviceType);
         }
 
-        public IECSContainerBuilder RegisterWorld(string worldName)
+        private static ConstructorInfo FindBestConstructor(Type type)
         {
-            if (string.IsNullOrWhiteSpace(worldName))
-                throw new ArgumentException("World name cannot be null or empty", nameof(worldName));
+            var constructors = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
 
-            if (!_ecsWorlds.ContainsKey(worldName))
+            if (constructors.Length == 0)
+                return null;
+
+            ConstructorInfo best = constructors[0];
+            for (int i = 1; i < constructors.Length; i++)
             {
-                _ecsWorlds[worldName] = new List<Type>();
+                if (constructors[i].GetParameters().Length > best.GetParameters().Length)
+                    best = constructors[i];
             }
 
-            RegisterFactory<IStradaWorld>(container =>
-            {
-                var world = StradaWorld.Create(worldName);
-                if (_ecsWorlds.TryGetValue(worldName, out var systemTypes))
-                {
-                    foreach (var systemType in systemTypes)
-                    {
-                        world.RegisterSystem(systemType);
-                    }
-                }
-                world.Initialize();
-                return world;
-            }, Lifetime.Singleton);
-
-            return this;
+            return best;
         }
 
-        public IECSContainerBuilder RegisterSystem<TSystem>(string worldName) where TSystem : IStradaSystem
+        IContainerBuilder IContainerBuilder.Register<TInterface, TImplementation>(Lifetime lifetime)
         {
-            return RegisterSystem(typeof(TSystem), worldName);
+            return Register<TInterface, TImplementation>(lifetime);
         }
 
-        public IECSContainerBuilder RegisterSystem(Type systemType, string worldName)
+        IContainerBuilder IContainerBuilder.Register<T>(Lifetime lifetime)
         {
-            if (systemType == null)
-                throw new ArgumentNullException(nameof(systemType));
+            return Register<T>(lifetime);
+        }
 
-            if (string.IsNullOrWhiteSpace(worldName))
-                throw new ArgumentException("World name cannot be null or empty", nameof(worldName));
+        IContainerBuilder IContainerBuilder.RegisterFactory<T>(Func<IContainer, T> factory, Lifetime lifetime)
+        {
+            return RegisterFactory(factory, lifetime);
+        }
 
-            if (!typeof(IStradaSystem).IsAssignableFrom(systemType))
-                throw new ArgumentException($"Type {systemType.Name} must implement IStradaSystem");
-
-            if (!_ecsWorlds.ContainsKey(worldName))
-            {
-                _ecsWorlds[worldName] = new List<Type>();
-            }
-
-            _ecsWorlds[worldName].Add(systemType);
-
-            return this;
+        IContainerBuilder IContainerBuilder.RegisterInstance<T>(T instance)
+        {
+            return RegisterInstance(instance);
         }
     }
 }

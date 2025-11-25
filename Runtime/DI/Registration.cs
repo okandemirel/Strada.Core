@@ -1,112 +1,47 @@
 using System;
+using System.Reflection;
 
 namespace Strada.Core.DI
 {
-    /// <summary>
-    /// Internal class representing a type registration entry.
-    /// </summary>
-    internal class Registration
+    public enum Lifetime
     {
-        /// <summary>
-        /// The type that was registered (interface or concrete type).
-        /// </summary>
+        Singleton,
+        Transient,
+        Scoped
+    }
+
+    internal sealed class Registration
+    {
         public Type ServiceType { get; }
-
-        /// <summary>
-        /// The implementation type to instantiate.
-        /// </summary>
         public Type ImplementationType { get; }
-
-        /// <summary>
-        /// The lifetime of the registration.
-        /// </summary>
         public Lifetime Lifetime { get; }
-
-        /// <summary>
-        /// Optional factory function for creating instances.
-        /// </summary>
         public Func<IContainer, object> Factory { get; }
-
-        /// <summary>
-        /// Pre-created instance for RegisterInstance.
-        /// </summary>
         public object Instance { get; }
+        public ConstructorInfo Constructor { get; set; }
 
-        /// <summary>
-        /// Cached constructor info for performance.
-        /// </summary>
-        public System.Reflection.ConstructorInfo Constructor { get; set; }
-
-        /// <summary>
-        /// Creates a registration for a type with implementation.
-        /// </summary>
-        public Registration(Type serviceType, Type implementationType, Lifetime lifetime)
+        private Registration(Type serviceType, Type implementationType, Lifetime lifetime,
+            Func<IContainer, object> factory, object instance)
         {
-            ServiceType = serviceType ?? throw new ArgumentNullException(nameof(serviceType));
-            ImplementationType = implementationType ?? throw new ArgumentNullException(nameof(implementationType));
+            ServiceType = serviceType;
+            ImplementationType = implementationType;
             Lifetime = lifetime;
-            Factory = null;
-            Instance = null;
+            Factory = factory;
+            Instance = instance;
         }
 
-        /// <summary>
-        /// Creates a registration with a factory function.
-        /// </summary>
-        public Registration(Type serviceType, Func<IContainer, object> factory, Lifetime lifetime)
+        public static Registration FromType(Type serviceType, Type implementationType, Lifetime lifetime)
         {
-            ServiceType = serviceType ?? throw new ArgumentNullException(nameof(serviceType));
-            Factory = factory ?? throw new ArgumentNullException(nameof(factory));
-            Lifetime = lifetime;
-            ImplementationType = null;
-            Instance = null;
+            return new Registration(serviceType, implementationType, lifetime, null, null);
         }
 
-        /// <summary>
-        /// Creates a registration for a pre-created instance.
-        /// </summary>
-        public Registration(Type serviceType, object instance)
+        public static Registration FromFactory(Type serviceType, Func<IContainer, object> factory, Lifetime lifetime)
         {
-            ServiceType = serviceType ?? throw new ArgumentNullException(nameof(serviceType));
-            Instance = instance ?? throw new ArgumentNullException(nameof(instance));
-            Lifetime = Lifetime.Singleton; // Instances are always singletons
-            ImplementationType = instance.GetType();
-            Factory = null;
+            return new Registration(serviceType, null, lifetime, factory, null);
         }
 
-        /// <summary>
-        /// Validates that the implementation type is assignable to the service type.
-        /// </summary>
-        public void Validate()
+        public static Registration FromInstance(Type serviceType, object instance)
         {
-            if (Instance != null)
-            {
-                if (!ServiceType.IsAssignableFrom(Instance.GetType()))
-                {
-                    throw new InvalidOperationException(
-                        $"Instance of type '{Instance.GetType().Name}' is not assignable to service type '{ServiceType.Name}'");
-                }
-                return;
-            }
-
-            if (Factory != null)
-            {
-                return;
-            }
-
-            if (ImplementationType != null)
-            {
-                if (!ServiceType.IsAssignableFrom(ImplementationType))
-                {
-                    throw new InvalidOperationException(
-                        $"Implementation type '{ImplementationType.Name}' is not assignable to service type '{ServiceType.Name}'");
-                }
-
-                if (ImplementationType.IsAbstract || ImplementationType.IsInterface)
-                {
-                    throw new InvalidOperationException(
-                        $"Implementation type '{ImplementationType.Name}' cannot be abstract or an interface");
-                }
-            }
+            return new Registration(serviceType, instance.GetType(), Lifetime.Singleton, null, instance);
         }
     }
 }

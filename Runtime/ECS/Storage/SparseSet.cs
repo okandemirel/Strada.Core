@@ -14,6 +14,7 @@ namespace Strada.Core.ECS.Storage
 
         public int Count => _count;
         public int Capacity => _dense.Length;
+        public int SparseCapacity => _sparse.Length;
         public bool IsCreated => _sparse.IsCreated;
 
         public SparseSet(int sparseCapacity, int denseCapacity, Allocator allocator)
@@ -101,6 +102,50 @@ namespace Strada.Core.ECS.Storage
         public T* GetDataPtr() => (T*)_data.GetUnsafePtr();
         public int* GetDenseEntityReadOnlyPtr() => (int*)_dense.GetUnsafeReadOnlyPtr();
         public T* GetDataReadOnlyPtr() => (T*)_data.GetUnsafeReadOnlyPtr();
+        public int* GetSparsePtr() => (int*)_sparse.GetUnsafePtr();
+        public int GetDenseIndex(int entityIndex) => entityIndex < _sparse.Length ? _sparse[entityIndex] : -1;
+
+        public NativeSlice<T> GetDataSlice() => new NativeSlice<T>(_data, 0, _count);
+        public NativeSlice<int> GetEntitySlice() => new NativeSlice<int>(_dense, 0, _count);
+
+        public void Reserve(int capacity)
+        {
+            EnsureDenseCapacity(capacity);
+            EnsureSparseCapacity(capacity);
+        }
+
+        public void AddRange(NativeArray<int> entityIndices, NativeArray<T> components)
+        {
+            int addCount = entityIndices.Length;
+            EnsureDenseCapacity(_count + addCount);
+
+            int maxEntity = 0;
+            for (int i = 0; i < addCount; i++)
+                if (entityIndices[i] > maxEntity) maxEntity = entityIndices[i];
+
+            EnsureSparseCapacity(maxEntity + 1);
+
+            for (int i = 0; i < addCount; i++)
+            {
+                int entityIndex = entityIndices[i];
+                if (_sparse[entityIndex] >= 0)
+                {
+                    _data[_sparse[entityIndex]] = components[i];
+                    continue;
+                }
+
+                _dense[_count] = entityIndex;
+                _data[_count] = components[i];
+                _sparse[entityIndex] = _count;
+                _count++;
+            }
+        }
+
+        public void RemoveRange(NativeArray<int> entityIndices)
+        {
+            for (int i = 0; i < entityIndices.Length; i++)
+                Remove(entityIndices[i]);
+        }
 
         public void Clear()
         {

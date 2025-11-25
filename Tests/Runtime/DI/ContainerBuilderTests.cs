@@ -1,8 +1,8 @@
-using NUnit.Framework;
 using System;
+using NUnit.Framework;
 using Strada.Core.DI;
 
-namespace Strada.Core.Tests.DI
+namespace Strada.Core.Tests.Tests.Runtime.DI
 {
     /// <summary>
     /// Comprehensive tests for the ContainerBuilder class.

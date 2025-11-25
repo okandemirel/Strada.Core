@@ -1,8 +1,8 @@
-using NUnit.Framework;
 using System;
+using NUnit.Framework;
 using Strada.Core.DI;
 
-namespace Strada.Core.Tests.DI
+namespace Strada.Core.Tests.Tests.Runtime.DI
 {
     /// <summary>
     /// Comprehensive tests for the Container class.
@@ -252,10 +252,9 @@ namespace Strada.Core.Tests.DI
             // Arrange
             var builder = new ContainerBuilder();
             builder.Register<ITestController, TestController>(); // Missing ITestService and ITestRepository
-            var container = builder.Build();
 
-            // Act & Assert
-            var ex = Assert.Throws<InvalidOperationException>(() => container.Resolve<ITestController>());
+            // Act & Assert - Early validation at build time (better practice)
+            var ex = Assert.Throws<InvalidOperationException>(() => builder.Build());
             Assert.That(ex.Message, Does.Contain("not registered"));
         }
 

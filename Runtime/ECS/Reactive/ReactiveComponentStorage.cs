@@ -1,0 +1,117 @@
+using System;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using Strada.Core.ECS.Storage;
+using Unity.Collections;
+
+namespace Strada.Core.ECS.Reactive
+{
+    public sealed class ReactiveComponentStorage<T> : IDisposable where T : unmanaged, IComponent
+    {
+        private readonly ComponentStorage<T> _storage;
+        private readonly List<Action<int, T>> _onAddCallbacks = new(4);
+        private readonly List<Action<int, T>> _onRemoveCallbacks = new(4);
+        private readonly List<Action<int, T, T>> _onChangeCallbacks = new(4);
+
+        public ComponentStorage<T> Storage => _storage;
+        public int Count => _storage.Count;
+
+        public ReactiveComponentStorage(int sparseCapacity = 1024, int denseCapacity = 256)
+        {
+            _storage = new ComponentStorage<T>(sparseCapacity, denseCapacity);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void SubscribeOnAdd(Action<int, T> callback) => _onAddCallbacks.Add(callback);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void SubscribeOnRemove(Action<int, T> callback) => _onRemoveCallbacks.Add(callback);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void SubscribeOnChange(Action<int, T, T> callback) => _onChangeCallbacks.Add(callback);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void UnsubscribeOnAdd(Action<int, T> callback) => _onAddCallbacks.Remove(callback);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void UnsubscribeOnRemove(Action<int, T> callback) => _onRemoveCallbacks.Remove(callback);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void UnsubscribeOnChange(Action<int, T, T> callback) => _onChangeCallbacks.Remove(callback);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Add(int entityIndex, T component)
+        {
+            bool isNew = !_storage.Contains(entityIndex);
+            _storage.Add(entityIndex, component);
+
+            if (isNew)
+                NotifyAdd(entityIndex, component);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Remove(int entityIndex)
+        {
+            if (!_storage.Contains(entityIndex))
+                return false;
+
+            var component = _storage.Get(entityIndex);
+            NotifyRemove(entityIndex, component);
+            return _storage.Remove(entityIndex);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Set(int entityIndex, T component)
+        {
+            if (!_storage.Contains(entityIndex))
+            {
+                Add(entityIndex, component);
+                return;
+            }
+
+            var oldValue = _storage.Get(entityIndex);
+            _storage.Set(entityIndex, component);
+            NotifyChange(entityIndex, oldValue, component);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T Get(int entityIndex) => _storage.Get(entityIndex);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryGet(int entityIndex, out T component) => _storage.TryGet(entityIndex, out component);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Contains(int entityIndex) => _storage.Contains(entityIndex);
+
+        private void NotifyAdd(int entityIndex, T component)
+        {
+            foreach (var callback in _onAddCallbacks)
+                callback(entityIndex, component);
+        }
+
+        private void NotifyRemove(int entityIndex, T component)
+        {
+            foreach (var callback in _onRemoveCallbacks)
+                callback(entityIndex, component);
+        }
+
+        private void NotifyChange(int entityIndex, T oldValue, T newValue)
+        {
+            foreach (var callback in _onChangeCallbacks)
+                callback(entityIndex, oldValue, newValue);
+        }
+
+        public void Clear()
+        {
+            _storage.Clear();
+        }
+
+        public void Dispose()
+        {
+            _storage.Dispose();
+            _onAddCallbacks.Clear();
+            _onRemoveCallbacks.Clear();
+            _onChangeCallbacks.Clear();
+        }
+    }
+}

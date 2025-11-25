@@ -1,0 +1,11 @@
+/Users/okan/Desktop/Other Projects/Cases/plinko/Packages/com.strada.core/SourceGeneration~/bin/Release/netstandard2.0/Strada.SourceGeneration.deps.json
+/Users/okan/Desktop/Other Projects/Cases/plinko/Packages/com.strada.core/SourceGeneration~/bin/Release/netstandard2.0/Strada.SourceGeneration.dll
+/Users/okan/Desktop/Other Projects/Cases/plinko/Packages/com.strada.core/SourceGeneration~/bin/Release/netstandard2.0/Strada.SourceGeneration.pdb
+/Users/okan/Desktop/Other Projects/Cases/plinko/Packages/com.strada.core/SourceGeneration~/obj/Release/netstandard2.0/Strada.SourceGeneration.csproj.AssemblyReference.cache
+/Users/okan/Desktop/Other Projects/Cases/plinko/Packages/com.strada.core/SourceGeneration~/obj/Release/netstandard2.0/Strada.SourceGeneration.GeneratedMSBuildEditorConfig.editorconfig
+/Users/okan/Desktop/Other Projects/Cases/plinko/Packages/com.strada.core/SourceGeneration~/obj/Release/netstandard2.0/Strada.SourceGeneration.AssemblyInfoInputs.cache
+/Users/okan/Desktop/Other Projects/Cases/plinko/Packages/com.strada.core/SourceGeneration~/obj/Release/netstandard2.0/Strada.SourceGeneration.AssemblyInfo.cs
+/Users/okan/Desktop/Other Projects/Cases/plinko/Packages/com.strada.core/SourceGeneration~/obj/Release/netstandard2.0/Strada.SourceGeneration.csproj.CoreCompileInputs.cache
+/Users/okan/Desktop/Other Projects/Cases/plinko/Packages/com.strada.core/SourceGeneration~/obj/Release/netstandard2.0/Strada.SourceGeneration.sourcelink.json
+/Users/okan/Desktop/Other Projects/Cases/plinko/Packages/com.strada.core/SourceGeneration~/obj/Release/netstandard2.0/Strada.SourceGeneration.dll
+/Users/okan/Desktop/Other Projects/Cases/plinko/Packages/com.strada.core/SourceGeneration~/obj/Release/netstandard2.0/Strada.SourceGeneration.pdb
