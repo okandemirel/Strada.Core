@@ -4,12 +4,6 @@ using Strada.Core.ECS;
 
 namespace Strada.Core.Bridge
 {
-    public interface IComponentBinding : IDisposable
-    {
-        void Sync();
-        void Push();
-    }
-
     public sealed class ComponentBinding<TComponent, TProperty> : IComponentBinding
         where TComponent : unmanaged, IComponent
     {
@@ -20,8 +14,10 @@ namespace Strada.Core.Bridge
         private Entity _entity;
         private TProperty _lastValue;
         private bool _disposed;
+        private bool _dirty;
 
         public TProperty Value => _lastValue;
+        public bool IsDirty => _dirty;
 
         public ComponentBinding(
             EntityManager entities,
@@ -121,8 +117,10 @@ namespace Strada.Core.Bridge
         private Entity _entity;
         private TComponent _lastValue;
         private bool _disposed;
+        private bool _dirty;
 
         public ref readonly TComponent Value => ref _lastValue;
+        public bool IsDirty => _dirty;
 
         public AutoSyncBinding(EntityManager entities, Entity entity, Action<TComponent> onChanged)
         {

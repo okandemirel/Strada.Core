@@ -1,0 +1,194 @@
+using System;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using Strada.Core.DI;
+using Strada.Core.ECS;
+using UnityEngine;
+
+namespace Strada.Core.Bridge
+{
+    public sealed class ViewPool<TView> : IDisposable where TView : EntityView
+    {
+        private readonly Stack<TView> _available;
+        private readonly List<TView> _active;
+        private readonly GameObject _prefab;
+        private readonly Transform _poolRoot;
+        private readonly Transform _activeRoot;
+        private readonly IContainer _container;
+        private readonly EntityManager _entityManager;
+        private readonly ViewRegistry _registry;
+        private readonly int _maxSize;
+        private int _totalCreated;
+        private bool _disposed;
+
+        public int AvailableCount => _available.Count;
+        public int ActiveCount => _active.Count;
+        public int TotalCreated => _totalCreated;
+
+        public ViewPool(
+            GameObject prefab,
+            IContainer container,
+            EntityManager entityManager,
+            ViewRegistry registry,
+            Transform poolRoot = null,
+            Transform activeRoot = null,
+            int initialSize = 0,
+            int maxSize = 1000)
+        {
+            _prefab = prefab;
+            _container = container;
+            _entityManager = entityManager;
+            _registry = registry;
+            _poolRoot = poolRoot;
+            _activeRoot = activeRoot;
+            _maxSize = maxSize;
+            _available = new Stack<TView>(Math.Max(initialSize, 16));
+            _active = new List<TView>(Math.Max(initialSize, 16));
+
+            Prewarm(initialSize);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public TView Spawn(Entity entity)
+        {
+            TView view;
+
+            if (_available.Count > 0)
+            {
+                view = _available.Pop();
+                view.gameObject.SetActive(true);
+            }
+            else
+            {
+                var go = UnityEngine.Object.Instantiate(_prefab);
+                view = go.GetComponent<TView>();
+                _totalCreated++;
+            }
+
+            if (_activeRoot != null)
+                view.transform.SetParent(_activeRoot, false);
+
+            view.Bind(_container, _entityManager, entity);
+            _registry?.Register(view, entity);
+            _active.Add(view);
+
+            return view;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public TView Spawn(Entity entity, Vector3 position, Quaternion rotation)
+        {
+            var view = Spawn(entity);
+            view.transform.SetPositionAndRotation(position, rotation);
+            return view;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Despawn(TView view)
+        {
+            if (view == null) return;
+            if (_disposed) return;
+
+            _registry?.Unregister(view);
+            view.Unbind();
+            _active.Remove(view);
+
+            if (_available.Count < _maxSize)
+            {
+                view.gameObject.SetActive(false);
+                if (_poolRoot != null)
+                    view.transform.SetParent(_poolRoot, false);
+                _available.Push(view);
+            }
+            else
+            {
+                UnityEngine.Object.Destroy(view.gameObject);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Despawn(Entity entity)
+        {
+            for (int i = _active.Count - 1; i >= 0; i--)
+            {
+                if (_active[i].Entity.Index == entity.Index)
+                {
+                    Despawn(_active[i]);
+                    return;
+                }
+            }
+        }
+
+        public void DespawnAll()
+        {
+            for (int i = _active.Count - 1; i >= 0; i--)
+            {
+                Despawn(_active[i]);
+            }
+        }
+
+        public void Prewarm(int count)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                var go = UnityEngine.Object.Instantiate(_prefab);
+                var view = go.GetComponent<TView>();
+
+                go.SetActive(false);
+                if (_poolRoot != null)
+                    view.transform.SetParent(_poolRoot, false);
+
+                _available.Push(view);
+                _totalCreated++;
+            }
+        }
+
+        public void Clear()
+        {
+            DespawnAll();
+
+            while (_available.Count > 0)
+            {
+                var view = _available.Pop();
+                if (view != null && view.gameObject != null)
+                    UnityEngine.Object.Destroy(view.gameObject);
+            }
+
+            _totalCreated = 0;
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+
+            Clear();
+        }
+    }
+
+    public static class ViewPoolFactory
+    {
+        public static ViewPool<TView> Create<TView>(
+            GameObject prefab,
+            IContainer container,
+            EntityManager entityManager,
+            ViewRegistry registry = null,
+            int initialSize = 0,
+            int maxSize = 1000) where TView : EntityView
+        {
+            var poolRoot = new GameObject($"Pool_{typeof(TView).Name}").transform;
+            var activeRoot = new GameObject($"Active_{typeof(TView).Name}").transform;
+            poolRoot.gameObject.SetActive(false);
+
+            return new ViewPool<TView>(
+                prefab,
+                container,
+                entityManager,
+                registry,
+                poolRoot,
+                activeRoot,
+                initialSize,
+                maxSize);
+        }
+    }
+}

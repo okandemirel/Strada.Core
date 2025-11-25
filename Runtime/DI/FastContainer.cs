@@ -18,8 +18,15 @@ namespace Strada.Core.DI
         private int _registeredCount;
         private bool _disposed;
 
-        internal FastContainer(Dictionary<Type, Registration> registrations)
+        internal FastContainer(Dictionary<Type, Registration> registrations, bool autoRegisterSelf = false)
         {
+            // Add self-registration if requested
+            if (autoRegisterSelf && !registrations.ContainsKey(typeof(IContainer)))
+            {
+                registrations = new Dictionary<Type, Registration>(registrations);
+                registrations[typeof(IContainer)] = Registration.FromInstance(typeof(IContainer), this);
+            }
+
             var count = registrations.Count;
             _registeredTypes = new Type[count];
             _factories = new Func<object>[count];

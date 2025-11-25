@@ -47,7 +47,8 @@ namespace Strada.Core.DI
         public IContainer Build()
         {
             DetectCircularDependencies();
-            return new FastContainer(_registrations);
+            var container = new FastContainer(_registrations, autoRegisterSelf: true);
+            return container;
         }
 
         private static void ValidateType(Type type)
