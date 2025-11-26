@@ -1,15 +1,16 @@
 # Messaging System
 
-Strada provides zero-allocation messaging through `StradaBus` and `CommandBus` for decoupled communication.
+Strada provides zero-allocation messaging through `StradaBus` - the unified messaging system for events, commands, and queries.
 
 ## Table of Contents
 
 - [Quick Start](#quick-start)
 - [StradaBus](#stradabus)
   - [Events (Pub/Sub)](#events-pubsub)
-  - [Commands](#commands)
+  - [Struct Commands](#struct-commands)
+  - [Object Commands](#object-commands)
   - [Queries](#queries)
-- [CommandBus](#commandbus)
+- [Pooled Commands](#pooled-commands)
 - [Performance](#performance)
 - [Best Practices](#best-practices)
 
@@ -85,12 +86,12 @@ bus.Publish(new EnemyKilled
 bus.Unsubscribe<EnemyKilled>(OnEnemyKilled);
 ```
 
-### Commands
+### Struct Commands
 
-Commands are single-handler messages for direct actions.
+Struct commands are zero-allocation single-handler messages for direct actions.
 
 ```csharp
-// Define command
+// Define command as struct
 public struct DealDamage
 {
     public int TargetId;
@@ -113,6 +114,44 @@ bus.Send(new DealDamage
     TargetId = 1,
     Amount = 25,
     IsCritical = true
+});
+```
+
+### Object Commands
+
+For complex commands with async support or pooling, use ICommand/IAsyncCommand:
+
+```csharp
+using Strada.Core.Commands;
+
+// Synchronous command
+public class LoadLevelCommand : ICommand
+{
+    public string LevelName { get; set; }
+
+    public void Execute()
+    {
+        SceneManager.LoadScene(LevelName);
+    }
+}
+
+// Execute via StradaBus
+bus.Execute(new LoadLevelCommand { LevelName = "Level1" });
+
+// Async command
+public class LoadAssetsCommand : IAsyncCommand
+{
+    public string[] AssetPaths { get; set; }
+
+    public void Execute(Action onComplete)
+    {
+        LoadAssetsAsync(AssetPaths, onComplete);
+    }
+}
+
+bus.ExecuteAsync(new LoadAssetsCommand { AssetPaths = paths }, () =>
+{
+    Debug.Log("Assets loaded!");
 });
 ```
 
@@ -165,103 +204,81 @@ var result = bus.Query<ComplexQuery, Result>(ref query);
 
 ---
 
-## CommandBus
+## Pooled Commands
 
-Specialized command bus with DI integration.
+Reuse command objects to avoid allocation. StradaBus automatically returns pooled commands after execution.
 
-### Basic Usage
+### Using PooledCommandBase
 
 ```csharp
 using Strada.Core.Commands;
 
-var commandBus = new CommandBus();
-
-// Register handler
-commandBus.RegisterHandler<MoveCommand>(HandleMove);
-
-// Or use interface
-public class MoveHandler : ICommandHandler<MoveCommand>
-{
-    public void Handle(MoveCommand cmd) { /* ... */ }
-}
-commandBus.RegisterHandler(new MoveHandler());
-
-// Send command
-commandBus.Send(new MoveCommand { Direction = Vector3.forward });
-```
-
-### DI Integration
-
-CommandBus can auto-resolve handlers from container:
-
-```csharp
-// Setup with container
-var commandBus = new CommandBus(container);
-
-// Register handler type in DI
-builder.Register<ICommandHandler<MoveCommand>, MoveHandler>();
-
-// CommandBus resolves from container if no explicit handler
-commandBus.Send(new MoveCommand()); // Auto-resolves MoveHandler
-```
-
-### Command Objects (OOP Style)
-
-For complex commands with async support:
-
-```csharp
-// Define command object
-public class LoadLevelCommand : ICommand
-{
-    public string LevelName { get; set; }
-
-    public void Execute()
-    {
-        SceneManager.LoadScene(LevelName);
-    }
-}
-
-// Execute
-commandBus.Execute(new LoadLevelCommand { LevelName = "Level1" });
-
-// Async command
-public class LoadAssetsCommand : IAsyncCommand
-{
-    public string[] AssetPaths { get; set; }
-
-    public void Execute(Action onComplete)
-    {
-        LoadAssetsAsync(AssetPaths, onComplete);
-    }
-}
-
-commandBus.ExecuteAsync(new LoadAssetsCommand { AssetPaths = paths }, () =>
-{
-    Debug.Log("Assets loaded!");
-});
-```
-
-### Pooled Commands
-
-Reuse command objects to avoid allocation:
-
-```csharp
-public class SpawnCommand : ICommand, IPooledCommand
+// Inherit from PooledCommandBase for automatic pooling
+public class SpawnEnemyCommand : PooledCommandBase<SpawnEnemyCommand>
 {
     public float X, Y;
-    private ObjectPool<SpawnCommand> _pool;
+    public int EnemyType;
 
-    public void SetPool(ObjectPool<SpawnCommand> pool) => _pool = pool;
-    public void ReturnToPool() => _pool.Despawn(this);
-
-    public void Execute()
+    protected override void OnExecute()
     {
-        SpawnAt(X, Y);
+        EnemySpawner.SpawnAt(X, Y, EnemyType);
+    }
+
+    public override void Reset()
+    {
+        X = 0;
+        Y = 0;
+        EnemyType = 0;
     }
 }
 
-// Commands auto-return to pool after execution
-commandBus.Execute(spawnPool.Spawn());
+// Rent from pool
+var cmd = SpawnEnemyCommand.Rent();
+cmd.X = 10;
+cmd.Y = 20;
+cmd.EnemyType = 1;
+
+// Execute - automatically returns to pool when done
+bus.Execute(cmd);
+```
+
+### CommandPool
+
+Pre-warm pools for better performance:
+
+```csharp
+// Access the pool
+CommandPool<SpawnEnemyCommand>.Instance.Prewarm(50);
+
+// Manual rent/return (if not using StradaBus.Execute)
+var cmd = CommandPool<SpawnEnemyCommand>.Instance.Rent();
+// ... use command ...
+CommandPool<SpawnEnemyCommand>.Instance.Return(cmd);
+```
+
+### Custom Pooled Commands
+
+Implement IPooledCommand for custom pooling:
+
+```csharp
+public class CustomCommand : ICommand, IPooledCommand
+{
+    public int Value;
+
+    public void Execute()
+    {
+        DoSomething(Value);
+    }
+
+    public void ReturnToPool()
+    {
+        Value = 0;
+        MyCustomPool.Return(this);
+    }
+}
+
+// StradaBus calls ReturnToPool() automatically after Execute()
+bus.Execute(myCommand);
 ```
 
 ---
@@ -397,10 +414,15 @@ void Publish<TEvent>(TEvent evt) where TEvent : struct;
 void Publish<TEvent>(ref TEvent evt) where TEvent : struct;
 int GetSubscriberCount<TEvent>() where TEvent : struct;
 
-// Commands
+// Struct Commands
 void RegisterCommandHandler<TCommand>(Action<TCommand> handler) where TCommand : struct;
+void RegisterCommandHandler<TCommand>(ICommandHandler<TCommand> handler) where TCommand : struct;
 void Send<TCommand>(TCommand command) where TCommand : struct;
 void Send<TCommand>(ref TCommand command) where TCommand : struct;
+
+// Object Commands (pooled/async)
+void Execute(ICommand command);                              // Auto-returns pooled
+void ExecuteAsync(IAsyncCommand command, Action onComplete); // Auto-returns pooled
 
 // Queries
 void RegisterQueryHandler<TQuery, TResult>(Func<TQuery, TResult> handler)
@@ -413,17 +435,6 @@ TResult Query<TQuery, TResult>(ref TQuery query) where TQuery : struct, IQuery<T
 // Lifecycle
 void Clear();
 void Dispose();
-```
-
-### ICommandBus
-
-```csharp
-void Send<TCommand>(TCommand command) where TCommand : struct;
-void Send<TCommand>(ref TCommand command) where TCommand : struct;
-void Execute(ICommand command);
-void ExecuteAsync(IAsyncCommand command, Action onComplete = null);
-void RegisterHandler<TCommand>(ICommandHandler<TCommand> handler) where TCommand : struct;
-void RegisterHandler<TCommand>(Action<TCommand> handler) where TCommand : struct;
 ```
 
 ### Interfaces
@@ -444,6 +455,11 @@ public interface ICommand
 public interface IAsyncCommand
 {
     void Execute(Action onComplete);
+}
+
+public interface IPooledCommand
+{
+    void ReturnToPool();
 }
 
 public interface ICommandHandler<TCommand> where TCommand : struct

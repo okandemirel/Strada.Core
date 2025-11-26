@@ -60,7 +60,7 @@ namespace Strada.Core.Bridge
             for (int i = 0; i < _activeMediators.Count; i++)
             {
                 if (_activeMediators[i] is ISyncable syncable)
-                    syncable.SyncAll();
+                    syncable.SyncBindings();
             }
         }
 
@@ -82,7 +82,7 @@ namespace Strada.Core.Bridge
 
         private interface ISyncable
         {
-            void SyncAll();
+            void SyncBindings();
         }
     }
 

@@ -1,10 +1,13 @@
 # Reactive Bridge
 
-Strada's Bridge system provides reactive data binding for connecting UI, models, and ECS data.
+Strada's Bridge system provides reactive data binding and true MVCS-ECS integration through event-driven architecture.
 
 ## Table of Contents
 
 - [Quick Start](#quick-start)
+- [MVCS-ECS Integration](#mvcs-ecs-integration)
+  - [Bridge Events](#bridge-events)
+  - [ViewMediator](#viewmediator)
 - [ReactiveProperty](#reactiveproperty)
 - [ReactiveCollection](#reactivecollection)
 - [ComputedProperty](#computedproperty)
@@ -30,6 +33,173 @@ health.Value = 75; // UI updates automatically
 
 // Subscribe and get current value immediately
 health.SubscribeAndInvoke(value => Debug.Log($"Health: {value}"));
+```
+
+---
+
+## MVCS-ECS Integration
+
+Strada provides true MVCS-ECS integration through event-driven communication via StradaBus.
+
+### Bridge Events
+
+ECS systems publish these events when entity state changes:
+
+```csharp
+using Strada.Core.Bridge;
+using Strada.Core.ECS;
+
+// Published when a component value changes
+public readonly struct ComponentChanged<T> where T : unmanaged, IComponent
+{
+    public readonly Entity Entity;
+    public readonly T OldValue;
+    public readonly T NewValue;
+}
+
+// Published when a component is added
+public readonly struct ComponentAdded<T> where T : unmanaged, IComponent
+{
+    public readonly Entity Entity;
+    public readonly T Value;
+}
+
+// Published when a component is removed
+public readonly struct ComponentRemoved<T> where T : unmanaged, IComponent
+{
+    public readonly Entity Entity;
+    public readonly T Value;
+}
+
+// Entity lifecycle events
+public readonly struct EntityCreated { public readonly Entity Entity; }
+public readonly struct EntityDestroyed { public readonly Entity Entity; }
+```
+
+### Publishing from ECS Systems
+
+```csharp
+public class HealthSystem : SystemBase<Health>
+{
+    private readonly IStradaBus _bus;
+
+    public HealthSystem(IStradaBus bus) => _bus = bus;
+
+    protected override void OnUpdateEntity(int entity, ref Health health, float dt)
+    {
+        var oldHealth = health;
+        health.Current -= health.DamagePerSecond * dt;
+
+        // Publish change event for MVCS controllers to react
+        if (health.Current != oldHealth.Current)
+        {
+            _bus.Publish(new ComponentChanged<Health>(
+                new Entity(entity, 0),
+                oldHealth,
+                health
+            ));
+        }
+    }
+}
+```
+
+### ViewMediator
+
+ViewMediator binds ECS entities to UI views with automatic StradaBus integration:
+
+```csharp
+using Strada.Core.Bridge;
+using Strada.Core.MVCS;
+
+public class PlayerHealthMediator : ViewMediator<PlayerHealthView>
+{
+    protected override void OnBind()
+    {
+        // Subscribe to component changes for this entity
+        OnComponentChanged<Health>(e =>
+        {
+            View.SetHealth(e.NewValue.Current, e.NewValue.Max);
+        });
+
+        // Subscribe to any event via StradaBus
+        Subscribe<PlayerDied>(e =>
+        {
+            if (e.EntityId == Entity.Index)
+                View.ShowDeathScreen();
+        });
+
+        // Initial sync from ECS component
+        if (Entities.HasComponent<Health>(Entity))
+        {
+            var health = Entities.GetComponent<Health>(Entity);
+            View.SetHealth(health.Current, health.Max);
+        }
+    }
+
+    protected override void OnUnbind()
+    {
+        // All subscriptions auto-unsubscribe
+    }
+
+    // Send commands to ECS via StradaBus
+    public void OnHealButtonClicked()
+    {
+        SendCommand(new HealPlayer { EntityId = Entity.Index, Amount = 50 });
+    }
+}
+```
+
+### ViewMediator API
+
+```csharp
+public abstract class ViewMediator<TView> : IDisposable where TView : StradaView
+{
+    // Available in OnBind/OnUnbind
+    protected EntityManager Entities { get; }
+    protected IContainer Container { get; }
+    protected IStradaBus Bus { get; }
+    protected TView View { get; }
+    protected Entity Entity { get; }
+
+    // Lifecycle
+    protected abstract void OnBind();
+    protected abstract void OnUnbind();
+
+    // StradaBus integration (auto-unsubscribe on Unbind)
+    protected void OnComponentChanged<T>(Action<ComponentChanged<T>> handler);
+    protected void Subscribe<TEvent>(Action<TEvent> handler) where TEvent : struct;
+    protected void Publish<TEvent>(TEvent evt) where TEvent : struct;
+    protected void SendCommand<TCommand>(TCommand command) where TCommand : struct;
+
+    // Component bindings
+    protected ComponentBinding<TComponent, TProperty> Bind<TComponent, TProperty>(...);
+    protected AutoSyncBinding<TComponent> AutoSync<TComponent>(...);
+
+    // Sync all bindings
+    public void SyncBindings();
+    public void PushBindings();
+}
+```
+
+### MediatorRegistry
+
+Manages ViewMediator lifecycle with pooling:
+
+```csharp
+// Setup
+var registry = new MediatorRegistry(container);
+
+// Create mediator for entity-view pair
+var mediator = registry.Create<PlayerHealthMediator, PlayerHealthView>(entity, view);
+
+// Sync all active mediators
+registry.SyncAll();
+
+// Release specific mediator (returns to pool)
+registry.Release<PlayerHealthMediator, PlayerHealthView>(mediator);
+
+// Release all mediators
+registry.ReleaseAll();
 ```
 
 ---
@@ -364,38 +534,91 @@ public class PlayerView : MonoBehaviour
 }
 ```
 
-### ECS ↔ Reactive Bridge
+### ECS → MVCS via ComponentChanged Events
 
 ```csharp
-// Sync ECS component to reactive property
-public class HealthSyncSystem : SystemBase
+// ECS system publishes component changes
+public class HealthSystem : SystemBase<Health>
 {
-    private ReactiveProperty<int> _playerHealth;
+    private readonly IStradaBus _bus;
 
-    public HealthSyncSystem(ReactiveProperty<int> playerHealth)
-    {
-        _playerHealth = playerHealth;
-    }
+    public HealthSystem(IStradaBus bus) => _bus = bus;
 
-    protected override void OnUpdate(float deltaTime)
+    protected override void OnUpdateEntity(int entity, ref Health health, float dt)
     {
-        ForEach<Health, PlayerTag>((int e, ref Health h, ref PlayerTag _) =>
+        var old = health;
+        health.Current = Math.Max(0, health.Current - health.Decay * dt);
+
+        if (health.Current != old.Current)
         {
-            // Update reactive property from ECS
-            if (_playerHealth.Value != h.Current)
-                _playerHealth.Value = h.Current;
+            _bus.Publish(new ComponentChanged<Health>(
+                new Entity(entity, 0), old, health));
+        }
+    }
+}
+
+// Controller subscribes to changes
+public class PlayerController
+{
+    public PlayerController(IStradaBus bus, PlayerModel model)
+    {
+        bus.Subscribe<ComponentChanged<Health>>(e =>
+        {
+            if (e.Entity.Index == model.EntityId)
+                model.Health.Value = e.NewValue.Current;
         });
     }
 }
 ```
 
-### Event-Driven Updates
+### MVCS → ECS via Commands
+
+```csharp
+// Define command struct
+public struct DealDamage
+{
+    public int TargetEntity;
+    public int Amount;
+}
+
+// ECS system handles command
+public class DamageSystem : SystemBase<Health>
+{
+    public DamageSystem(IStradaBus bus)
+    {
+        bus.RegisterCommandHandler<DealDamage>(HandleDamage);
+    }
+
+    private void HandleDamage(DealDamage cmd)
+    {
+        if (Entities.HasComponent<Health>(cmd.TargetEntity))
+        {
+            var health = Entities.GetComponent<Health>(cmd.TargetEntity);
+            health.Current -= cmd.Amount;
+            Entities.SetComponent(cmd.TargetEntity, health);
+        }
+    }
+}
+
+// Controller sends command
+public class CombatController
+{
+    private readonly IStradaBus _bus;
+
+    public void Attack(int targetEntity, int damage)
+    {
+        _bus.Send(new DealDamage { TargetEntity = targetEntity, Amount = damage });
+    }
+}
+```
+
+### Reactive Properties with StradaBus
 
 ```csharp
 // Update reactive properties from bus events
-bus.Subscribe<PlayerDamaged>(e =>
+bus.Subscribe<ComponentChanged<Health>>(e =>
 {
-    model.Health.Value -= e.Damage;
+    model.Health.Value = e.NewValue.Current;
 });
 
 bus.Subscribe<GoldCollected>(e =>

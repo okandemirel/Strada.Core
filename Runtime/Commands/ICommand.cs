@@ -25,12 +25,6 @@ namespace Strada.Core.Commands
         void Cancel();
     }
 
-    public interface IUndoableCommand : ICommand
-    {
-        void Undo();
-        bool CanUndo { get; }
-    }
-
     public interface ICommandHandler<in TCommand> where TCommand : struct
     {
         void Handle(TCommand command);

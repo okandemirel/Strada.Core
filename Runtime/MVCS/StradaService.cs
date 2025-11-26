@@ -28,7 +28,7 @@ namespace Strada.Core.MVCS
     /// <summary>
     /// Service with explicit initialization ordering.
     /// </summary>
-    public abstract class OrderedService : StradaService
+    public abstract class OrderedService : StradaService, IOrderedService
     {
         public virtual int InitializationOrder => 0;
     }

@@ -39,9 +39,14 @@ Strada combines enterprise-grade dependency injection with performance-critical 
 - **Entity Recycling**: Automatic index reuse with version tracking
 
 ### Messaging ([docs](Documentation~/Messaging.md))
-- **StradaBus**: Unified command/query/event bus with array-indexed dispatch
-- **CommandBus**: CQRS-style command handling with DI integration
+- **StradaBus**: Unified command/query/event bus with array-indexed dispatch (4ns/dispatch)
+- **Pooled Commands**: Execute ICommand objects with automatic pool return
 - **Zero-alloc Publish**: Struct-based messages, no boxing
+
+### MVCS-ECS Bridge ([docs](Documentation~/Bridge.md))
+- **Event-Driven Integration**: ECS systems publish ComponentChanged events, MVCS controllers subscribe
+- **ViewMediator**: Binds ECS entities to UI views with auto-sync and StradaBus integration
+- **Bidirectional Flow**: Controllers send commands to ECS via StradaBus, receive events back
 
 ### Reactive Bindings ([docs](Documentation~/Bridge.md))
 - **ReactiveProperty**: Observable values with change notification
@@ -235,13 +240,17 @@ Packages/com.strada.core/
 │   │   ├── Query/QueryBuilder.cs
 │   │   ├── Systems/SystemBase.cs
 │   │   └── Jobs/ParallelComponentJob.cs
-│   ├── Communication/         # Messaging
+│   ├── Communication/         # Unified Messaging
 │   │   └── StradaBus.cs
 │   ├── Commands/              # Command Pattern
-│   │   └── CommandBus.cs
-│   ├── Bridge/                # Reactive Bindings
+│   │   ├── ICommand.cs
+│   │   ├── CommandPool.cs
+│   │   └── CommandSequencer.cs
+│   ├── Bridge/                # MVCS-ECS Integration
 │   │   ├── ReactiveProperty.cs
-│   │   └── ComputedProperty.cs
+│   │   ├── ComputedProperty.cs
+│   │   ├── ViewMediator.cs
+│   │   └── BridgeEvents.cs
 │   ├── Pooling/               # Object Pooling
 │   │   └── ObjectPool.cs
 │   └── StateMachine/          # FSM
@@ -307,9 +316,13 @@ void Subscribe<TEvent>(Action<TEvent> handler) where TEvent : struct;
 void Unsubscribe<TEvent>(Action<TEvent> handler) where TEvent : struct;
 void Publish<TEvent>(TEvent evt) where TEvent : struct;
 
-// Commands (request/response)
+// Struct Commands (request/response)
 void RegisterCommandHandler<TCommand>(Action<TCommand> handler) where TCommand : struct;
 void Send<TCommand>(TCommand command) where TCommand : struct;
+
+// Object Commands (pooled, async)
+void Execute(ICommand command);          // Auto-returns pooled commands
+void ExecuteAsync(IAsyncCommand command, Action onComplete = null);
 
 // Queries (request/response with return)
 void RegisterQueryHandler<TQuery, TResult>(Func<TQuery, TResult> handler);

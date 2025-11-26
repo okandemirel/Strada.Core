@@ -1,6 +1,8 @@
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using Strada.Core.Commands;
+using Strada.Core.DI;
 
 namespace Strada.Core.Communication
 {
@@ -19,7 +21,10 @@ namespace Strada.Core.Communication
         TResult Query<TQuery, TResult>(TQuery query) where TQuery : struct, IQuery<TResult>;
         void Publish<TEvent>(ref TEvent evt) where TEvent : struct;
         void Publish<TEvent>(TEvent evt) where TEvent : struct;
+        void Execute(ICommand command);
+        void ExecuteAsync(IAsyncCommand command, Action onComplete = null);
         void RegisterCommandHandler<TCommand>(Action<TCommand> handler) where TCommand : struct;
+        void RegisterCommandHandler<TCommand>(ICommandHandler<TCommand> handler) where TCommand : struct;
         void RegisterQueryHandler<TQuery, TResult>(IQueryHandler<TQuery, TResult> handler) where TQuery : struct, IQuery<TResult>;
         void RegisterQueryHandler<TQuery, TResult>(Func<TQuery, TResult> handler) where TQuery : struct, IQuery<TResult>;
         void Subscribe<TEvent>(Action<TEvent> handler) where TEvent : struct;
@@ -96,6 +101,27 @@ namespace Strada.Core.Communication
             EnsureCapacity(ref _commandHandlers, id);
             _commandHandlers[id] = handler;
             if (id > _maxCommandId) _maxCommandId = id;
+        }
+
+        public void RegisterCommandHandler<TCommand>(ICommandHandler<TCommand> handler) where TCommand : struct
+        {
+            RegisterCommandHandler<TCommand>(handler.Handle);
+        }
+
+        public void Execute(ICommand command)
+        {
+            command.Execute();
+            if (command is IPooledCommand pooled)
+                pooled.ReturnToPool();
+        }
+
+        public void ExecuteAsync(IAsyncCommand command, Action onComplete = null)
+        {
+            command.Execute(() =>
+            {
+                (command as IPooledCommand)?.ReturnToPool();
+                onComplete?.Invoke();
+            });
         }
 
         public void RegisterQueryHandler<TQuery, TResult>(IQueryHandler<TQuery, TResult> handler)

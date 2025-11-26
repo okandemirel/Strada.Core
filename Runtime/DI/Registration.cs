@@ -1,13 +1,12 @@
 using System;
-using System.Reflection;
 
 namespace Strada.Core.DI
 {
     public enum Lifetime
     {
-        Singleton,
-        Transient,
-        Scoped
+        Transient = 0,
+        Singleton = 1,
+        Scoped = 2
     }
 
     internal sealed class Registration
@@ -17,7 +16,6 @@ namespace Strada.Core.DI
         public Lifetime Lifetime { get; }
         public Func<IContainer, object> Factory { get; }
         public object Instance { get; }
-        public ConstructorInfo Constructor { get; set; }
 
         private Registration(Type serviceType, Type implementationType, Lifetime lifetime,
             Func<IContainer, object> factory, object instance)
