@@ -17,7 +17,7 @@ namespace Strada.Core.Tests.Runtime.MVCS
         public void SetUp()
         {
             var builder = new ContainerBuilder();
-            builder.Register<ZeroAllocEventBus>(Lifetime.Singleton);
+            builder.Register<StradaBus>(Lifetime.Singleton);
             _container = builder.Build();
         }
 
@@ -82,12 +82,12 @@ namespace Strada.Core.Tests.Runtime.MVCS
             InjectionProcessor.Inject(controller, _container);
             controller.Initialize();
 
-            var eventBus = _container.Resolve<ZeroAllocEventBus>();
-            int beforeCount = eventBus.GetSubscriberCount<TestEvent>();
+            var bus = _container.Resolve<StradaBus>();
+            int beforeCount = bus.GetSubscriberCount<TestEvent>();
 
             controller.Dispose();
 
-            int afterCount = eventBus.GetSubscriberCount<TestEvent>();
+            int afterCount = bus.GetSubscriberCount<TestEvent>();
             Assert.Less(afterCount, beforeCount);
         }
 
@@ -126,7 +126,7 @@ namespace Strada.Core.Tests.Runtime.MVCS
             }
         }
 
-        private struct TestEvent : IEventData { }
+        private struct TestEvent { }
 
         private class SubscribingController : StradaController
         {

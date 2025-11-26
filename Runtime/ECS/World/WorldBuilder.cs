@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Strada.Core.Signals;
+using Strada.Core.Communication;
 
 namespace Strada.Core.ECS
 {
@@ -31,9 +31,9 @@ namespace Strada.Core.ECS
         {
             var entities = new EntityManager();
             var scheduler = new SystemScheduler();
-            var signals = new SignalBus();
+            var bus = new StradaBus();
 
-            var world = new World(entities, scheduler, signals);
+            var world = new World(entities, scheduler, bus);
 
             foreach (var (_, phase, factory) in _systemFactories)
             {

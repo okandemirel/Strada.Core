@@ -2,7 +2,6 @@ using System;
 using System.Runtime.CompilerServices;
 using Strada.Core.Communication;
 using Strada.Core.DI.Attributes;
-using Strada.Core.ECS.Groups;
 using Strada.Core.ECS.Query;
 using Strada.Core.ECS.Storage;
 
@@ -14,27 +13,16 @@ namespace Strada.Core.ECS.Systems
         private bool _disposed;
 
         protected EntityManager EntityManager { get; private set; }
-        protected GroupRegistry Groups { get; private set; }
-        protected FilterRegistry Filters { get; private set; }
-        protected ZeroAllocEventBus EventBus { get; private set; }
-        protected CommandDispatcher CommandDispatcher { get; private set; }
+        protected StradaBus Bus { get; private set; }
 
         public bool IsInitialized => _initialized;
         public bool IsDisposed => _disposed;
 
         [Inject]
-        public void Inject(
-            EntityManager entityManager,
-            GroupRegistry groups = null,
-            FilterRegistry filters = null,
-            ZeroAllocEventBus eventBus = null,
-            CommandDispatcher commandDispatcher = null)
+        public void Inject(EntityManager entityManager, StradaBus bus = null)
         {
             EntityManager = entityManager;
-            Groups = groups;
-            Filters = filters;
-            EventBus = eventBus;
-            CommandDispatcher = commandDispatcher;
+            Bus = bus;
         }
 
         public void Initialize()
@@ -94,15 +82,15 @@ namespace Strada.Core.ECS.Systems
         protected void DestroyEntity(Entity entity) => EntityManager.DestroyEntity(entity);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected void Publish<T>(T evt) where T : struct, IEventData
+        protected void Publish<T>(T evt) where T : struct
         {
-            EventBus?.Publish(evt);
+            Bus?.Publish(evt);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected void Send<T>(T command) where T : struct, ICommandData
+        protected void Send<T>(T command) where T : struct
         {
-            CommandDispatcher?.Send(command);
+            Bus?.Send(command);
         }
     }
 

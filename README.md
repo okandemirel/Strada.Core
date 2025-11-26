@@ -1,236 +1,405 @@
-# Strada Framework Core
+# Strada Framework
 
-## The World's First Unified MVCS+ECS Framework for Unity
+**A high-performance Unity framework unifying MVCS architecture with ECS simulation**
 
-**Strada** is a revolutionary game development framework that seamlessly combines:
-- **MVCS** (Model-View-Controller-Service) architecture for game systems and UI
-- **ECS** (Entity Component System) for high-performance simulation
-- **Dependency Injection** with world-class performance (beats Reflex by 10-20%)
-- **ScriptableObject-First** data-driven design
-- **Module-First** architecture with enforced boundaries
+[![Tests](https://img.shields.io/badge/tests-352%20passing-brightgreen)]()
+[![Unity](https://img.shields.io/badge/Unity-6000.0%2B-blue)]()
+[![.NET](https://img.shields.io/badge/.NET-Standard%202.1-purple)]()
 
-## Why Strada?
+Strada combines enterprise-grade dependency injection with performance-critical ECS, wrapped in a clean modular architecture. Build UI with familiar MVCS patterns while using ECS for high-performance simulation—without choosing between paradigms.
 
-### 🚀 Performance Without Compromise
-- **DI Container**: <9ms for 10k resolutions (Mono), <0.9ms (IL2CPP)
-- **ECS Performance**: Within 5% of Unity DOTS
-- **Zero Allocation**: No GC pressure in hot paths
-- **Burst Compatible**: Full Burst compilation support
+---
 
-### 🎯 Developer Experience Excellence
-- **Progressive Complexity**: Simple start → advanced features
-- **Comprehensive Tooling**: Best-in-class editor windows
-- **Real-time Diagnostics**: Dependency graphs, performance metrics
-- **Code Generation**: Reduces boilerplate
+## Table of Contents
 
-### 🏗️ Architecture First
-- **SOLID by Design**: Framework enforces best practices
-- **Module Isolation**: Assembly definitions from day one
-- **Interface-Based**: Testability built-in
-- **ScriptableObject-Centric**: Unity-native workflows
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Performance](#performance)
+- [Documentation](#documentation)
+- [Architecture](#architecture)
+- [API Reference](#api-reference)
+- [Testing](#testing)
+- [License](#license)
 
-## Quick Start
+---
 
-### Installation
+## Features
 
-#### Via Package Manager (Recommended)
-1. Open Unity Package Manager (Window > Package Manager)
-2. Click "+" → "Add package from git URL"
-3. Enter: `https://github.com/strada-framework/strada-core.git`
+### Dependency Injection ([docs](Documentation~/DI.md))
+- **FastContainer**: Expression tree compiled factories (1.56x manual `new()` overhead)
+- **Lifetimes**: Singleton, Transient, Scoped with thread-safe initialization
+- **Circular Detection**: Build-time cycle detection prevents runtime errors
+- **Zero-alloc Resolution**: No GC allocation for singleton/scoped paths
 
-#### Via manifest.json
-Add to `Packages/manifest.json`:
+### Entity Component System ([docs](Documentation~/ECS.md))
+- **SparseSet Storage**: Cache-friendly component iteration (6-28ns per entity)
+- **Query System**: `ForEach<T1, T2, T3>()` with up to 3 component types
+- **Parallel Jobs**: Burst-compiled jobs with 17x speedup over sequential
+- **Entity Recycling**: Automatic index reuse with version tracking
+
+### Messaging ([docs](Documentation~/Messaging.md))
+- **StradaBus**: Unified command/query/event bus with array-indexed dispatch
+- **CommandBus**: CQRS-style command handling with DI integration
+- **Zero-alloc Publish**: Struct-based messages, no boxing
+
+### Reactive Bindings ([docs](Documentation~/Bridge.md))
+- **ReactiveProperty**: Observable values with change notification
+- **ReactiveCollection**: Observable lists with add/remove/clear events
+- **ComputedProperty**: Derived values with automatic dependency tracking
+
+### Utilities
+- **ObjectPool**: Generic pooling with lifecycle hooks (Spawn/Despawn)
+- **StateMachine**: Type-safe FSM with conditional transitions
+- **TimerService**: Managed timers with pause/resume support
+
+---
+
+## Installation
+
+Add to your Unity project's `Packages/manifest.json`:
+
 ```json
 {
   "dependencies": {
-    "com.strada.core": "1.0.0-alpha.1"
+    "com.strada.core": "file:../Packages/com.strada.core"
   }
 }
 ```
 
-### Your First Strada Project
+Or copy the `Packages/com.strada.core` folder directly into your project.
 
-#### 1. Create a Module
-```bash
-Right-click in Project > Create > Strada > New Module
-Name: "PlayerModule"
-```
-
-#### 2. Define Your Data (ScriptableObject + Value Object)
-```csharp
-// Scripts/Data/ValueObjects/PlayerConfig.cs
-[Serializable]
-public class PlayerConfig
-{
-    public float MaxHealth = 100f;
-    public float MoveSpeed = 5f;
-}
-
-// Scripts/Data/UnityObjects/CD_Player.cs
-[CreateAssetMenu(menuName = "Game/Config/Player")]
-public class CD_Player : ScriptableObject
-{
-    public PlayerConfig Config;
-}
-```
-
-#### 3. Create Your Model (MVCS)
-```csharp
-// Scripts/Interfaces/IPlayerModel.cs
-public interface IPlayerModel
-{
-    float CurrentHealth { get; set; }
-    float MaxHealth { get; }
-}
-
-// Scripts/Models/PlayerModel.cs
-public class PlayerModel : IPlayerModel
-{
-    public float CurrentHealth { get; set; }
-    public float MaxHealth { get; }
-
-    public PlayerModel(PlayerConfig config)
-    {
-        MaxHealth = config.MaxHealth;
-        CurrentHealth = MaxHealth;
-    }
-}
-```
-
-#### 4. Create Your Controller (MVCS)
-```csharp
-// Scripts/Controllers/PlayerController.cs
-public class PlayerController : IPlayerController
-{
-    private readonly IPlayerModel _model;
-    private readonly IInputService _inputService;
-
-    public PlayerController(IPlayerModel model, IInputService inputService)
-    {
-        _model = model;
-        _inputService = inputService;
-    }
-
-    public void Update(float deltaTime)
-    {
-        var input = _inputService.GetMovementInput();
-        // Handle movement logic
-    }
-}
-```
-
-#### 5. Register with DI Container
-```csharp
-// Scripts/PlayerModuleInstaller.cs
-public class PlayerModuleInstaller : IModuleInstaller
-{
-    public void Install(IContainerBuilder builder)
-    {
-        // Load config
-        var config = Resources.Load<CD_Player>("Config/PlayerConfig");
-
-        // Register
-        builder.RegisterInstance(config.Config);
-        builder.Register<IPlayerModel, PlayerModel>(Lifetime.Singleton);
-        builder.Register<IPlayerController, PlayerController>(Lifetime.Singleton);
-    }
-}
-```
-
-#### 6. Bootstrap Your Game
-```csharp
-// GameBootstrapper.cs
-public class GameBootstrapper : MonoBehaviour
-{
-    private void Awake()
-    {
-        var builder = new ContainerBuilder();
-
-        // Install modules
-        new PlayerModuleInstaller().Install(builder);
-        new InputModuleInstaller().Install(builder);
-
-        // Build container
-        var container = builder.Build();
-
-        // Resolve and start
-        var playerController = container.Resolve<IPlayerController>();
-    }
-}
-```
-
-## Features
-
-### ✅ Core Features (v1.0)
-- High-performance DI container (beats Reflex)
-- MVCS architecture components
-- Unity ECS wrapper and integration
-- ScriptableObject baking pipeline
-- MVCS ↔ ECS communication (Commands/Events)
-- Module template generator
-- Diagnostics window
-- Comprehensive unit tests (95%+ coverage)
-
-### 🚧 Upcoming Features (v1.1+)
-- Module Inspector with dependency visualization
-- Code generation tools and wizards
-- Roslyn analyzers for SOLID violations
-- Advanced ECS debugging tools
-- Addressables integration
-- Network synchronization patterns
-
-## Documentation
-
-- **[Architecture Guide](Documentation~/Architecture.md)**: Learn Strada's design principles
-- **[API Reference](Documentation~/API.md)**: Complete API documentation
-- **[Tutorials](Documentation~/Tutorials/)**: Step-by-step learning path
-- **[Best Practices](Documentation~/BestPractices.md)**: SOLID patterns and optimization
-- **[Examples](Documentation~/Examples/)**: Sample projects and use cases
-
-## Performance Targets
-
-| Metric | Target | Status |
-|--------|--------|--------|
-| DI Resolution (10k, Mono) | <9ms | 🔴 In Progress |
-| DI Resolution (10k, IL2CPP) | <0.9ms | 🔴 In Progress |
-| ECS Performance | DOTS -5% | 🔴 In Progress |
-| Per-Frame Allocation | 0 bytes | 🔴 In Progress |
-| Test Coverage | 95%+ | 🔴 In Progress |
-
-## Community
-
-- **Discord**: [Join our community](https://discord.gg/strada-framework)
-- **Forum**: [Unity Forum Thread](https://forum.unity.com/threads/strada-framework./)
-- **GitHub**: [Report issues](https://github.com/strada-framework/strada-core/issues)
-- **Twitter**: [@StradaFramework](https://twitter.com/StradaFramework)
-
-## Contributing
-
-We welcome contributions! Please read our [Contributing Guide](CONTRIBUTING.md) before submitting PRs.
-
-### Development Setup
-1. Clone repository
-2. Open in Unity 6000.0+
-3. Run tests: Unity Test Runner > Run All
-4. Submit PR with tests
-
-## License
-
-MIT License - see [LICENSE.md](LICENSE.md) for details.
-
-## Credits
-
-Inspired by the best:
-- **VContainer** (Performance + DX)
-- **Reflex** (Benchmark leadership)
-- **Unity DOTS** (ECS architecture)
-- **Svelto ECS** (Group patterns)
-- **Photon Quantum** (ScriptableObject patterns)
-
-Built to be better than all of them combined.
+**Requirements:**
+- Unity 6000.0+ (Unity 6)
+- .NET Standard 2.1
 
 ---
 
-**Made with ❤️ by the Strada Framework Team**
+## Quick Start
 
-*"The best architecture is the one you don't have to think about."*
+### Dependency Injection
+
+```csharp
+using Strada.Core.DI;
+
+// 1. Create container
+var builder = new ContainerBuilder();
+
+// 2. Register services
+builder.Register<IPlayerService, PlayerService>(Lifetime.Singleton);
+builder.Register<IInputService, InputService>(Lifetime.Singleton);
+builder.Register<EnemyController>(Lifetime.Transient);
+
+// 3. Build and resolve
+using var container = builder.Build();
+var player = container.Resolve<IPlayerService>();
+```
+
+### ECS System
+
+```csharp
+using Strada.Core.ECS;
+using Strada.Core.ECS.Systems;
+
+// Define components (must be unmanaged structs)
+public struct Position : IComponent { public float X, Y, Z; }
+public struct Velocity : IComponent { public float X, Y, Z; }
+
+// Create system
+public class MovementSystem : SystemBase<Position, Velocity>
+{
+    protected override void OnUpdateEntity(int entity, ref Position pos, ref Velocity vel, float dt)
+    {
+        pos.X += vel.X * dt;
+        pos.Y += vel.Y * dt;
+        pos.Z += vel.Z * dt;
+    }
+}
+```
+
+### Messaging
+
+```csharp
+using Strada.Core.Communication;
+
+// Define messages as structs
+public struct PlayerDamaged { public int EntityId; public int Damage; }
+public struct SpawnEnemy { public float X, Y; }
+
+// Setup bus
+var bus = new StradaBus();
+
+// Subscribe to events
+bus.Subscribe<PlayerDamaged>(e => Debug.Log($"Player took {e.Damage} damage"));
+
+// Publish events (zero allocation)
+bus.Publish(new PlayerDamaged { EntityId = 1, Damage = 10 });
+
+// Register command handlers
+bus.RegisterCommandHandler<SpawnEnemy>(cmd => SpawnEnemyAt(cmd.X, cmd.Y));
+bus.Send(new SpawnEnemy { X = 10, Y = 20 });
+```
+
+### Reactive Properties
+
+```csharp
+using Strada.Core.Bridge;
+
+// Create reactive property
+var health = new ReactiveProperty<int>(100);
+
+// Subscribe to changes
+health.Subscribe(value => healthBar.SetValue(value));
+
+// Changes automatically notify subscribers
+health.Value = 75; // healthBar updates automatically
+```
+
+---
+
+## Performance
+
+**Honest benchmarks** measured on Apple Silicon (Unity 6, Mono):
+
+### DI Container
+
+| Operation | Time | Notes |
+|-----------|------|-------|
+| Simple Transient | **0.11μs** | Single class, no dependencies |
+| 4-Level Deep Chain | **0.27μs** | A→B→C→D dependency chain |
+| Wide Service (5 deps) | **0.42μs** | Class with 5 injected dependencies |
+| Singleton Lookup | **61ns** | Already-created singleton |
+| Scoped Lookup | **21ns** | Within existing scope |
+| Container Build (100 types) | **0.05ms** | ~0.5μs per registration |
+| **vs Manual `new()`** | **1.56x** | Competitive with best Unity DI |
+
+### ECS
+
+| Operation | Time | Notes |
+|-----------|------|-------|
+| Entity Creation | **54ns** | Bare entity |
+| Entity + 3 Components | **374ns** | Full entity setup |
+| Single Component Query | **6.6ns/entity** | 100k entities |
+| Two Component Query | **18ns/entity** | 100k entities |
+| Three Component Query | **28ns/entity** | 100k entities |
+| GetComponent | **67ns** | Random access |
+| Simulation (100k, 10 frames) | **1.62ms/frame** | Position += Velocity |
+| **Parallel Job Speedup** | **17x** | vs sequential ForEach |
+
+### Memory
+
+| Metric | Value |
+|--------|-------|
+| Memory per Entity (2 components) | 56 bytes |
+| GC Allocation (Singleton resolve) | 0 bytes |
+| GC Allocation (Scoped resolve) | 0 bytes |
+
+### Comparison
+
+| Framework | Resolution Speed | vs Manual |
+|-----------|------------------|-----------|
+| **Strada** | 0.11-0.27μs | **1.56x** |
+| VContainer | ~0.2-0.3μs | ~2x |
+| Reflex | ~0.5-1.0μs | ~3-5x |
+| Zenject | ~2-5μs | ~20-50x |
+
+---
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [DI Container](Documentation~/DI.md) | Dependency injection, lifetimes, scopes |
+| [ECS System](Documentation~/ECS.md) | Entities, components, queries, systems |
+| [Messaging](Documentation~/Messaging.md) | StradaBus, commands, events, queries |
+| [Bridge](Documentation~/Bridge.md) | Reactive properties, bindings |
+| [Pooling](Documentation~/Pooling.md) | Object pools, lifecycle hooks |
+| [StateMachine](Documentation~/StateMachine.md) | FSM with transitions |
+| [Benchmarks](Documentation~/Benchmarks.md) | Full performance data |
+
+---
+
+## Architecture
+
+```
+Packages/com.strada.core/
+├── Runtime/
+│   ├── DI/                    # Dependency Injection
+│   │   ├── ContainerBuilder.cs
+│   │   ├── FastContainer.cs
+│   │   ├── FastContainerScope.cs
+│   │   └── Lifetime.cs
+│   ├── ECS/                   # Entity Component System
+│   │   ├── Core/EntityManager.cs
+│   │   ├── Storage/SparseSet.cs
+│   │   ├── Query/QueryBuilder.cs
+│   │   ├── Systems/SystemBase.cs
+│   │   └── Jobs/ParallelComponentJob.cs
+│   ├── Communication/         # Messaging
+│   │   └── StradaBus.cs
+│   ├── Commands/              # Command Pattern
+│   │   └── CommandBus.cs
+│   ├── Bridge/                # Reactive Bindings
+│   │   ├── ReactiveProperty.cs
+│   │   └── ComputedProperty.cs
+│   ├── Pooling/               # Object Pooling
+│   │   └── ObjectPool.cs
+│   └── StateMachine/          # FSM
+│       └── StateMachine.cs
+├── Editor/                    # Editor Tools
+└── Tests/                     # Test Suite
+    ├── Runtime/               # Functional Tests (269)
+    └── Performance/           # Benchmarks (83)
+```
+
+---
+
+## API Reference
+
+### ContainerBuilder
+
+```csharp
+// Register interface → implementation
+builder.Register<IService, ServiceImpl>(Lifetime.Singleton);
+
+// Register concrete type
+builder.Register<MyService>(Lifetime.Transient);
+
+// Register factory
+builder.RegisterFactory<IService>(c => new ServiceImpl(c.Resolve<IDep>()));
+
+// Register instance
+builder.RegisterInstance<IConfig>(configInstance);
+
+// Build container
+IContainer container = builder.Build();
+```
+
+### IContainer
+
+```csharp
+T Resolve<T>() where T : class;
+object Resolve(Type type);
+bool TryResolve<T>(out T instance) where T : class;
+bool IsRegistered<T>() where T : class;
+IContainerScope CreateScope();
+```
+
+### EntityManager
+
+```csharp
+Entity CreateEntity();
+void DestroyEntity(Entity entity);
+bool Exists(Entity entity);
+
+void AddComponent<T>(Entity entity, T component) where T : unmanaged, IComponent;
+void RemoveComponent<T>(Entity entity) where T : unmanaged, IComponent;
+bool HasComponent<T>(Entity entity) where T : unmanaged, IComponent;
+T GetComponent<T>(Entity entity) where T : unmanaged, IComponent;
+void SetComponent<T>(Entity entity, T component) where T : unmanaged, IComponent;
+```
+
+### StradaBus
+
+```csharp
+// Events (pub/sub)
+void Subscribe<TEvent>(Action<TEvent> handler) where TEvent : struct;
+void Unsubscribe<TEvent>(Action<TEvent> handler) where TEvent : struct;
+void Publish<TEvent>(TEvent evt) where TEvent : struct;
+
+// Commands (request/response)
+void RegisterCommandHandler<TCommand>(Action<TCommand> handler) where TCommand : struct;
+void Send<TCommand>(TCommand command) where TCommand : struct;
+
+// Queries (request/response with return)
+void RegisterQueryHandler<TQuery, TResult>(Func<TQuery, TResult> handler);
+TResult Query<TQuery, TResult>(TQuery query) where TQuery : struct, IQuery<TResult>;
+```
+
+### ReactiveProperty
+
+```csharp
+var prop = new ReactiveProperty<int>(initialValue);
+
+prop.Value;                          // Get current value
+prop.Value = newValue;               // Set and notify
+prop.SetWithoutNotify(value);        // Set without notification
+prop.Subscribe(handler);             // Subscribe to changes
+prop.SubscribeAndInvoke(handler);    // Subscribe and call immediately
+prop.Unsubscribe(handler);           // Remove subscription
+```
+
+### ObjectPool
+
+```csharp
+var pool = new ObjectPool<Enemy>(
+    factory: () => new Enemy(),
+    onSpawn: e => e.Reset(),
+    onDespawn: e => e.Cleanup(),
+    initialSize: 10,
+    maxSize: 100
+);
+
+Enemy enemy = pool.Spawn();
+pool.Despawn(enemy);
+pool.Prewarm(20);
+pool.Clear();
+```
+
+### StateMachine
+
+```csharp
+var fsm = new StateMachine<IState>();
+
+fsm.AddState(new IdleState());
+fsm.AddState(new WalkState());
+fsm.AddState(new AttackState());
+
+fsm.AddTransition<IdleState, WalkState>(() => input.IsMoving);
+fsm.AddTransition<WalkState, IdleState>(() => !input.IsMoving);
+fsm.AddAnyTransition<AttackState>(() => input.IsAttacking);
+
+fsm.Start<IdleState>();
+fsm.Update(deltaTime);
+```
+
+---
+
+## Testing
+
+```bash
+# Run all tests (Unity must be closed)
+./run_tests.sh
+
+# Run functional tests only
+UNITY_PATH="/path/to/Unity" PROJECT_PATH="/path/to/project"
+"$UNITY_PATH" -batchmode -projectPath "$PROJECT_PATH" \
+  -runTests -testPlatform playmode \
+  -testCategory "!Performance"
+
+# Run benchmarks only
+"$UNITY_PATH" -batchmode -projectPath "$PROJECT_PATH" \
+  -runTests -testPlatform playmode \
+  -testCategory "Performance"
+```
+
+**Test Coverage:**
+- 269 functional tests
+- 83 performance benchmarks
+- All tests passing
+
+---
+
+## License
+
+Proprietary - All rights reserved
+
+---
+
+## Contributing
+
+This is a private framework. For bug reports or feature requests, contact the maintainer.
+
+---
+
+*Built for Unity 6 with performance and clean architecture in mind.*

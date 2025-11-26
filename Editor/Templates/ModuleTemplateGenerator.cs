@@ -75,16 +75,13 @@ namespace Strada.Core.Editor.Templates
         private static void GenerateModuleInstaller(string basePath, string prefix)
         {
             var code = $@"using Strada.Core.DI;
-using Strada.Core.Module;
-using Strada.Core.Editor.CodeGen;
+using Strada.Core.Modules;
 
 namespace {prefix}
 {{
     [ModulePriority(0)]
-    public class {prefix}Module : IModule
+    public class {prefix}ModuleInstaller : IModuleInstaller
     {{
-        public string Name => ""{prefix}"";
-
         public void Install(IContainerBuilder builder)
         {{
             // Register services
@@ -93,7 +90,7 @@ namespace {prefix}
 
         public void Initialize(IContainer container)
         {{
-            // Initialize module
+            // Initialize module after container is built
         }}
 
         public void Shutdown()
@@ -103,7 +100,7 @@ namespace {prefix}
     }}
 }}
 ";
-            File.WriteAllText(Path.Combine(basePath, $"{prefix}Module.cs"), code);
+            File.WriteAllText(Path.Combine(basePath, $"{prefix}ModuleInstaller.cs"), code);
         }
 
         private static void GenerateSampleController(string basePath, string prefix)

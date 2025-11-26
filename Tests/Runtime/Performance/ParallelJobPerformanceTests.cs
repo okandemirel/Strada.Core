@@ -10,12 +10,12 @@ using Unity.Jobs;
 namespace Strada.Core.Tests.Performance
 {
     [BurstCompile]
-    public struct MoveJob : IJobComponent<Transform, Velocity>
+    public struct MoveJob : IJobComponent<Position, Velocity>
     {
         public float DeltaTime;
 
         [BurstCompile]
-        public void Execute(int entity, ref Transform t, ref Velocity v)
+        public void Execute(int entity, ref Position t, ref Velocity v)
         {
             t.X += v.X * DeltaTime;
             t.Y += v.Y * DeltaTime;
@@ -37,12 +37,12 @@ namespace Strada.Core.Tests.Performance
     }
 
     [BurstCompile]
-    public struct ComplexJob : IJobComponent<Transform, Velocity, Health>
+    public struct ComplexJob : IJobComponent<Position, Velocity, Health>
     {
         public float DeltaTime;
 
         [BurstCompile]
-        public void Execute(int entity, ref Transform t, ref Velocity v, ref Health h)
+        public void Execute(int entity, ref Position t, ref Velocity v, ref Health h)
         {
             t.X += v.X * DeltaTime;
             t.Y += v.Y * DeltaTime;
@@ -79,19 +79,19 @@ namespace Strada.Core.Tests.Performance
             for (int i = 0; i < count; i++)
             {
                 var entity = _entityManager.CreateEntity();
-                _entityManager.AddComponent(entity, new Transform { X = i, Y = i, Z = i });
+                _entityManager.AddComponent(entity, new Position { X = i, Y = i, Z = i });
                 _entityManager.AddComponent(entity, new Velocity { X = 1, Y = 2, Z = 3 });
             }
 
             var job = new MoveJob { DeltaTime = 0.016f };
 
-            var warmup = _entityManager.ScheduleParallel<MoveJob, Transform, Velocity>(job);
+            var warmup = _entityManager.ScheduleParallel<MoveJob, Position, Velocity>(job);
             warmup.Complete();
 
             var sw = Stopwatch.StartNew();
             for (int frame = 0; frame < 10; frame++)
             {
-                var handle = _entityManager.ScheduleParallel<MoveJob, Transform, Velocity>(job);
+                var handle = _entityManager.ScheduleParallel<MoveJob, Position, Velocity>(job);
                 handle.Complete();
             }
             sw.Stop();
@@ -111,20 +111,20 @@ namespace Strada.Core.Tests.Performance
             for (int i = 0; i < count; i++)
             {
                 var entity = _entityManager.CreateEntity();
-                _entityManager.AddComponent(entity, new Transform { X = i, Y = i, Z = i });
+                _entityManager.AddComponent(entity, new Position { X = i, Y = i, Z = i });
                 _entityManager.AddComponent(entity, new Velocity { X = 1, Y = 2, Z = 3 });
                 _entityManager.AddComponent(entity, new Health { Current = 100, Max = 100 });
             }
 
             var job = new ComplexJob { DeltaTime = 0.016f };
 
-            var warmup = _entityManager.ScheduleParallel<ComplexJob, Transform, Velocity, Health>(job);
+            var warmup = _entityManager.ScheduleParallel<ComplexJob, Position, Velocity, Health>(job);
             warmup.Complete();
 
             var sw = Stopwatch.StartNew();
             for (int frame = 0; frame < 10; frame++)
             {
-                var handle = _entityManager.ScheduleParallel<ComplexJob, Transform, Velocity, Health>(job);
+                var handle = _entityManager.ScheduleParallel<ComplexJob, Position, Velocity, Health>(job);
                 handle.Complete();
             }
             sw.Stop();
@@ -145,14 +145,14 @@ namespace Strada.Core.Tests.Performance
             for (int i = 0; i < count; i++)
             {
                 var entity = _entityManager.CreateEntity();
-                _entityManager.AddComponent(entity, new Transform { X = i, Y = i, Z = i });
+                _entityManager.AddComponent(entity, new Position { X = i, Y = i, Z = i });
                 _entityManager.AddComponent(entity, new Velocity { X = 1, Y = 2, Z = 3 });
             }
 
             var swSequential = Stopwatch.StartNew();
             for (int frame = 0; frame < frames; frame++)
             {
-                _entityManager.ForEach<Transform, Velocity>((int e, ref Transform t, ref Velocity v) =>
+                _entityManager.ForEach<Position, Velocity>((int e, ref Position t, ref Velocity v) =>
                 {
                     t.X += v.X * 0.016f;
                     t.Y += v.Y * 0.016f;
@@ -163,13 +163,13 @@ namespace Strada.Core.Tests.Performance
 
             var job = new MoveJob { DeltaTime = 0.016f };
 
-            var warmup = _entityManager.ScheduleParallel<MoveJob, Transform, Velocity>(job);
+            var warmup = _entityManager.ScheduleParallel<MoveJob, Position, Velocity>(job);
             warmup.Complete();
 
             var swParallel = Stopwatch.StartNew();
             for (int frame = 0; frame < frames; frame++)
             {
-                _entityManager.RunParallel<MoveJob, Transform, Velocity>(job);
+                _entityManager.RunParallel<MoveJob, Position, Velocity>(job);
             }
             swParallel.Stop();
 

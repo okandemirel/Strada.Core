@@ -1,25 +1,37 @@
 using System;
-using Strada.Core.Signals;
+using Strada.Core.Communication;
 
 namespace Strada.Core.ECS
 {
     public sealed class World : IDisposable
     {
+        private static World _current;
+
         private readonly EntityManager _entities;
         private readonly SystemScheduler _scheduler;
-        private readonly SignalBus _signals;
+        private readonly StradaBus _bus;
         private bool _initialized;
         private bool _disposed;
 
+        /// <summary>
+        /// Gets or sets the current active World instance.
+        /// Used by editor tools and debugging utilities.
+        /// </summary>
+        public static World Current
+        {
+            get => _current;
+            set => _current = value;
+        }
+
         public EntityManager Entities => _entities;
-        public SignalBus Signals => _signals;
+        public StradaBus Bus => _bus;
         public bool IsInitialized => _initialized;
 
-        internal World(EntityManager entities, SystemScheduler scheduler, SignalBus signals)
+        internal World(EntityManager entities, SystemScheduler scheduler, StradaBus bus)
         {
             _entities = entities;
             _scheduler = scheduler;
-            _signals = signals;
+            _bus = bus;
         }
 
         public void Initialize()
@@ -68,9 +80,12 @@ namespace Strada.Core.ECS
             if (_disposed) return;
             _disposed = true;
 
+            if (_current == this)
+                _current = null;
+
             _scheduler.Dispose();
             _entities.Dispose();
-            _signals.Dispose();
+            _bus?.Dispose();
         }
     }
 }

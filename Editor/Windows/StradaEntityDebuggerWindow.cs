@@ -3,7 +3,6 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using Strada.Core.ECS;
-using StradaWorld = Strada.Core.Core.World;
 
 namespace Strada.Core.Editor.Windows
 {
@@ -212,7 +211,7 @@ namespace Strada.Core.Editor.Windows
 
         private EntityManager GetActiveEntityManager()
         {
-            return StradaWorld.Current?.EntityManager;
+            return World.Current?.Entities;
         }
 
         private void OnInspectorUpdate()

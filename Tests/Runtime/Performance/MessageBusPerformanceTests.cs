@@ -6,14 +6,14 @@ namespace Strada.Core.Tests.Performance
 {
     [TestFixture]
     [Category("Performance")]
-    public class MessageBusPerformanceTests
+    public class StradaBusPerformanceTests
     {
-        private MessageBus _bus;
+        private StradaBus _bus;
 
         [SetUp]
         public void SetUp()
         {
-            _bus = new MessageBus();
+            _bus = new StradaBus();
         }
 
         [TearDown]
@@ -36,7 +36,7 @@ namespace Strada.Core.Tests.Performance
             }
             sw.Stop();
 
-            UnityEngine.Debug.Log($"[MessageBus] 100k commands: {sw.ElapsedMilliseconds}ms ({sw.ElapsedTicks * 1000.0 / 100_000 / Stopwatch.Frequency * 1_000_000:F0}ns/dispatch)");
+            UnityEngine.Debug.Log($"[StradaBus] 100k commands: {sw.ElapsedMilliseconds}ms ({sw.ElapsedTicks * 1000.0 / 100_000 / Stopwatch.Frequency * 1_000_000:F0}ns/dispatch)");
 
             Assert.AreEqual(100_000, sum);
             Assert.Less(sw.ElapsedMilliseconds, 50, "100k commands should complete in <50ms");
@@ -56,7 +56,7 @@ namespace Strada.Core.Tests.Performance
             }
             sw.Stop();
 
-            UnityEngine.Debug.Log($"[MessageBus] 100k queries: {sw.ElapsedMilliseconds}ms ({sw.ElapsedTicks * 1000.0 / 100_000 / Stopwatch.Frequency * 1_000_000:F0}ns/dispatch)");
+            UnityEngine.Debug.Log($"[StradaBus] 100k queries: {sw.ElapsedMilliseconds}ms ({sw.ElapsedTicks * 1000.0 / 100_000 / Stopwatch.Frequency * 1_000_000:F0}ns/dispatch)");
 
             Assert.AreEqual(200_000, total);
             Assert.Less(sw.ElapsedMilliseconds, 50, "100k queries should complete in <50ms");
@@ -76,7 +76,7 @@ namespace Strada.Core.Tests.Performance
             }
             sw.Stop();
 
-            UnityEngine.Debug.Log($"[MessageBus] 100k events (1 sub): {sw.ElapsedMilliseconds}ms ({sw.ElapsedTicks * 1000.0 / 100_000 / Stopwatch.Frequency * 1_000_000:F0}ns/dispatch)");
+            UnityEngine.Debug.Log($"[StradaBus] 100k events (1 sub): {sw.ElapsedMilliseconds}ms ({sw.ElapsedTicks * 1000.0 / 100_000 / Stopwatch.Frequency * 1_000_000:F0}ns/dispatch)");
 
             Assert.AreEqual(100_000, count);
             Assert.Less(sw.ElapsedMilliseconds, 50, "100k events should complete in <50ms");
@@ -97,7 +97,7 @@ namespace Strada.Core.Tests.Performance
             }
             sw.Stop();
 
-            UnityEngine.Debug.Log($"[MessageBus] 100k events (10 subs): {sw.ElapsedMilliseconds}ms ({sw.ElapsedTicks * 1000.0 / 100_000 / Stopwatch.Frequency * 1_000_000:F0}ns/dispatch)");
+            UnityEngine.Debug.Log($"[StradaBus] 100k events (10 subs): {sw.ElapsedMilliseconds}ms ({sw.ElapsedTicks * 1000.0 / 100_000 / Stopwatch.Frequency * 1_000_000:F0}ns/dispatch)");
 
             Assert.AreEqual(1_000_000, count);
             Assert.Less(sw.ElapsedMilliseconds, 200, "100k events with 10 subs should complete in <200ms");
@@ -109,7 +109,7 @@ namespace Strada.Core.Tests.Performance
             var sw = Stopwatch.StartNew();
             for (int i = 0; i < 1000; i++)
             {
-                var localBus = new MessageBus();
+                var localBus = new StradaBus();
                 localBus.RegisterCommandHandler<BenchmarkCommand>(cmd => { });
                 localBus.RegisterQueryHandler<BenchmarkQuery, int>(q => q.Input);
                 localBus.Subscribe<BenchmarkEvent>(evt => { });
@@ -117,7 +117,7 @@ namespace Strada.Core.Tests.Performance
             }
             sw.Stop();
 
-            UnityEngine.Debug.Log($"[MessageBus] 1000 full registrations: {sw.ElapsedMilliseconds}ms");
+            UnityEngine.Debug.Log($"[StradaBus] 1000 full registrations: {sw.ElapsedMilliseconds}ms");
             Assert.Less(sw.ElapsedMilliseconds, 100, "1000 registrations should complete in <100ms");
         }
 

@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using Strada.Core.Module;
+using Strada.Core.Modules;
 using UnityEditor;
 using UnityEngine;
 
@@ -21,7 +21,7 @@ namespace Strada.Core.Editor.CodeGen
             var modules = FindAllModules();
             if (modules.Count == 0)
             {
-                Debug.Log("[Strada] No IModule implementations found.");
+                Debug.Log("[Strada] No IModuleInstaller implementations found.");
                 return;
             }
 
@@ -37,9 +37,9 @@ namespace Strada.Core.Editor.CodeGen
             Debug.Log($"[Strada] Generated module initializer with {modules.Count} modules at {path}");
         }
 
-        private static List<ModuleInfo> FindAllModules()
+        private static List<ModuleTypeInfo> FindAllModules()
         {
-            var result = new List<ModuleInfo>();
+            var result = new List<ModuleTypeInfo>();
 
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
@@ -53,13 +53,16 @@ namespace Strada.Core.Editor.CodeGen
                         if (type.IsAbstract || type.IsInterface)
                             continue;
 
-                        if (!typeof(IModule).IsAssignableFrom(type))
+                        if (!typeof(IModuleInstaller).IsAssignableFrom(type))
                             continue;
 
-                        var attr = type.GetCustomAttribute<ModulePriorityAttribute>();
-                        int priority = attr?.Priority ?? 0;
-                        string[] dependencies = attr?.Dependencies ?? Array.Empty<string>();
-                        result.Add(new ModuleInfo(type, priority, dependencies));
+                        var priorityAttr = type.GetCustomAttribute<ModulePriorityAttribute>();
+                        int priority = priorityAttr?.Priority ?? 0;
+
+                        var depsAttr = type.GetCustomAttribute<ModuleDependsOnAttribute>();
+                        Type[] dependencies = depsAttr?.Dependencies ?? Array.Empty<Type>();
+
+                        result.Add(new ModuleTypeInfo(type, priority, dependencies));
                     }
                 }
                 catch { }
@@ -68,7 +71,7 @@ namespace Strada.Core.Editor.CodeGen
             return result.OrderBy(x => x.Priority).ToList();
         }
 
-        private static string GenerateInitializerCode(List<ModuleInfo> modules)
+        private static string GenerateInitializerCode(List<ModuleTypeInfo> modules)
         {
             var sb = new StringBuilder();
 
@@ -77,7 +80,6 @@ namespace Strada.Core.Editor.CodeGen
             sb.AppendLine();
             sb.AppendLine("using System;");
             sb.AppendLine("using System.Collections.Generic;");
-            sb.AppendLine("using Strada.Core.Module;");
             sb.AppendLine("using Strada.Core.Modules;");
             sb.AppendLine("using Strada.Core.DI;");
             sb.AppendLine();
@@ -96,24 +98,20 @@ namespace Strada.Core.Editor.CodeGen
 
             sb.AppendLine("        };");
             sb.AppendLine();
-            sb.AppendLine("        public static void RegisterAll(ModuleRegistry registry, IContainer container)");
+            sb.AppendLine("        public static void RegisterAll(ModuleRegistry registry)");
             sb.AppendLine("        {");
 
             foreach (var m in modules)
             {
                 var typeName = GetFullTypeName(m.Type);
-                var depsArray = m.Dependencies.Length > 0
-                    ? $"new[] {{ {string.Join(", ", m.Dependencies.Select(d => $"\"{d}\""))} }}"
-                    : "Array.Empty<string>()";
-
-                sb.AppendLine($"            registry.Register(new {typeName}(), {m.Priority}, {depsArray});");
+                sb.AppendLine($"            registry.RegisterModule(new {typeName}(), {m.Priority});");
             }
 
             sb.AppendLine("        }");
             sb.AppendLine();
-            sb.AppendLine("        public static List<IModule> CreateAll()");
+            sb.AppendLine("        public static List<IModuleInstaller> CreateAll()");
             sb.AppendLine("        {");
-            sb.AppendLine("            return new List<IModule>");
+            sb.AppendLine("            return new List<IModuleInstaller>");
             sb.AppendLine("            {");
 
             foreach (var m in modules)
@@ -150,31 +148,18 @@ namespace Strada.Core.Editor.CodeGen
             return $"{baseName.Replace("+", ".")}<{argNames}>";
         }
 
-        private struct ModuleInfo
+        private struct ModuleTypeInfo
         {
             public Type Type;
             public int Priority;
-            public string[] Dependencies;
+            public Type[] Dependencies;
 
-            public ModuleInfo(Type type, int priority, string[] dependencies)
+            public ModuleTypeInfo(Type type, int priority, Type[] dependencies)
             {
                 Type = type;
                 Priority = priority;
                 Dependencies = dependencies;
             }
-        }
-    }
-
-    [AttributeUsage(AttributeTargets.Class)]
-    public class ModulePriorityAttribute : Attribute
-    {
-        public int Priority { get; }
-        public string[] Dependencies { get; }
-
-        public ModulePriorityAttribute(int priority = 0, params string[] dependencies)
-        {
-            Priority = priority;
-            Dependencies = dependencies;
         }
     }
 }

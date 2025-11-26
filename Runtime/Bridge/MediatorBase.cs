@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Strada.Core.Communication;
 using Strada.Core.DI;
 using Strada.Core.ECS;
-using Strada.Core.Signals;
 using UnityEngine;
 
 namespace Strada.Core.Bridge
@@ -17,7 +17,7 @@ namespace Strada.Core.Bridge
 
         protected IContainer Container { get; private set; }
         protected EntityManager EntityManager { get; private set; }
-        protected ZeroAllocEventBus EventBus { get; private set; }
+        protected StradaBus Bus { get; private set; }
 
         public void Initialize(IContainer container)
         {
@@ -26,8 +26,8 @@ namespace Strada.Core.Bridge
             Container = container;
             Container.TryResolve(out EntityManager em);
             EntityManager = em;
-            Container.TryResolve(out ZeroAllocEventBus eb);
-            EventBus = eb;
+            Container.TryResolve(out StradaBus bus);
+            Bus = bus;
 
             OnInitialize();
             _initialized = true;
@@ -37,16 +37,23 @@ namespace Strada.Core.Bridge
 
         protected virtual void OnDispose() { }
 
-        protected void Subscribe<T>(Signal<T> signal, Action<T> handler)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected void Subscribe<T>(Action<T> handler) where T : struct
         {
-            signal.AddListener(handler);
-            _unsubscribes.Add(() => signal.RemoveListener(handler));
+            Bus?.Subscribe(handler);
+            _unsubscribes.Add(() => Bus?.Unsubscribe(handler));
         }
 
-        protected void Subscribe<T>(Action<T> handler) where T : struct, IEventData
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected void Publish<T>(T evt) where T : struct
         {
-            EventBus?.Subscribe(handler);
-            _unsubscribes.Add(() => EventBus?.Unsubscribe(handler));
+            Bus?.Publish(evt);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected void Send<T>(T command) where T : struct
+        {
+            Bus?.Send(command);
         }
 
         protected void AddDisposable(IDisposable disposable)

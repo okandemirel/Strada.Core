@@ -4,7 +4,7 @@ using NUnit.Framework;
 using Strada.Core.Bridge;
 using Strada.Core.Communication;
 using Strada.Core.DI;
-using Strada.Core.Module;
+using Strada.Core.Modules;
 using Strada.Core.MVCS;
 
 namespace Strada.Core.Tests.Runtime.Performance
@@ -19,7 +19,7 @@ namespace Strada.Core.Tests.Runtime.Performance
         public void SetUp()
         {
             var builder = new ContainerBuilder();
-            builder.Register<ZeroAllocEventBus>(Lifetime.Singleton);
+            builder.Register<StradaBus>(Lifetime.Singleton);
             _container = builder.Build();
         }
 
@@ -121,63 +121,67 @@ namespace Strada.Core.Tests.Runtime.Performance
         }
 
         [Test]
-        public void Benchmark_ModuleScope_10k_Resolutions()
+        public void Benchmark_ContainerScope_10k_Resolutions()
         {
             const int iterations = 10000;
             const int warmup = 100;
 
-            var scope = new ModuleScope(_container);
-            scope.RegisterInstance(new LocalService());
+            var builder = new ContainerBuilder();
+            builder.Register<LocalService>(Lifetime.Singleton);
+            var scopedContainer = builder.Build();
 
             for (int i = 0; i < warmup; i++)
-                scope.Resolve<LocalService>();
+                scopedContainer.Resolve<LocalService>();
 
             var sw = Stopwatch.StartNew();
             for (int i = 0; i < iterations; i++)
             {
-                var svc = scope.Resolve<LocalService>();
+                var svc = scopedContainer.Resolve<LocalService>();
             }
             sw.Stop();
 
             double avgNanoseconds = sw.Elapsed.TotalMilliseconds * 1000000 / iterations;
 
-            UnityEngine.Debug.Log($"[MVCS BENCHMARK] ModuleScope Resolution ({iterations} resolutions):");
+            UnityEngine.Debug.Log($"[MVCS BENCHMARK] Container Resolution ({iterations} resolutions):");
             UnityEngine.Debug.Log($"  Total Time: {sw.ElapsedMilliseconds}ms");
             UnityEngine.Debug.Log($"  Avg: {avgNanoseconds:F0}ns per resolution");
 
-            scope.Dispose();
+            scopedContainer.Dispose();
 
-            Assert.Less(sw.ElapsedMilliseconds, 10, "ModuleScope resolution too slow");
+            Assert.Less(sw.ElapsedMilliseconds, 10, "Container resolution too slow");
         }
 
         [Test]
-        public void Benchmark_ModuleScope_NestedScopes()
+        public void Benchmark_ContainerScope_NestedScopes()
         {
             const int depth = 10;
             const int iterations = 10000;
 
-            IContainerScope current = new ModuleScope(_container);
+            var builder = new ContainerBuilder();
+            builder.Register<LocalService>(Lifetime.Scoped);
+            var rootContainer = builder.Build();
+
+            IContainerScope current = rootContainer.CreateScope();
             for (int d = 0; d < depth - 1; d++)
             {
                 current = current.CreateScope();
             }
 
-            ((ModuleScope)current).RegisterInstance(new LocalService());
-
             var sw = Stopwatch.StartNew();
             for (int i = 0; i < iterations; i++)
             {
-                var svc = ((ModuleScope)current).Resolve<LocalService>();
+                var svc = current.Resolve<LocalService>();
             }
             sw.Stop();
 
             double avgNanoseconds = sw.Elapsed.TotalMilliseconds * 1000000 / iterations;
 
-            UnityEngine.Debug.Log($"[MVCS BENCHMARK] Nested ModuleScope ({depth} levels, {iterations} resolutions):");
+            UnityEngine.Debug.Log($"[MVCS BENCHMARK] Nested Scope ({depth} levels, {iterations} resolutions):");
             UnityEngine.Debug.Log($"  Total Time: {sw.ElapsedMilliseconds}ms");
             UnityEngine.Debug.Log($"  Avg: {avgNanoseconds:F0}ns per resolution");
 
             ((IDisposable)current).Dispose();
+            rootContainer.Dispose();
 
             Assert.Less(sw.ElapsedMilliseconds, 20, "Nested scope resolution too slow");
         }
@@ -279,19 +283,18 @@ namespace Strada.Core.Tests.Runtime.Performance
         }
 
         [Test]
-        public void Benchmark_LifecycleModule_Transitions()
+        public void Benchmark_ModuleInstaller_Lifecycle()
         {
             const int iterations = 1000;
+            var builder = new ContainerBuilder();
 
             var sw = Stopwatch.StartNew();
             for (int i = 0; i < iterations; i++)
             {
-                var module = new BenchmarkModule();
-                module.PreInitialize(_container);
-                module.Initialize(_container);
-                module.PostInitialize(_container);
-                module.Shutdown();
-                module.Dispose();
+                var installer = new BenchmarkModuleInstaller();
+                installer.Install(builder);
+                installer.Initialize(_container);
+                installer.Shutdown();
             }
             sw.Stop();
 
@@ -336,9 +339,11 @@ namespace Strada.Core.Tests.Runtime.Performance
             }
         }
 
-        private class BenchmarkModule : LifecycleModule
+        private class BenchmarkModuleInstaller : IModuleInstaller
         {
-            public override string Name => "BenchmarkModule";
+            public void Install(IContainerBuilder builder) { }
+            public void Initialize(IContainer container) { }
+            public void Shutdown() { }
         }
     }
 }

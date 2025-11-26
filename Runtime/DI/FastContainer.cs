@@ -42,6 +42,7 @@ namespace Strada.Core.DI
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T Resolve<T>() where T : class
         {
+            if (_disposed) ThrowDisposed();
             var typeId = TypeId<T>.Id;
             if (typeId <= _maxTypeId)
             {

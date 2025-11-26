@@ -1,7 +1,7 @@
 using System;
+using Strada.Core.Communication;
 using Strada.Core.ECS;
 using Strada.Core.MVCS.Interfaces;
-using Strada.Core.Signals;
 
 namespace Strada.Core.Bridge
 {
@@ -12,7 +12,7 @@ namespace Strada.Core.Bridge
 
         public World World => _world;
         public EntityManager Entities => _world?.Entities;
-        public SignalBus Signals => _world?.Signals;
+        public StradaBus Bus => _world?.Bus;
         public bool AutoUpdate { get => _autoUpdate; set => _autoUpdate = value; }
 
         public WorldService() { }

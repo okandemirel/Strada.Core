@@ -4,18 +4,31 @@ using System.Threading;
 
 namespace Strada.Core.Communication
 {
-    public interface IMessageBus : IDisposable
+    public interface IQuery<TResult> { }
+
+    public interface IQueryHandler<TQuery, TResult> where TQuery : struct, IQuery<TResult>
     {
-        void Send<TCommand>(ref TCommand command) where TCommand : struct;
-        TResult Query<TQuery, TResult>(ref TQuery query) where TQuery : struct, IQuery<TResult>;
-        void Publish<TEvent>(ref TEvent evt) where TEvent : struct;
-        void RegisterCommandHandler<TCommand>(Action<TCommand> handler) where TCommand : struct;
-        void RegisterQueryHandler<TQuery, TResult>(IQueryHandler<TQuery, TResult> handler) where TQuery : struct, IQuery<TResult>;
-        void Subscribe<TEvent>(Action<TEvent> handler) where TEvent : struct;
-        void Unsubscribe<TEvent>(Action<TEvent> handler) where TEvent : struct;
+        TResult Handle(ref TQuery query);
     }
 
-    public sealed class MessageBus : IMessageBus
+    public interface IStradaBus : IDisposable
+    {
+        void Send<TCommand>(ref TCommand command) where TCommand : struct;
+        void Send<TCommand>(TCommand command) where TCommand : struct;
+        TResult Query<TQuery, TResult>(ref TQuery query) where TQuery : struct, IQuery<TResult>;
+        TResult Query<TQuery, TResult>(TQuery query) where TQuery : struct, IQuery<TResult>;
+        void Publish<TEvent>(ref TEvent evt) where TEvent : struct;
+        void Publish<TEvent>(TEvent evt) where TEvent : struct;
+        void RegisterCommandHandler<TCommand>(Action<TCommand> handler) where TCommand : struct;
+        void RegisterQueryHandler<TQuery, TResult>(IQueryHandler<TQuery, TResult> handler) where TQuery : struct, IQuery<TResult>;
+        void RegisterQueryHandler<TQuery, TResult>(Func<TQuery, TResult> handler) where TQuery : struct, IQuery<TResult>;
+        void Subscribe<TEvent>(Action<TEvent> handler) where TEvent : struct;
+        void Unsubscribe<TEvent>(Action<TEvent> handler) where TEvent : struct;
+        int GetSubscriberCount<TEvent>() where TEvent : struct;
+        void Clear();
+    }
+
+    public sealed class StradaBus : IStradaBus
     {
         private static int _nextTypeId;
         private object[] _commandHandlers = new object[64];
@@ -30,10 +43,12 @@ namespace Strada.Core.Communication
         public void Send<TCommand>(ref TCommand command) where TCommand : struct
         {
             var id = CommandTypeId<TCommand>.Id;
-            if (id > _maxCommandId || _commandHandlers[id] == null)
-                ThrowNoHandler<TCommand>("command");
-
-            ((Action<TCommand>)_commandHandlers[id])(command);
+            if (id <= _maxCommandId && _commandHandlers[id] != null)
+            {
+                ((Action<TCommand>)_commandHandlers[id])(command);
+                return;
+            }
+            ThrowNoHandler<TCommand>("command");
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -46,10 +61,11 @@ namespace Strada.Core.Communication
         public TResult Query<TQuery, TResult>(ref TQuery query) where TQuery : struct, IQuery<TResult>
         {
             var id = QueryTypeId<TQuery>.Id;
-            if (id > _maxQueryId || _queryHandlers[id] == null)
-                ThrowNoHandler<TQuery>("query");
+            if (id <= _maxQueryId && _queryHandlers[id] != null)
+                return ((IQueryHandler<TQuery, TResult>)_queryHandlers[id]).Handle(ref query);
 
-            return ((IQueryHandler<TQuery, TResult>)_queryHandlers[id]).Handle(ref query);
+            ThrowNoHandler<TQuery>("query");
+            return default;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -65,9 +81,7 @@ namespace Strada.Core.Communication
             if (id > _maxEventId) return;
 
             var channel = _eventChannels[id] as EventChannel<TEvent>;
-            if (channel == null) return;
-
-            channel.Publish(ref evt);
+            channel?.Publish(ref evt);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -120,17 +134,33 @@ namespace Strada.Core.Communication
             var id = EventTypeId<TEvent>.Id;
             if (id > _maxEventId) return;
 
+            (_eventChannels[id] as EventChannel<TEvent>)?.Unsubscribe(handler);
+        }
+
+        public int GetSubscriberCount<TEvent>() where TEvent : struct
+        {
+            var id = EventTypeId<TEvent>.Id;
+            if (id > _maxEventId) return 0;
+
             var channel = _eventChannels[id] as EventChannel<TEvent>;
-            channel?.Unsubscribe(handler);
+            return channel?.Count ?? 0;
+        }
+
+        public void Clear()
+        {
+            Array.Clear(_commandHandlers, 0, _commandHandlers.Length);
+            Array.Clear(_queryHandlers, 0, _queryHandlers.Length);
+            Array.Clear(_eventChannels, 0, _eventChannels.Length);
+            _maxCommandId = 0;
+            _maxQueryId = 0;
+            _maxEventId = 0;
         }
 
         public void Dispose()
         {
             if (_disposed) return;
             _disposed = true;
-            Array.Clear(_commandHandlers, 0, _commandHandlers.Length);
-            Array.Clear(_queryHandlers, 0, _queryHandlers.Length);
-            Array.Clear(_eventChannels, 0, _eventChannels.Length);
+            Clear();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -168,6 +198,8 @@ namespace Strada.Core.Communication
             private Action<T>[] _handlers = new Action<T>[8];
             private int _count;
 
+            public int Count => _count;
+
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Publish(ref T evt)
             {
@@ -194,10 +226,10 @@ namespace Strada.Core.Communication
                 {
                     if (!ReferenceEquals(_handlers[i], handler)) continue;
 
-                    for (int j = i; j < _count - 1; j++)
-                        _handlers[j] = _handlers[j + 1];
-
-                    _handlers[--_count] = null;
+                    _count--;
+                    if (i < _count)
+                        _handlers[i] = _handlers[_count];
+                    _handlers[_count] = null;
                     return;
                 }
             }

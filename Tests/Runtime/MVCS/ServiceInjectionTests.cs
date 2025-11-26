@@ -14,7 +14,7 @@ namespace Strada.Core.Tests.Runtime.MVCS
         public void SetUp()
         {
             var builder = new ContainerBuilder();
-            builder.Register<ZeroAllocEventBus>(Lifetime.Singleton);
+            builder.Register<StradaBus>(Lifetime.Singleton);
             _container = builder.Build();
         }
 
@@ -73,12 +73,12 @@ namespace Strada.Core.Tests.Runtime.MVCS
         }
 
         [Test]
-        public void Service_Inject_ResolvesEventBus()
+        public void Service_Inject_ResolvesBus()
         {
             var service = new TestService();
             InjectionProcessor.Inject(service, _container);
 
-            Assert.IsNotNull(service.InjectedEventBus);
+            Assert.IsNotNull(service.InjectedBus);
         }
 
         [Test]
@@ -113,7 +113,7 @@ namespace Strada.Core.Tests.Runtime.MVCS
             public int DisposeCount;
             public bool IsInit => IsInitialized;
             public IContainer InjectedContainer => Container;
-            public ZeroAllocEventBus InjectedEventBus => EventBus;
+            public StradaBus InjectedBus => Bus;
 
             protected override void OnInitialize()
             {

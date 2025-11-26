@@ -5,7 +5,6 @@ using UnityEditor;
 using UnityEngine;
 using Strada.Core.DI;
 using Strada.Core.ECS;
-using StradaWorld = Strada.Core.Core.World;
 
 namespace Strada.Core.Editor.Windows
 {
@@ -329,12 +328,17 @@ namespace Strada.Core.Editor.Windows
             _currentECSTime = MeasureECSUpdate();
             _currentMemoryMB = GC.GetTotalMemory(false) / (1024f * 1024f);
 
-            var em = StradaWorld.Current?.EntityManager;
+            var em = World.Current?.Entities;
             if (em != null)
             {
                 _entityCount = em.EntityCount;
                 var types = em.Store?.GetComponentTypes();
                 _componentTypeCount = types != null ? System.Linq.Enumerable.Count(types) : 0;
+            }
+            else
+            {
+                _entityCount = 0;
+                _componentTypeCount = 0;
             }
 
             AddSample(_frameTimeSamples, _currentFrameTime);
@@ -355,9 +359,7 @@ namespace Strada.Core.Editor.Windows
 
         private float MeasureECSUpdate()
         {
-            var em = StradaWorld.Current?.EntityManager;
-            if (em == null) return 0f;
-
+            // Placeholder measurement - users should provide real metrics
             return 0.1f + _entityCount * 0.00001f + UnityEngine.Random.Range(0f, 0.05f);
         }
 
