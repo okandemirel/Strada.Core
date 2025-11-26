@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 using Strada.Core.Commands;
 using Strada.Core.DI;
 
@@ -11,6 +12,19 @@ namespace Strada.Core.Communication
     public interface IQueryHandler<TQuery, TResult> where TQuery : struct, IQuery<TResult>
     {
         TResult Handle(ref TQuery query);
+    }
+
+    /// <summary>
+    /// Async query marker interface for queries that return results asynchronously.
+    /// </summary>
+    public interface IAsyncQuery<TResult> { }
+
+    /// <summary>
+    /// Async query handler using ValueTask for optimal performance.
+    /// </summary>
+    public interface IAsyncQueryHandler<TQuery, TResult> where TQuery : struct, IAsyncQuery<TResult>
+    {
+        ValueTask<TResult> HandleAsync(TQuery query, CancellationToken ct = default);
     }
 
     public interface IStradaBus : IDisposable
@@ -31,6 +45,15 @@ namespace Strada.Core.Communication
         void Unsubscribe<TEvent>(Action<TEvent> handler) where TEvent : struct;
         int GetSubscriberCount<TEvent>() where TEvent : struct;
         void Clear();
+
+        // Modern async/await support
+        ValueTask SendAsync<TCommand>(TCommand command, CancellationToken ct = default) where TCommand : struct;
+        void RegisterAsyncCommandHandler<TCommand>(IAsyncAwaitCommandHandler<TCommand> handler) where TCommand : struct;
+        void RegisterAsyncCommandHandler<TCommand>(Func<TCommand, CancellationToken, ValueTask> handler) where TCommand : struct;
+        ValueTask<TResult> QueryAsync<TQuery, TResult>(TQuery query, CancellationToken ct = default) where TQuery : struct, IAsyncQuery<TResult>;
+        void RegisterAsyncQueryHandler<TQuery, TResult>(IAsyncQueryHandler<TQuery, TResult> handler) where TQuery : struct, IAsyncQuery<TResult>;
+        void RegisterAsyncQueryHandler<TQuery, TResult>(Func<TQuery, CancellationToken, ValueTask<TResult>> handler) where TQuery : struct, IAsyncQuery<TResult>;
+        ValueTask ExecuteAsync(IAsyncAwaitCommand command, CancellationToken ct = default);
     }
 
     public sealed class StradaBus : IStradaBus

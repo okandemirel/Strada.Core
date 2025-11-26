@@ -5,10 +5,11 @@ using Strada.Core.MVCS.Interfaces;
 
 namespace Strada.Core.Bridge
 {
-    public class WorldService : IService, IDisposable
+    public class WorldService : IService, ILoopRunner, IDisposable
     {
         private World _world;
         private bool _autoUpdate = true;
+        private bool _registeredWithLoop;
 
         public World World => _world;
         public EntityManager Entities => _world?.Entities;
@@ -31,21 +32,46 @@ namespace Strada.Core.Bridge
         public void Initialize()
         {
             _world?.Initialize();
+            RegisterWithPlayerLoop();
         }
 
-        public void Update(float deltaTime)
+        public void RegisterWithPlayerLoop()
+        {
+            if (_registeredWithLoop) return;
+            _registeredWithLoop = true;
+
+            StradaPlayerLoop.RegisterUpdate(OnUpdate);
+            StradaPlayerLoop.RegisterLateUpdate(OnLateUpdate);
+            StradaPlayerLoop.RegisterFixedUpdate(OnFixedUpdate);
+        }
+
+        public void UnregisterFromPlayerLoop()
+        {
+            if (!_registeredWithLoop) return;
+            _registeredWithLoop = false;
+
+            StradaPlayerLoop.UnregisterUpdate(OnUpdate);
+            StradaPlayerLoop.UnregisterLateUpdate(OnLateUpdate);
+            StradaPlayerLoop.UnregisterFixedUpdate(OnFixedUpdate);
+        }
+
+        public void Update(float deltaTime) => OnUpdate(deltaTime);
+        public void LateUpdate(float deltaTime) => OnLateUpdate(deltaTime);
+        public void FixedUpdate(float fixedDeltaTime) => OnFixedUpdate(fixedDeltaTime);
+
+        public void OnUpdate(float deltaTime)
         {
             if (_autoUpdate)
                 _world?.Update(deltaTime);
         }
 
-        public void LateUpdate(float deltaTime)
+        public void OnLateUpdate(float deltaTime)
         {
             if (_autoUpdate)
                 _world?.LateUpdate(deltaTime);
         }
 
-        public void FixedUpdate(float fixedDeltaTime)
+        public void OnFixedUpdate(float fixedDeltaTime)
         {
             if (_autoUpdate)
                 _world?.FixedUpdate(fixedDeltaTime);
@@ -69,6 +95,7 @@ namespace Strada.Core.Bridge
 
         public void Dispose()
         {
+            UnregisterFromPlayerLoop();
             _world?.Dispose();
             _world = null;
         }

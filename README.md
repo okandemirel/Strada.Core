@@ -2,7 +2,7 @@
 
 **A high-performance Unity framework unifying MVCS architecture with ECS simulation**
 
-[![Tests](https://img.shields.io/badge/tests-373%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-324%20passing-brightgreen)]()
 [![Unity](https://img.shields.io/badge/Unity-6000.0%2B-blue)]()
 [![.NET](https://img.shields.io/badge/.NET-Standard%202.1-purple)]()
 
@@ -35,9 +35,10 @@ Strada combines enterprise-grade dependency injection with performance-critical 
 
 ### Entity Component System ([docs](Documentation~/ECS.md))
 - **SparseSet Storage**: Cache-friendly component iteration (6-28ns per entity)
-- **Query System**: `ForEach<T1, T2, T3>()` with up to 3 component types
+- **Query System**: `ForEach<T1...T16>()` - up to 8 hand-written, 9-16 source-generated
 - **Parallel Jobs**: Burst-compiled jobs with 17x speedup over sequential
 - **Entity Recycling**: Automatic index reuse with version tracking
+- **Source Generation**: Compile-time query generation for 9-16 components
 
 ### Messaging ([docs](Documentation~/Messaging.md))
 - **StradaBus**: Unified command/query/event bus with array-indexed dispatch (4ns/dispatch)
@@ -112,13 +113,25 @@ using var container = builder.Build();
 
 ```csharp
 using Strada.Core.ECS;
-using Strada.Core.ECS.Systems;
+using Strada.Core.ECS.Query;
 
 // Define components (must be unmanaged structs)
 public struct Position : IComponent { public float X, Y, Z; }
 public struct Velocity : IComponent { public float X, Y, Z; }
+public struct Health : IComponent { public int Current, Max; }
+public struct Damage : IComponent { public int Value; }
 
-// Create system
+// Query up to 8 components (hand-written, optimal performance)
+entityManager.ForEach<Position, Velocity, Health, Damage>(
+    (int entity, ref Position pos, ref Velocity vel, ref Health hp, ref Damage dmg) =>
+    {
+        pos.X += vel.X * deltaTime;
+    });
+
+// Query 9-16 components (source-generated)
+entityManager.ForEach<T1, T2, T3, T4, T5, T6, T7, T8, T9>(...);
+
+// Or use SystemBase for cleaner code
 public class MovementSystem : SystemBase<Position, Velocity>
 {
     protected override void OnUpdateEntity(int entity, ref Position pos, ref Velocity vel, float dt)
@@ -267,10 +280,13 @@ Packages/com.strada.core/
 │   │   └── ObjectPool.cs
 │   └── StateMachine/          # FSM
 │       └── StateMachine.cs
+├── SourceGeneration~/         # Roslyn Source Generators
+│   ├── StradaFactoryGenerator.cs   # DI factory generation
+│   └── EntityQueryGenerator.cs     # Query T9-T16 generation
 ├── Editor/                    # Editor Tools
 └── Tests/                     # Test Suite
-    ├── Runtime/               # Functional Tests (290)
-    └── Performance/           # Benchmarks (83)
+    ├── Runtime/               # Functional Tests (324)
+    └── Performance/           # Benchmarks (93)
 ```
 
 ---
@@ -409,9 +425,9 @@ UNITY_PATH="/path/to/Unity" PROJECT_PATH="/path/to/project"
 ```
 
 **Test Coverage:**
-- 290 functional tests
-- 83 performance benchmarks
-- All 373 tests passing
+- 324 functional tests
+- 93 performance benchmarks
+- All 417 tests passing (324 functional + 93 performance)
 
 ---
 

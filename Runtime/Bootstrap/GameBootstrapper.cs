@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using UnityEngine;
 using Strada.Core.DI;
 using Strada.Core.Modules;
+using Strada.Core;
 
 namespace Strada.Core.Bootstrap
 {
@@ -55,6 +56,7 @@ namespace Strada.Core.Bootstrap
                 _config = BootstrapConfig.CreateDefault();
             }
 
+            StradaPlayerLoop.Initialize();
             StartCoroutine(InitializeAsync());
         }
 
@@ -322,6 +324,8 @@ namespace Strada.Core.Bootstrap
 
             Container = null;
             _isInitialized = false;
+
+            StradaPlayerLoop.Shutdown();
 
             Log("=== Strada Framework Shutdown Complete ===");
         }

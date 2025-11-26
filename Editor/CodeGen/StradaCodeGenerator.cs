@@ -10,7 +10,7 @@ namespace Strada.Core.Editor.CodeGen
         {
             Debug.Log("[Strada] Starting code generation...");
 
-            FactoryGenerator.GenerateFactories();
+            // Factory generation is now handled by source generator (StradaFactoryGenerator)
             SystemRegistryGenerator.GenerateSystemRegistry();
             ModuleInitializerGenerator.GenerateModuleInitializer();
 

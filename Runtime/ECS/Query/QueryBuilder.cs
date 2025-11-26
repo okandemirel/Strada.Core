@@ -9,6 +9,9 @@ namespace Strada.Core.ECS.Query
 
         internal QueryBuilder(EntityManager manager) => _manager = manager;
 
+        // Internal accessor for source-generated query extensions
+        internal EntityManager Manager => _manager;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQuery<T1> Select<T1>() where T1 : unmanaged, IComponent
         {
@@ -36,6 +39,64 @@ namespace Strada.Core.ECS.Query
             var s2 = _manager.Store.GetOrCreateStorage<T2>();
             var s3 = _manager.Store.GetOrCreateStorage<T3>();
             return new EntityQuery<T1, T2, T3>(_manager, s1, s2, s3);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public EntityQuery<T1, T2, T3, T4> Select<T1, T2, T3, T4>()
+            where T1 : unmanaged, IComponent where T2 : unmanaged, IComponent
+            where T3 : unmanaged, IComponent where T4 : unmanaged, IComponent
+        {
+            return new EntityQuery<T1, T2, T3, T4>(_manager,
+                _manager.Store.GetOrCreateStorage<T1>(), _manager.Store.GetOrCreateStorage<T2>(),
+                _manager.Store.GetOrCreateStorage<T3>(), _manager.Store.GetOrCreateStorage<T4>());
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public EntityQuery<T1, T2, T3, T4, T5> Select<T1, T2, T3, T4, T5>()
+            where T1 : unmanaged, IComponent where T2 : unmanaged, IComponent where T3 : unmanaged, IComponent
+            where T4 : unmanaged, IComponent where T5 : unmanaged, IComponent
+        {
+            return new EntityQuery<T1, T2, T3, T4, T5>(_manager,
+                _manager.Store.GetOrCreateStorage<T1>(), _manager.Store.GetOrCreateStorage<T2>(),
+                _manager.Store.GetOrCreateStorage<T3>(), _manager.Store.GetOrCreateStorage<T4>(),
+                _manager.Store.GetOrCreateStorage<T5>());
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public EntityQuery<T1, T2, T3, T4, T5, T6> Select<T1, T2, T3, T4, T5, T6>()
+            where T1 : unmanaged, IComponent where T2 : unmanaged, IComponent where T3 : unmanaged, IComponent
+            where T4 : unmanaged, IComponent where T5 : unmanaged, IComponent where T6 : unmanaged, IComponent
+        {
+            return new EntityQuery<T1, T2, T3, T4, T5, T6>(_manager,
+                _manager.Store.GetOrCreateStorage<T1>(), _manager.Store.GetOrCreateStorage<T2>(),
+                _manager.Store.GetOrCreateStorage<T3>(), _manager.Store.GetOrCreateStorage<T4>(),
+                _manager.Store.GetOrCreateStorage<T5>(), _manager.Store.GetOrCreateStorage<T6>());
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public EntityQuery<T1, T2, T3, T4, T5, T6, T7> Select<T1, T2, T3, T4, T5, T6, T7>()
+            where T1 : unmanaged, IComponent where T2 : unmanaged, IComponent where T3 : unmanaged, IComponent
+            where T4 : unmanaged, IComponent where T5 : unmanaged, IComponent where T6 : unmanaged, IComponent
+            where T7 : unmanaged, IComponent
+        {
+            return new EntityQuery<T1, T2, T3, T4, T5, T6, T7>(_manager,
+                _manager.Store.GetOrCreateStorage<T1>(), _manager.Store.GetOrCreateStorage<T2>(),
+                _manager.Store.GetOrCreateStorage<T3>(), _manager.Store.GetOrCreateStorage<T4>(),
+                _manager.Store.GetOrCreateStorage<T5>(), _manager.Store.GetOrCreateStorage<T6>(),
+                _manager.Store.GetOrCreateStorage<T7>());
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public EntityQuery<T1, T2, T3, T4, T5, T6, T7, T8> Select<T1, T2, T3, T4, T5, T6, T7, T8>()
+            where T1 : unmanaged, IComponent where T2 : unmanaged, IComponent where T3 : unmanaged, IComponent
+            where T4 : unmanaged, IComponent where T5 : unmanaged, IComponent where T6 : unmanaged, IComponent
+            where T7 : unmanaged, IComponent where T8 : unmanaged, IComponent
+        {
+            return new EntityQuery<T1, T2, T3, T4, T5, T6, T7, T8>(_manager,
+                _manager.Store.GetOrCreateStorage<T1>(), _manager.Store.GetOrCreateStorage<T2>(),
+                _manager.Store.GetOrCreateStorage<T3>(), _manager.Store.GetOrCreateStorage<T4>(),
+                _manager.Store.GetOrCreateStorage<T5>(), _manager.Store.GetOrCreateStorage<T6>(),
+                _manager.Store.GetOrCreateStorage<T7>(), _manager.Store.GetOrCreateStorage<T8>());
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -106,5 +167,37 @@ namespace Strada.Core.ECS.Query
             where T2 : unmanaged, IComponent
             where T3 : unmanaged, IComponent
             => em.Query().Select<T1, T2, T3>().ForEach(action);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void ForEach<T1, T2, T3, T4>(this EntityManager em, QueryDelegate<T1, T2, T3, T4> action)
+            where T1 : unmanaged, IComponent where T2 : unmanaged, IComponent
+            where T3 : unmanaged, IComponent where T4 : unmanaged, IComponent
+            => em.Query().Select<T1, T2, T3, T4>().ForEach(action);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void ForEach<T1, T2, T3, T4, T5>(this EntityManager em, QueryDelegate<T1, T2, T3, T4, T5> action)
+            where T1 : unmanaged, IComponent where T2 : unmanaged, IComponent where T3 : unmanaged, IComponent
+            where T4 : unmanaged, IComponent where T5 : unmanaged, IComponent
+            => em.Query().Select<T1, T2, T3, T4, T5>().ForEach(action);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void ForEach<T1, T2, T3, T4, T5, T6>(this EntityManager em, QueryDelegate<T1, T2, T3, T4, T5, T6> action)
+            where T1 : unmanaged, IComponent where T2 : unmanaged, IComponent where T3 : unmanaged, IComponent
+            where T4 : unmanaged, IComponent where T5 : unmanaged, IComponent where T6 : unmanaged, IComponent
+            => em.Query().Select<T1, T2, T3, T4, T5, T6>().ForEach(action);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void ForEach<T1, T2, T3, T4, T5, T6, T7>(this EntityManager em, QueryDelegate<T1, T2, T3, T4, T5, T6, T7> action)
+            where T1 : unmanaged, IComponent where T2 : unmanaged, IComponent where T3 : unmanaged, IComponent
+            where T4 : unmanaged, IComponent where T5 : unmanaged, IComponent where T6 : unmanaged, IComponent
+            where T7 : unmanaged, IComponent
+            => em.Query().Select<T1, T2, T3, T4, T5, T6, T7>().ForEach(action);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void ForEach<T1, T2, T3, T4, T5, T6, T7, T8>(this EntityManager em, QueryDelegate<T1, T2, T3, T4, T5, T6, T7, T8> action)
+            where T1 : unmanaged, IComponent where T2 : unmanaged, IComponent where T3 : unmanaged, IComponent
+            where T4 : unmanaged, IComponent where T5 : unmanaged, IComponent where T6 : unmanaged, IComponent
+            where T7 : unmanaged, IComponent where T8 : unmanaged, IComponent
+            => em.Query().Select<T1, T2, T3, T4, T5, T6, T7, T8>().ForEach(action);
     }
 }

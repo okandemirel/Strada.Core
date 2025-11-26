@@ -8,7 +8,7 @@ namespace Strada.Core.MVCS
     /// </summary>
     public abstract class StradaController : StradaBase, IController
     {
-        public virtual void Update(float deltaTime) { }
+        public virtual void Tick(float deltaTime) { }
     }
 
     /// <summary>

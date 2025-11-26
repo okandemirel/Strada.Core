@@ -26,6 +26,12 @@ namespace Strada.Core.Tests.ECS.Query
         public int Max;
     }
 
+    public struct DamageComponent : IComponent { public int Value; }
+    public struct ArmorComponent : IComponent { public int Value; }
+    public struct SpeedComponent : IComponent { public float Value; }
+    public struct StaminaComponent : IComponent { public float Value; }
+    public struct ManaComponent : IComponent { public float Value; }
+
     [TestFixture]
     public class EntityQueryTests
     {
@@ -186,6 +192,134 @@ namespace Strada.Core.Tests.ECS.Query
 
             Assert.AreEqual(1, count);
             Assert.AreEqual(2f, sumX);
+        }
+
+        [Test]
+        public void FourComponentQuery_OnlyIteratesEntitiesWithAll()
+        {
+            var entityAll = _entityManager.CreateEntity();
+            _entityManager.AddComponent(entityAll, new PositionComponent { X = 1 });
+            _entityManager.AddComponent(entityAll, new VelocityComponent { VX = 2 });
+            _entityManager.AddComponent(entityAll, new HealthComponent { Current = 3 });
+            _entityManager.AddComponent(entityAll, new DamageComponent { Value = 4 });
+
+            var entityThree = _entityManager.CreateEntity();
+            _entityManager.AddComponent(entityThree, new PositionComponent { X = 10 });
+            _entityManager.AddComponent(entityThree, new VelocityComponent { VX = 20 });
+            _entityManager.AddComponent(entityThree, new HealthComponent { Current = 30 });
+
+            int count = 0;
+
+            _entityManager.ForEach<PositionComponent, VelocityComponent, HealthComponent, DamageComponent>(
+                (int entityIndex, ref PositionComponent pos, ref VelocityComponent vel, ref HealthComponent health, ref DamageComponent dmg) =>
+                {
+                    count++;
+                    Assert.AreEqual(1f, pos.X);
+                    Assert.AreEqual(2f, vel.VX);
+                    Assert.AreEqual(3, health.Current);
+                    Assert.AreEqual(4, dmg.Value);
+                });
+
+            Assert.AreEqual(1, count);
+        }
+
+        [Test]
+        public void FiveComponentQuery_OnlyIteratesEntitiesWithAll()
+        {
+            var entityAll = _entityManager.CreateEntity();
+            _entityManager.AddComponent(entityAll, new PositionComponent { X = 1 });
+            _entityManager.AddComponent(entityAll, new VelocityComponent { VX = 2 });
+            _entityManager.AddComponent(entityAll, new HealthComponent { Current = 3 });
+            _entityManager.AddComponent(entityAll, new DamageComponent { Value = 4 });
+            _entityManager.AddComponent(entityAll, new ArmorComponent { Value = 5 });
+
+            int count = 0;
+
+            _entityManager.ForEach<PositionComponent, VelocityComponent, HealthComponent, DamageComponent, ArmorComponent>(
+                (int entityIndex, ref PositionComponent pos, ref VelocityComponent vel, ref HealthComponent health,
+                 ref DamageComponent dmg, ref ArmorComponent armor) =>
+                {
+                    count++;
+                    Assert.AreEqual(1f, pos.X);
+                    Assert.AreEqual(5, armor.Value);
+                });
+
+            Assert.AreEqual(1, count);
+        }
+
+        [Test]
+        public void SixComponentQuery_OnlyIteratesEntitiesWithAll()
+        {
+            var entityAll = _entityManager.CreateEntity();
+            _entityManager.AddComponent(entityAll, new PositionComponent { X = 1 });
+            _entityManager.AddComponent(entityAll, new VelocityComponent { VX = 2 });
+            _entityManager.AddComponent(entityAll, new HealthComponent { Current = 3 });
+            _entityManager.AddComponent(entityAll, new DamageComponent { Value = 4 });
+            _entityManager.AddComponent(entityAll, new ArmorComponent { Value = 5 });
+            _entityManager.AddComponent(entityAll, new SpeedComponent { Value = 6 });
+
+            int count = 0;
+
+            _entityManager.ForEach<PositionComponent, VelocityComponent, HealthComponent, DamageComponent, ArmorComponent, SpeedComponent>(
+                (int entityIndex, ref PositionComponent pos, ref VelocityComponent vel, ref HealthComponent health,
+                 ref DamageComponent dmg, ref ArmorComponent armor, ref SpeedComponent speed) =>
+                {
+                    count++;
+                    Assert.AreEqual(6f, speed.Value);
+                });
+
+            Assert.AreEqual(1, count);
+        }
+
+        [Test]
+        public void SevenComponentQuery_OnlyIteratesEntitiesWithAll()
+        {
+            var entityAll = _entityManager.CreateEntity();
+            _entityManager.AddComponent(entityAll, new PositionComponent { X = 1 });
+            _entityManager.AddComponent(entityAll, new VelocityComponent { VX = 2 });
+            _entityManager.AddComponent(entityAll, new HealthComponent { Current = 3 });
+            _entityManager.AddComponent(entityAll, new DamageComponent { Value = 4 });
+            _entityManager.AddComponent(entityAll, new ArmorComponent { Value = 5 });
+            _entityManager.AddComponent(entityAll, new SpeedComponent { Value = 6 });
+            _entityManager.AddComponent(entityAll, new StaminaComponent { Value = 7 });
+
+            int count = 0;
+
+            _entityManager.ForEach<PositionComponent, VelocityComponent, HealthComponent, DamageComponent, ArmorComponent, SpeedComponent, StaminaComponent>(
+                (int entityIndex, ref PositionComponent pos, ref VelocityComponent vel, ref HealthComponent health,
+                 ref DamageComponent dmg, ref ArmorComponent armor, ref SpeedComponent speed, ref StaminaComponent stamina) =>
+                {
+                    count++;
+                    Assert.AreEqual(7f, stamina.Value);
+                });
+
+            Assert.AreEqual(1, count);
+        }
+
+        [Test]
+        public void EightComponentQuery_OnlyIteratesEntitiesWithAll()
+        {
+            var entityAll = _entityManager.CreateEntity();
+            _entityManager.AddComponent(entityAll, new PositionComponent { X = 1 });
+            _entityManager.AddComponent(entityAll, new VelocityComponent { VX = 2 });
+            _entityManager.AddComponent(entityAll, new HealthComponent { Current = 3 });
+            _entityManager.AddComponent(entityAll, new DamageComponent { Value = 4 });
+            _entityManager.AddComponent(entityAll, new ArmorComponent { Value = 5 });
+            _entityManager.AddComponent(entityAll, new SpeedComponent { Value = 6 });
+            _entityManager.AddComponent(entityAll, new StaminaComponent { Value = 7 });
+            _entityManager.AddComponent(entityAll, new ManaComponent { Value = 8 });
+
+            int count = 0;
+
+            _entityManager.ForEach<PositionComponent, VelocityComponent, HealthComponent, DamageComponent, ArmorComponent, SpeedComponent, StaminaComponent, ManaComponent>(
+                (int entityIndex, ref PositionComponent pos, ref VelocityComponent vel, ref HealthComponent health,
+                 ref DamageComponent dmg, ref ArmorComponent armor, ref SpeedComponent speed, ref StaminaComponent stamina, ref ManaComponent mana) =>
+                {
+                    count++;
+                    Assert.AreEqual(8f, mana.Value);
+                });
+
+            Assert.AreEqual(1, count);
         }
     }
 }

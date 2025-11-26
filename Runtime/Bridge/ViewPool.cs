@@ -62,6 +62,11 @@ namespace Strada.Core.Bridge
             {
                 var go = UnityEngine.Object.Instantiate(_prefab);
                 view = go.GetComponent<TView>();
+                if (view == null)
+                {
+                    UnityEngine.Object.Destroy(go);
+                    throw new InvalidOperationException($"Prefab '{_prefab.name}' is missing required component '{typeof(TView).Name}'");
+                }
                 _totalCreated++;
             }
 
@@ -133,6 +138,11 @@ namespace Strada.Core.Bridge
             {
                 var go = UnityEngine.Object.Instantiate(_prefab);
                 var view = go.GetComponent<TView>();
+                if (view == null)
+                {
+                    UnityEngine.Object.Destroy(go);
+                    throw new InvalidOperationException($"Prefab '{_prefab.name}' is missing required component '{typeof(TView).Name}'");
+                }
 
                 go.SetActive(false);
                 if (_poolRoot != null)

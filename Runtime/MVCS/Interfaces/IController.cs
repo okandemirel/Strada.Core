@@ -20,10 +20,10 @@ namespace Strada.Core.MVCS.Interfaces
         void Initialize();
 
         /// <summary>
-        /// Updates the controller logic.
+        /// Ticks the controller logic.
         /// </summary>
-        /// <param name="deltaTime">Time elapsed since last update in seconds.</param>
-        void Update(float deltaTime);
+        /// <param name="deltaTime">Time elapsed since last tick in seconds.</param>
+        void Tick(float deltaTime);
     }
 
     /// <summary>
@@ -34,14 +34,14 @@ namespace Strada.Core.MVCS.Interfaces
     }
 
     /// <summary>
-    /// Interface for controllers that need fixed-timestep updates.
+    /// Interface for controllers that need fixed-timestep ticks.
     /// </summary>
-    public interface IFixedUpdateController : IController
+    public interface IFixedTickController : IController
     {
         /// <summary>
-        /// Updates the controller logic at a fixed timestep.
+        /// Ticks the controller logic at a fixed timestep.
         /// </summary>
-        /// <param name="fixedDeltaTime">Fixed time elapsed since last fixed update in seconds.</param>
-        void FixedUpdate(float fixedDeltaTime);
+        /// <param name="fixedDeltaTime">Fixed time elapsed since last fixed tick in seconds.</param>
+        void FixedTick(float fixedDeltaTime);
     }
 }
