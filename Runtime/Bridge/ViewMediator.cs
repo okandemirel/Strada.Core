@@ -79,9 +79,17 @@ namespace Strada.Core.Bridge
                 _bindings[i].Push();
         }
 
+        public void UpdateMediator(float deltaTime)
+        {
+            if (!_bound) return;
+            SyncBindings();
+            OnUpdate(deltaTime);
+        }
+
         protected virtual void OnInitialize() { }
         protected abstract void OnBind();
         protected abstract void OnUnbind();
+        protected virtual void OnUpdate(float deltaTime) { }
 
         protected ComponentBinding<TComponent, TProperty> Bind<TComponent, TProperty>(
             Func<TComponent, TProperty> selector,
@@ -113,6 +121,15 @@ namespace Strada.Core.Bridge
         }
 
         protected T Resolve<T>() where T : class => _container?.Resolve<T>();
+
+        protected T GetComponent<T>() where T : unmanaged, IComponent
+            => _entities.GetComponent<T>(_entity);
+
+        protected void SetComponent<T>(T component) where T : unmanaged, IComponent
+            => _entities.SetComponent(_entity, component);
+
+        protected bool HasComponent<T>() where T : unmanaged, IComponent
+            => _entities.HasComponent<T>(_entity);
 
         protected void AddDisposable(IDisposable disposable)
         {

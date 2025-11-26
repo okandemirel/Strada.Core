@@ -232,6 +232,17 @@ namespace Strada.Core.Bootstrap
 
             var builder = new ContainerBuilder();
 
+            // Auto-binding: Register all [AutoRegister*] attributed types
+            if (_config.EnableAutoBinding)
+            {
+                Log("Registering auto-bindings...");
+                builder.RegisterAutoBindings(
+                    _config.AssemblyIncludePatterns,
+                    _config.AssemblyExcludePatterns,
+                    _config.ForceRuntimeScanning);
+                Log($"Auto-binding registered {ContainerBuilderExtensions.GetAutoBindingCount()} services");
+            }
+
             foreach (var module in _registry.Modules)
             {
                 try

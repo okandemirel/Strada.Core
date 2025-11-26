@@ -6,6 +6,7 @@ Strada's DI system provides a high-performance, expression tree compiled contain
 
 - [Quick Start](#quick-start)
 - [ContainerBuilder](#containerbuilder)
+- [Auto-Binding](#auto-binding)
 - [Lifetimes](#lifetimes)
 - [Scopes](#scopes)
 - [Factory Registration](#factory-registration)
@@ -90,6 +91,114 @@ IContainer container = builder.Build();
 // Container automatically registers itself
 var self = container.Resolve<IContainer>(); // Returns same container
 ```
+
+---
+
+## Auto-Binding
+
+Auto-binding allows automatic service registration using attributes, eliminating manual registration boilerplate.
+
+### Attributes
+
+```csharp
+using Strada.Core.DI.Attributes;
+
+// Base attribute with configurable lifetime
+[AutoRegister(Lifetime.Singleton)]
+public class MyService { }
+
+// Convenience attributes for each lifetime
+[AutoRegisterSingleton]
+public class SingletonService { }
+
+[AutoRegisterTransient]
+public class TransientService { }
+
+[AutoRegisterScoped]
+public class ScopedService { }
+```
+
+### Register as Interface
+
+```csharp
+// Register implementation against interface
+[AutoRegisterSingleton(As = typeof(IPlayerService))]
+public class PlayerService : IPlayerService { }
+
+// With priority (lower = registered first)
+[AutoRegisterSingleton(As = typeof(IWeaponService), Priority = 10)]
+public class WeaponService : IWeaponService { }
+
+// Also register as self (both IService and ServiceImpl)
+[AutoRegisterSingleton(As = typeof(IService), RegisterSelf = true)]
+public class ServiceImpl : IService { }
+```
+
+### Using Auto-Binding
+
+```csharp
+var builder = new ContainerBuilder();
+
+// Option 1: Use source generator (compile-time, zero reflection)
+builder.RegisterAutoBindings();
+
+// Option 2: Runtime reflection scanning with patterns
+builder.RegisterAutoBindingsRuntime(
+    includePatterns: new[] { "Game.*", "Strada.*" },
+    excludePatterns: new[] { "Unity.*", "System.*" }
+);
+
+// Option 3: Full control via parameters
+builder.RegisterAutoBindings(
+    includePatterns: new[] { "Game.*" },
+    excludePatterns: new[] { "Unity.*" },
+    forceRuntimeScanning: false  // Use source generator if available
+);
+
+var container = builder.Build();
+```
+
+### Bootstrap Integration
+
+Configure auto-binding in `BootstrapConfig` ScriptableObject:
+
+```csharp
+// In BootstrapConfig inspector:
+// - Enable Auto Binding: true
+// - Force Runtime Scanning: false (use source gen)
+// - Assembly Include Patterns: "Strada.*", "Game.*"
+// - Assembly Exclude Patterns: "Unity.*", "System.*"
+```
+
+The `GameBootstrapper` automatically registers all auto-bindings during startup:
+
+```csharp
+// GameBootstrapper.BuildContainer() does this automatically:
+if (_config.EnableAutoBinding)
+{
+    builder.RegisterAutoBindings(
+        _config.AssemblyIncludePatterns,
+        _config.AssemblyExcludePatterns,
+        _config.ForceRuntimeScanning);
+}
+```
+
+### Source Generator vs Runtime Scanning
+
+| Approach | Pros | Cons |
+|----------|------|------|
+| **Source Generator** | Zero reflection overhead, compile-time errors | Requires rebuild on changes |
+| **Runtime Scanning** | Hot reload friendly, no rebuild needed | ~3-50ms startup scan |
+
+**Recommendation**: Use source generator for production, runtime scanning for development.
+
+### Performance
+
+| Operation | Time |
+|-----------|------|
+| First scan (uncached) | **3-50ms** |
+| Cached scan lookup | **<1ms** |
+| Source generator | **0ms** (compile-time) |
 
 ---
 

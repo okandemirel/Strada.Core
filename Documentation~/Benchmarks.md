@@ -7,6 +7,7 @@ Complete performance data for all Strada systems on Apple Silicon (Unity 6, Mono
 - [Executive Summary](#executive-summary)
 - [Test Environment](#test-environment)
 - [Dependency Injection](#dependency-injection)
+- [Auto-Binding](#auto-binding)
 - [Entity Component System](#entity-component-system)
 - [Messaging System](#messaging-system)
 - [Object Pooling](#object-pooling)
@@ -23,6 +24,7 @@ Complete performance data for all Strada systems on Apple Silicon (Unity 6, Mono
 | System | Key Metric | Value |
 |--------|-----------|-------|
 | **DI Container** | Overhead vs manual `new()` | **1.56x** |
+| **Auto-Binding** | First scan (uncached) | **3-50ms** |
 | **ECS Query** | Per-entity iteration | **6-28ns** |
 | **Messaging** | Publish (1 subscriber) | **~20ns** |
 | **Object Pool** | Spawn from pool | **~10ns** |
@@ -101,6 +103,45 @@ This 56% overhead is the real cost of:
 | Per Registration | ~200 bytes |
 | Per Scope | ~64 bytes |
 | Singleton Cache Entry | ~32 bytes |
+
+---
+
+## Auto-Binding
+
+Auto-binding allows attribute-based service registration without manual boilerplate.
+
+### Runtime Scanning Performance
+
+| Operation | Time | Notes |
+|-----------|------|-------|
+| First scan (uncached) | **3ms** | Typical project |
+| First scan (large project) | **<50ms** | Competitive with VContainer |
+| Cached scan lookup (999x) | **<1ms** | O(1) cache access |
+| Container build with auto-bindings | **4ms** | Including registration |
+
+### Source Generator vs Runtime
+
+| Approach | Scan Time | Notes |
+|----------|-----------|-------|
+| **Source Generator** | **0ms** | Compile-time, zero reflection |
+| **Runtime Scanning** | **3-50ms** | First scan only, then cached |
+
+### Resolution After Auto-Binding
+
+| Operation | Time | Notes |
+|-----------|------|-------|
+| Singleton resolution | **60ns** | Same as manual registration |
+| 10k singleton resolutions | **0.6ms** | ~60ns average |
+
+Auto-bound services resolve at identical speed to manually registered services - the binding method only affects startup time.
+
+### Comparison with VContainer
+
+| Framework | Assembly Scan | Notes |
+|-----------|---------------|-------|
+| **Strada** | 3-50ms | Cached after first scan |
+| **VContainer** | ~50ms | Source generator recommended |
+| **Zenject** | ~200ms+ | No source generator |
 
 ---
 

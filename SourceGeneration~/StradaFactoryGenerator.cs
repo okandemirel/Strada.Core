@@ -13,6 +13,19 @@ namespace Strada.SourceGeneration
     public sealed class StradaFactoryGenerator : IIncrementalGenerator
     {
         private const string StradaServiceAttribute = "Strada.Core.DI.Attributes.StradaServiceAttribute";
+        private const string AutoRegisterAttribute = "Strada.Core.DI.Attributes.AutoRegisterAttribute";
+        private const string AutoRegisterSingletonAttribute = "Strada.Core.DI.Attributes.AutoRegisterSingletonAttribute";
+        private const string AutoRegisterTransientAttribute = "Strada.Core.DI.Attributes.AutoRegisterTransientAttribute";
+        private const string AutoRegisterScopedAttribute = "Strada.Core.DI.Attributes.AutoRegisterScopedAttribute";
+
+        private static readonly HashSet<string> SupportedAttributes = new()
+        {
+            StradaServiceAttribute,
+            AutoRegisterAttribute,
+            AutoRegisterSingletonAttribute,
+            AutoRegisterTransientAttribute,
+            AutoRegisterScopedAttribute
+        };
 
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
@@ -47,7 +60,7 @@ namespace Strada.SourceGeneration
                         continue;
 
                     var containingType = methodSymbol.ContainingType;
-                    if (containingType.ToDisplayString() == StradaServiceAttribute)
+                    if (SupportedAttributes.Contains(containingType.ToDisplayString()))
                         return classDecl;
                 }
             }
@@ -91,25 +104,50 @@ namespace Strada.SourceGeneration
                 return null;
 
             var attributeData = symbol.GetAttributes()
-                .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == StradaServiceAttribute);
+                .FirstOrDefault(a => a.AttributeClass != null &&
+                                     SupportedAttributes.Contains(a.AttributeClass.ToDisplayString()));
 
             if (attributeData == null)
                 return null;
 
+            var attrName = attributeData.AttributeClass!.ToDisplayString();
             var lifetime = ServiceLifetime.Transient;
             string? interfaceType = null;
+            int priority = 0;
+            bool registerSelf = false;
 
-            if (attributeData.ConstructorArguments.Length > 0)
+            // Determine lifetime based on attribute type
+            if (attrName == AutoRegisterSingletonAttribute)
+                lifetime = ServiceLifetime.Singleton;
+            else if (attrName == AutoRegisterTransientAttribute)
+                lifetime = ServiceLifetime.Transient;
+            else if (attrName == AutoRegisterScopedAttribute)
+                lifetime = ServiceLifetime.Scoped;
+            else if (attributeData.ConstructorArguments.Length > 0)
             {
                 var lifetimeArg = attributeData.ConstructorArguments[0];
                 if (lifetimeArg.Value is int lifetimeInt)
                     lifetime = (ServiceLifetime)lifetimeInt;
             }
 
+            // Extract named arguments
             foreach (var namedArg in attributeData.NamedArguments)
             {
-                if (namedArg.Key == "InterfaceType" && namedArg.Value.Value is INamedTypeSymbol interfaceSymbol)
-                    interfaceType = interfaceSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                switch (namedArg.Key)
+                {
+                    case "InterfaceType" when namedArg.Value.Value is INamedTypeSymbol interfaceSymbol:
+                        interfaceType = interfaceSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                        break;
+                    case "As" when namedArg.Value.Value is INamedTypeSymbol asSymbol:
+                        interfaceType = asSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                        break;
+                    case "Priority" when namedArg.Value.Value is int p:
+                        priority = p;
+                        break;
+                    case "RegisterSelf" when namedArg.Value.Value is bool rs:
+                        registerSelf = rs;
+                        break;
+                }
             }
 
             var constructor = symbol.Constructors
@@ -135,13 +173,18 @@ namespace Strada.SourceGeneration
                 Namespace = symbol.ContainingNamespace.ToDisplayString(),
                 Dependencies = dependencies,
                 Lifetime = lifetime,
-                InterfaceType = interfaceType
+                InterfaceType = interfaceType,
+                Priority = priority,
+                RegisterSelf = registerSelf
             };
         }
 
         private static string GenerateSource(List<ServiceInfo> services)
         {
             var sb = new StringBuilder();
+
+            // Sort by priority (lower first)
+            var sortedServices = services.OrderBy(s => s.Priority).ToList();
 
             sb.AppendLine("// <auto-generated/>");
             sb.AppendLine("// Strada DI Source Generator - Ultra-fast compile-time factory generation");
@@ -156,13 +199,13 @@ namespace Strada.SourceGeneration
             sb.AppendLine("namespace Strada.Generated");
             sb.AppendLine("{");
 
-            foreach (var service in services)
+            foreach (var service in sortedServices)
             {
                 GenerateFactory(sb, service);
             }
 
-            GenerateRegistry(sb, services);
-            GenerateInitializer(sb, services);
+            GenerateRegistry(sb, sortedServices);
+            GenerateInitializer(sb, sortedServices);
 
             sb.AppendLine("}");
 
@@ -196,6 +239,7 @@ namespace Strada.SourceGeneration
             sb.AppendLine("    public static class StradaGeneratedRegistry");
             sb.AppendLine("    {");
             sb.AppendLine("        public static int ServiceCount => " + services.Count + ";");
+            sb.AppendLine("        public static bool IsSourceGenerated => true;");
             sb.AppendLine();
 
             sb.AppendLine("        public static void RegisterAll(IContainerBuilder builder)");
@@ -213,6 +257,12 @@ namespace Strada.SourceGeneration
                 if (!string.IsNullOrEmpty(service.InterfaceType))
                 {
                     sb.AppendLine($"            builder.Register<{service.InterfaceType}, {service.TypeName}>({lifetime});");
+
+                    // RegisterSelf: also register as concrete type
+                    if (service.RegisterSelf)
+                    {
+                        sb.AppendLine($"            builder.Register<{service.TypeName}>({lifetime});");
+                    }
                 }
                 else
                 {
@@ -283,6 +333,8 @@ namespace Strada.SourceGeneration
             public List<DependencyInfo> Dependencies { get; set; } = new();
             public ServiceLifetime Lifetime { get; set; }
             public string? InterfaceType { get; set; }
+            public int Priority { get; set; }
+            public bool RegisterSelf { get; set; }
         }
 
         private sealed class DependencyInfo

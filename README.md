@@ -2,7 +2,7 @@
 
 **A high-performance Unity framework unifying MVCS architecture with ECS simulation**
 
-[![Tests](https://img.shields.io/badge/tests-352%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-373%20passing-brightgreen)]()
 [![Unity](https://img.shields.io/badge/Unity-6000.0%2B-blue)]()
 [![.NET](https://img.shields.io/badge/.NET-Standard%202.1-purple)]()
 
@@ -29,6 +29,7 @@ Strada combines enterprise-grade dependency injection with performance-critical 
 ### Dependency Injection ([docs](Documentation~/DI.md))
 - **FastContainer**: Expression tree compiled factories (1.56x manual `new()` overhead)
 - **Lifetimes**: Singleton, Transient, Scoped with thread-safe initialization
+- **Auto-Binding**: Attribute-based service registration with `[AutoRegister]`, `[AutoRegisterSingleton]`, etc.
 - **Circular Detection**: Build-time cycle detection prevents runtime errors
 - **Zero-alloc Resolution**: No GC allocation for singleton/scoped paths
 
@@ -86,18 +87,25 @@ Or copy the `Packages/com.strada.core` folder directly into your project.
 
 ```csharp
 using Strada.Core.DI;
+using Strada.Core.DI.Attributes;
 
-// 1. Create container
+// Option 1: Manual registration
 var builder = new ContainerBuilder();
-
-// 2. Register services
 builder.Register<IPlayerService, PlayerService>(Lifetime.Singleton);
 builder.Register<IInputService, InputService>(Lifetime.Singleton);
-builder.Register<EnemyController>(Lifetime.Transient);
-
-// 3. Build and resolve
 using var container = builder.Build();
-var player = container.Resolve<IPlayerService>();
+
+// Option 2: Auto-binding with attributes
+[AutoRegisterSingleton(As = typeof(IPlayerService))]
+public class PlayerService : IPlayerService { }
+
+[AutoRegisterTransient]
+public class EnemyController { }
+
+// Auto-register all attributed types
+var builder = new ContainerBuilder();
+builder.RegisterAutoBindings();  // Scans for [AutoRegister*] attributes
+using var container = builder.Build();
 ```
 
 ### ECS System
@@ -233,7 +241,11 @@ Packages/com.strada.core/
 │   │   ├── ContainerBuilder.cs
 │   │   ├── FastContainer.cs
 │   │   ├── FastContainerScope.cs
-│   │   └── Lifetime.cs
+│   │   ├── Lifetime.cs
+│   │   ├── Attributes/        # Auto-binding attributes
+│   │   │   └── AutoRegisterAttribute.cs
+│   │   └── AutoBinding/       # Runtime scanner
+│   │       └── RuntimeAutoBindingScanner.cs
 │   ├── ECS/                   # Entity Component System
 │   │   ├── Core/EntityManager.cs
 │   │   ├── Storage/SparseSet.cs
@@ -257,7 +269,7 @@ Packages/com.strada.core/
 │       └── StateMachine.cs
 ├── Editor/                    # Editor Tools
 └── Tests/                     # Test Suite
-    ├── Runtime/               # Functional Tests (269)
+    ├── Runtime/               # Functional Tests (290)
     └── Performance/           # Benchmarks (83)
 ```
 
@@ -397,9 +409,9 @@ UNITY_PATH="/path/to/Unity" PROJECT_PATH="/path/to/project"
 ```
 
 **Test Coverage:**
-- 269 functional tests
+- 290 functional tests
 - 83 performance benchmarks
-- All tests passing
+- All 373 tests passing
 
 ---
 

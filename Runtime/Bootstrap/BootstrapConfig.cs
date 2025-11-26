@@ -39,6 +39,13 @@ namespace Strada.Core.Bootstrap
         [Tooltip("Initialize modules asynchronously (experimental)")]
         [SerializeField] private bool _asyncInitialization = false;
 
+        [Header("Auto-Binding")]
+        [Tooltip("Enable auto-binding for [AutoRegister] attributes")]
+        [SerializeField] private bool _enableAutoBinding = true;
+
+        [Tooltip("Force runtime reflection scanning (disable source generation)")]
+        [SerializeField] private bool _forceRuntimeScanning = false;
+
         /// <summary>
         /// Gets whether automatic module discovery is enabled.
         /// </summary>
@@ -80,6 +87,16 @@ namespace Strada.Core.Bootstrap
         public bool AsyncInitialization => _asyncInitialization;
 
         /// <summary>
+        /// Gets whether auto-binding is enabled.
+        /// </summary>
+        public bool EnableAutoBinding => _enableAutoBinding;
+
+        /// <summary>
+        /// Gets whether to force runtime scanning over source generation.
+        /// </summary>
+        public bool ForceRuntimeScanning => _forceRuntimeScanning;
+
+        /// <summary>
         /// Creates a default bootstrap configuration.
         /// </summary>
         public static BootstrapConfig CreateDefault()
@@ -90,6 +107,8 @@ namespace Strada.Core.Bootstrap
             config._validateDependencies = true;
             config._failOnValidationError = true;
             config._asyncInitialization = false;
+            config._enableAutoBinding = true;
+            config._forceRuntimeScanning = false;
             config._assemblyIncludePatterns = new List<string> { "Strada.*", "Game.*" };
             config._assemblyExcludePatterns = new List<string> { "Unity.*", "System.*", "Mono.*", "mscorlib", "*.Tests", "*.Tests.*", "*Test*" };
             return config;

@@ -88,44 +88,4 @@ namespace Strada.Core.Bridge
         }
     }
 
-    public sealed class EntityComponentSync<T> : IDisposable where T : unmanaged, IComponent
-    {
-        private readonly EntityManager _entityManager;
-        private readonly Entity _entity;
-        private readonly Action<T> _onChanged;
-        private T _lastValue;
-        private bool _disposed;
-
-        public EntityComponentSync(EntityManager entityManager, Entity entity, Action<T> onChanged)
-        {
-            _entityManager = entityManager;
-            _entity = entity;
-            _onChanged = onChanged;
-
-            if (_entityManager.HasComponent<T>(_entity))
-            {
-                _lastValue = _entityManager.GetComponent<T>(_entity);
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void CheckForChanges()
-        {
-            if (!_entityManager.Exists(_entity)) return;
-            if (!_entityManager.HasComponent<T>(_entity)) return;
-
-            var current = _entityManager.GetComponent<T>(_entity);
-
-            if (!_lastValue.Equals(current))
-            {
-                _lastValue = current;
-                _onChanged?.Invoke(current);
-            }
-        }
-
-        public void Dispose()
-        {
-            _disposed = true;
-        }
-    }
 }
