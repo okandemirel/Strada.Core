@@ -2,7 +2,7 @@ using System;
 using FsCheck;
 using Strada.Core.DI;
 
-namespace Strada.Core.Tests.Generators
+namespace Strada.Core.Tests.Runtime.Generators
 {
     /// <summary>
     /// Test interfaces and classes for DI container property testing.

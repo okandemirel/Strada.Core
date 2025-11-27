@@ -8,7 +8,7 @@ using Strada.Core.ECS.Systems;
 using Strada.Core.MVCS;
 using UnityEngine;
 
-namespace Strada.Core.Tests.Bridge
+namespace Strada.Core.Tests.Runtime.Bridge
 {
     /// <summary>
     /// Integration tests verifying the full MVCS-ECS Bridge data flow.

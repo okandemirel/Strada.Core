@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Strada.Core.DI;
 
-namespace Strada.Core.Tests.DI
+namespace Strada.Core.Tests.Runtime.DI
 {
     [TestFixture]
     public class AsyncContainerTests

@@ -2,11 +2,11 @@ using System.Diagnostics;
 using NUnit.Framework;
 using Strada.Core.Communication;
 
-namespace Strada.Core.Tests.Performance
+namespace Strada.Core.Tests.Runtime.Performance
 {
     [TestFixture]
     [Category("Performance")]
-    public class StradaBusPerformanceTests
+    public class MessageBusPerformanceTests
     {
         private StradaBus _bus;
 

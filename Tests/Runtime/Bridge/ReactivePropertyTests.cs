@@ -1,7 +1,7 @@
 using NUnit.Framework;
 using Strada.Core.Bridge;
 
-namespace Strada.Core.Tests.Bridge
+namespace Strada.Core.Tests.Runtime.Bridge
 {
     [TestFixture]
     public class ReactivePropertyTests

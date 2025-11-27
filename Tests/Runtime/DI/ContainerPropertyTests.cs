@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using FsCheck;
 using NUnit.Framework;
 using Strada.Core.DI;
-using Strada.Core.Tests.Generators;
+using Strada.Core.Tests.Runtime.Generators;
 
-namespace Strada.Core.Tests.Tests.Runtime.DI
+namespace Strada.Core.Tests.Runtime.DI
 {
     /// <summary>
     /// Property-based tests for the DI container.

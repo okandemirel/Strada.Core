@@ -2,7 +2,7 @@ using FsCheck;
 using Strada.Core.DI;
 using Strada.Core.ECS;
 
-namespace Strada.Core.Tests.Generators
+namespace Strada.Core.Tests.Runtime.Generators
 {
     /// <summary>
     /// Registers all Strada-specific arbitraries with FsCheck.

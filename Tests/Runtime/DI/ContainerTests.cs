@@ -2,7 +2,7 @@ using System;
 using NUnit.Framework;
 using Strada.Core.DI;
 
-namespace Strada.Core.Tests.Tests.Runtime.DI
+namespace Strada.Core.Tests.Runtime.DI
 {
     /// <summary>
     /// Comprehensive tests for the Container class.

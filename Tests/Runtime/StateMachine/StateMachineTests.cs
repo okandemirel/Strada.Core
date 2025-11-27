@@ -1,7 +1,7 @@
 using NUnit.Framework;
 using Strada.Core.StateMachine;
 
-namespace Strada.Core.Tests.StateMachine
+namespace Strada.Core.Tests.Runtime.StateMachine
 {
     [TestFixture]
     public sealed class StateMachineTests

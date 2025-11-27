@@ -4,7 +4,7 @@ using NUnit.Framework;
 using Strada.Core.DI;
 using Strada.Core.Modules;
 
-namespace Strada.Core.Tests.Tests.Runtime.Modules
+namespace Strada.Core.Tests.Runtime.Modules
 {
     [TestFixture]
     public class ModuleRegistryTests

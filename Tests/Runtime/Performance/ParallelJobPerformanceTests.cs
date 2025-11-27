@@ -7,7 +7,7 @@ using Strada.Core.ECS.Storage;
 using Unity.Burst;
 using Unity.Jobs;
 
-namespace Strada.Core.Tests.Performance
+namespace Strada.Core.Tests.Runtime.Performance
 {
     [BurstCompile]
     public struct MoveJob : IJobComponent<Position, Velocity>
@@ -74,9 +74,9 @@ namespace Strada.Core.Tests.Performance
         [Test]
         public void Benchmark_ParallelJob_100k_TwoComponents()
         {
-            const int count = 100000;
+            const int Count = 100000;
 
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < Count; i++)
             {
                 var entity = _entityManager.CreateEntity();
                 _entityManager.AddComponent(entity, new Position { X = i, Y = i, Z = i });
@@ -96,7 +96,7 @@ namespace Strada.Core.Tests.Performance
             }
             sw.Stop();
 
-            UnityEngine.Debug.Log($"[STRADA PARALLEL] 10 frames of {count} entities (2 components):");
+            UnityEngine.Debug.Log($"[STRADA PARALLEL] 10 frames of {Count} entities (2 components):");
             UnityEngine.Debug.Log($"  Total: {sw.ElapsedMilliseconds}ms");
             UnityEngine.Debug.Log($"  Per frame: {sw.ElapsedMilliseconds / 10.0:F2}ms");
 
@@ -106,9 +106,9 @@ namespace Strada.Core.Tests.Performance
         [Test]
         public void Benchmark_ParallelJob_100k_ThreeComponents()
         {
-            const int count = 100000;
+            const int Count = 100000;
 
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < Count; i++)
             {
                 var entity = _entityManager.CreateEntity();
                 _entityManager.AddComponent(entity, new Position { X = i, Y = i, Z = i });
@@ -129,7 +129,7 @@ namespace Strada.Core.Tests.Performance
             }
             sw.Stop();
 
-            UnityEngine.Debug.Log($"[STRADA PARALLEL] 10 frames of {count} entities (3 components):");
+            UnityEngine.Debug.Log($"[STRADA PARALLEL] 10 frames of {Count} entities (3 components):");
             UnityEngine.Debug.Log($"  Total: {sw.ElapsedMilliseconds}ms");
             UnityEngine.Debug.Log($"  Per frame: {sw.ElapsedMilliseconds / 10.0:F2}ms");
 
@@ -139,10 +139,10 @@ namespace Strada.Core.Tests.Performance
         [Test]
         public void Benchmark_ParallelVsSequential_100k()
         {
-            const int count = 100000;
-            const int frames = 10;
+            const int Count = 100000;
+            const int Frames = 10;
 
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < Count; i++)
             {
                 var entity = _entityManager.CreateEntity();
                 _entityManager.AddComponent(entity, new Position { X = i, Y = i, Z = i });
@@ -150,7 +150,7 @@ namespace Strada.Core.Tests.Performance
             }
 
             var swSequential = Stopwatch.StartNew();
-            for (int frame = 0; frame < frames; frame++)
+            for (int frame = 0; frame < Frames; frame++)
             {
                 _entityManager.ForEach<Position, Velocity>((int e, ref Position t, ref Velocity v) =>
                 {
@@ -167,7 +167,7 @@ namespace Strada.Core.Tests.Performance
             warmup.Complete();
 
             var swParallel = Stopwatch.StartNew();
-            for (int frame = 0; frame < frames; frame++)
+            for (int frame = 0; frame < Frames; frame++)
             {
                 _entityManager.RunParallel<MoveJob, Position, Velocity>(job);
             }
@@ -175,7 +175,7 @@ namespace Strada.Core.Tests.Performance
 
             float speedup = (float)swSequential.ElapsedMilliseconds / swParallel.ElapsedMilliseconds;
 
-            UnityEngine.Debug.Log($"[STRADA BENCHMARK] Sequential vs Parallel ({count} entities, {frames} frames):");
+            UnityEngine.Debug.Log($"[STRADA BENCHMARK] Sequential vs Parallel ({Count} entities, {Frames} frames):");
             UnityEngine.Debug.Log($"  Sequential: {swSequential.ElapsedMilliseconds}ms");
             UnityEngine.Debug.Log($"  Parallel:   {swParallel.ElapsedMilliseconds}ms");
             UnityEngine.Debug.Log($"  Speedup:    {speedup:F2}x");
@@ -186,9 +186,9 @@ namespace Strada.Core.Tests.Performance
         [Test]
         public void Benchmark_SingleComponent_100k()
         {
-            const int count = 100000;
+            const int Count = 100000;
 
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < Count; i++)
             {
                 var entity = _entityManager.CreateEntity();
                 _entityManager.AddComponent(entity, new Health { Current = 100, Max = 100 });
@@ -206,7 +206,7 @@ namespace Strada.Core.Tests.Performance
             }
             sw.Stop();
 
-            UnityEngine.Debug.Log($"[STRADA PARALLEL] 100 frames of {count} entities (1 component):");
+            UnityEngine.Debug.Log($"[STRADA PARALLEL] 100 frames of {Count} entities (1 component):");
             UnityEngine.Debug.Log($"  Total: {sw.ElapsedMilliseconds}ms");
             UnityEngine.Debug.Log($"  Per frame: {sw.ElapsedMilliseconds / 100.0:F2}ms");
 

@@ -5,7 +5,7 @@ using Strada.Core.DI;
 using Strada.Core.DI.Attributes;
 using Strada.Core.DI.AutoBinding;
 
-namespace Strada.Core.Tests.DI
+namespace Strada.Core.Tests.Runtime.DI
 {
     [TestFixture]
     public class AutoBindingTests

@@ -4,7 +4,7 @@ using Strada.Core.ECS;
 using Strada.Core.ECS.Query;
 using Strada.Core.ECS.Storage;
 
-namespace Strada.Core.Tests.ECS.Query
+namespace Strada.Core.Tests.Runtime.ECS.Query
 {
     public struct PositionComponent : IComponent
     {

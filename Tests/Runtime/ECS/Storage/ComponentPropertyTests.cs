@@ -3,10 +3,10 @@ using FsCheck;
 using NUnit.Framework;
 using Strada.Core.ECS;
 using Strada.Core.ECS.Storage;
-using Strada.Core.Tests.Generators;
+using Strada.Core.Tests.Runtime.Generators;
 using Unity.Collections;
 
-namespace Strada.Core.Tests.ECS.Storage
+namespace Strada.Core.Tests.Runtime.ECS.Storage
 {
     /// <summary>
     /// Property-based tests for ECS component storage.

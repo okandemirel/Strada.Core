@@ -5,9 +5,6 @@
   "description": "The world's first truly unified MVCS+ECS framework for Unity. Combines enterprise-grade dependency injection with performance-critical ECS simulation, wrapped in a ScriptableObject-driven modular architecture.",
   "unity": "6000.0",
   "unityRelease": "0f1",
-  "documentationUrl": "https://github.com/strada-framework/strada-core/wiki",
-  "changelogUrl": "https://github.com/strada-framework/strada-core/blob/main/CHANGELOG.md",
-  "licensesUrl": "https://github.com/strada-framework/strada-core/blob/main/LICENSE.md",
   "keywords": [
     "framework",
     "architecture",
@@ -21,9 +18,7 @@
     "solid"
   ],
   "author": {
-    "name": "Strada Framework Team",
-    "email": "contact@strada-framework.dev",
-    "url": "https://strada-framework.dev"
+    "name": "Strada Framework Team"
   },
   "type": "library",
   "dependencies": {

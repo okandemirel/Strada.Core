@@ -6,10 +6,10 @@ using NUnit.Framework;
 using Strada.Core.DI;
 using Strada.Core.DI.Attributes;
 using Strada.Core.DI.AutoBinding;
-using Strada.Core.Tests.DI;
-using Strada.Core.Tests.Generators;
+using Strada.Core.Tests.Runtime.DI;
+using Strada.Core.Tests.Runtime.Generators;
 
-namespace Strada.Core.Tests.Tests.Runtime.DI
+namespace Strada.Core.Tests.Runtime.DI
 {
     /// <summary>
     /// Property-based tests for the auto-binding scanner system.

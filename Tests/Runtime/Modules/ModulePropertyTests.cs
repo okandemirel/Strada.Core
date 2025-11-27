@@ -5,7 +5,7 @@ using FsCheck;
 using NUnit.Framework;
 using Strada.Core.DI;
 using Strada.Core.Modules;
-using Strada.Core.Tests.Generators;
+using Strada.Core.Tests.Runtime.Generators;
 
 namespace Strada.Core.Tests.Runtime.Modules
 {

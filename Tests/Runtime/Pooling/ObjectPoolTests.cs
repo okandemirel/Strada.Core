@@ -1,7 +1,7 @@
 using NUnit.Framework;
 using Strada.Core.Pooling;
 
-namespace Strada.Core.Tests.Pooling
+namespace Strada.Core.Tests.Runtime.Pooling
 {
     [TestFixture]
     public sealed class ObjectPoolTests

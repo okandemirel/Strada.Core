@@ -41,11 +41,11 @@ namespace Strada.Core.Tests.Runtime.Performance
         [Test]
         public void Benchmark_ViewRegistry_1k_Registrations()
         {
-            const int count = 1000;
-            var views = new BenchmarkView[count];
-            var entities = new Entity[count];
+            const int Count = 1000;
+            var views = new BenchmarkView[Count];
+            var entities = new Entity[Count];
 
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < Count; i++)
             {
                 var go = new GameObject($"View_{i}");
                 views[i] = go.AddComponent<BenchmarkView>();
@@ -53,36 +53,36 @@ namespace Strada.Core.Tests.Runtime.Performance
             }
 
             var swRegister = Stopwatch.StartNew();
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < Count; i++)
             {
                 _registry.Register(views[i], entities[i]);
             }
             swRegister.Stop();
 
             var swLookup = Stopwatch.StartNew();
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < Count; i++)
             {
                 var view = _registry.GetView(entities[i]);
             }
             swLookup.Stop();
 
             var swUnregister = Stopwatch.StartNew();
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < Count; i++)
             {
                 _registry.Unregister(views[i]);
             }
             swUnregister.Stop();
 
-            double registerAvgNs = swRegister.Elapsed.TotalMilliseconds * 1000000 / count;
-            double lookupAvgNs = swLookup.Elapsed.TotalMilliseconds * 1000000 / count;
-            double unregisterAvgNs = swUnregister.Elapsed.TotalMilliseconds * 1000000 / count;
+            double registerAvgNs = swRegister.Elapsed.TotalMilliseconds * 1000000 / Count;
+            double lookupAvgNs = swLookup.Elapsed.TotalMilliseconds * 1000000 / Count;
+            double unregisterAvgNs = swUnregister.Elapsed.TotalMilliseconds * 1000000 / Count;
 
-            UnityEngine.Debug.Log($"[Bridge BENCHMARK] ViewRegistry ({count} views):");
+            UnityEngine.Debug.Log($"[Bridge BENCHMARK] ViewRegistry ({Count} views):");
             UnityEngine.Debug.Log($"  Register: {swRegister.ElapsedMilliseconds}ms total, {registerAvgNs:F0}ns avg");
             UnityEngine.Debug.Log($"  Lookup: {swLookup.ElapsedMilliseconds}ms total, {lookupAvgNs:F0}ns avg");
             UnityEngine.Debug.Log($"  Unregister: {swUnregister.ElapsedMilliseconds}ms total, {unregisterAvgNs:F0}ns avg");
 
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < Count; i++)
             {
                 Object.DestroyImmediate(views[i].gameObject);
             }
@@ -94,12 +94,12 @@ namespace Strada.Core.Tests.Runtime.Performance
         [Test]
         public void Benchmark_ViewRegistry_SyncAll()
         {
-            const int count = 500;
-            const int iterations = 100;
-            var views = new BenchmarkView[count];
-            var entities = new Entity[count];
+            const int Count = 500;
+            const int Iterations = 100;
+            var views = new BenchmarkView[Count];
+            var entities = new Entity[Count];
 
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < Count; i++)
             {
                 var go = new GameObject($"View_{i}");
                 views[i] = go.AddComponent<BenchmarkView>();
@@ -110,21 +110,21 @@ namespace Strada.Core.Tests.Runtime.Performance
             }
 
             var sw = Stopwatch.StartNew();
-            for (int iter = 0; iter < iterations; iter++)
+            for (int iter = 0; iter < Iterations; iter++)
             {
                 _registry.SyncAll();
             }
             sw.Stop();
 
-            double avgMs = sw.Elapsed.TotalMilliseconds / iterations;
-            double avgPerViewNs = sw.Elapsed.TotalMilliseconds * 1000000 / (iterations * count);
+            double avgMs = sw.Elapsed.TotalMilliseconds / Iterations;
+            double avgPerViewNs = sw.Elapsed.TotalMilliseconds * 1000000 / (Iterations * Count);
 
-            UnityEngine.Debug.Log($"[Bridge BENCHMARK] ViewRegistry.SyncAll ({count} views, {iterations} syncs):");
+            UnityEngine.Debug.Log($"[Bridge BENCHMARK] ViewRegistry.SyncAll ({Count} views, {Iterations} syncs):");
             UnityEngine.Debug.Log($"  Total Time: {sw.ElapsedMilliseconds}ms");
             UnityEngine.Debug.Log($"  Avg per sync: {avgMs:F2}ms");
             UnityEngine.Debug.Log($"  Avg per view: {avgPerViewNs:F0}ns");
 
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < Count; i++)
             {
                 Object.DestroyImmediate(views[i].gameObject);
             }
@@ -135,7 +135,7 @@ namespace Strada.Core.Tests.Runtime.Performance
         [Test]
         public void Benchmark_ViewPool_SpawnDespawn()
         {
-            const int cycles = 500;
+            const int Cycles = 500;
 
             var poolRoot = new GameObject("PoolRoot").transform;
             var activeRoot = new GameObject("ActiveRoot").transform;
@@ -144,39 +144,39 @@ namespace Strada.Core.Tests.Runtime.Performance
                 _prefab, _container, _entityManager, _registry,
                 poolRoot, activeRoot, initialSize: 100);
 
-            var entities = new Entity[cycles];
-            for (int i = 0; i < cycles; i++)
+            var entities = new Entity[Cycles];
+            for (int i = 0; i < Cycles; i++)
             {
                 entities[i] = _entityManager.CreateEntity();
             }
 
             var swSpawn = Stopwatch.StartNew();
-            var views = new BenchmarkView[cycles];
-            for (int i = 0; i < cycles; i++)
+            var views = new BenchmarkView[Cycles];
+            for (int i = 0; i < Cycles; i++)
             {
                 views[i] = pool.Spawn(entities[i]);
             }
             swSpawn.Stop();
 
             var swDespawn = Stopwatch.StartNew();
-            for (int i = 0; i < cycles; i++)
+            for (int i = 0; i < Cycles; i++)
             {
                 pool.Despawn(views[i]);
             }
             swDespawn.Stop();
 
             var swRespawn = Stopwatch.StartNew();
-            for (int i = 0; i < cycles; i++)
+            for (int i = 0; i < Cycles; i++)
             {
                 views[i] = pool.Spawn(entities[i]);
             }
             swRespawn.Stop();
 
-            double spawnAvgUs = swSpawn.Elapsed.TotalMilliseconds * 1000 / cycles;
-            double despawnAvgUs = swDespawn.Elapsed.TotalMilliseconds * 1000 / cycles;
-            double respawnAvgUs = swRespawn.Elapsed.TotalMilliseconds * 1000 / cycles;
+            double spawnAvgUs = swSpawn.Elapsed.TotalMilliseconds * 1000 / Cycles;
+            double despawnAvgUs = swDespawn.Elapsed.TotalMilliseconds * 1000 / Cycles;
+            double respawnAvgUs = swRespawn.Elapsed.TotalMilliseconds * 1000 / Cycles;
 
-            UnityEngine.Debug.Log($"[Bridge BENCHMARK] ViewPool Spawn/Despawn ({cycles} cycles):");
+            UnityEngine.Debug.Log($"[Bridge BENCHMARK] ViewPool Spawn/Despawn ({Cycles} cycles):");
             UnityEngine.Debug.Log($"  First Spawn: {swSpawn.ElapsedMilliseconds}ms total, {spawnAvgUs:F2}μs avg");
             UnityEngine.Debug.Log($"  Despawn: {swDespawn.ElapsedMilliseconds}ms total, {despawnAvgUs:F2}μs avg");
             UnityEngine.Debug.Log($"  Respawn (pooled): {swRespawn.ElapsedMilliseconds}ms total, {respawnAvgUs:F2}μs avg");
@@ -192,7 +192,7 @@ namespace Strada.Core.Tests.Runtime.Performance
         [Test]
         public void Benchmark_EntityBinding_ComponentSync()
         {
-            const int iterations = 10000;
+            const int Iterations = 10000;
 
             var entity = _entityManager.CreateEntity();
             _entityManager.AddComponent(entity, new TestSyncComponent { Value = 0 });
@@ -200,24 +200,24 @@ namespace Strada.Core.Tests.Runtime.Performance
             var binding = new ComponentBinding<TestSyncComponent>(_entityManager, entity);
 
             var swSet = Stopwatch.StartNew();
-            for (int i = 0; i < iterations; i++)
+            for (int i = 0; i < Iterations; i++)
             {
                 binding.Value = new TestSyncComponent { Value = i };
             }
             swSet.Stop();
 
             var swSync = Stopwatch.StartNew();
-            for (int i = 0; i < iterations; i++)
+            for (int i = 0; i < Iterations; i++)
             {
                 _entityManager.SetComponent(entity, new TestSyncComponent { Value = i });
                 binding.Sync();
             }
             swSync.Stop();
 
-            double setAvgNs = swSet.Elapsed.TotalMilliseconds * 1000000 / iterations;
-            double syncAvgNs = swSync.Elapsed.TotalMilliseconds * 1000000 / iterations;
+            double setAvgNs = swSet.Elapsed.TotalMilliseconds * 1000000 / Iterations;
+            double syncAvgNs = swSync.Elapsed.TotalMilliseconds * 1000000 / Iterations;
 
-            UnityEngine.Debug.Log($"[Bridge BENCHMARK] ComponentBinding ({iterations} operations):");
+            UnityEngine.Debug.Log($"[Bridge BENCHMARK] ComponentBinding ({Iterations} operations):");
             UnityEngine.Debug.Log($"  Set: {swSet.ElapsedMilliseconds}ms total, {setAvgNs:F0}ns avg");
             UnityEngine.Debug.Log($"  Sync: {swSync.ElapsedMilliseconds}ms total, {syncAvgNs:F0}ns avg");
 
@@ -227,7 +227,7 @@ namespace Strada.Core.Tests.Runtime.Performance
         [Test]
         public void Benchmark_ComputedProperty()
         {
-            const int iterations = 100000;
+            const int Iterations = 100000;
 
             var source1 = new ReactiveProperty<int>(0);
             var source2 = new ReactiveProperty<int>(0);
@@ -237,15 +237,15 @@ namespace Strada.Core.Tests.Runtime.Performance
             computed.Subscribe(_ => readCount++);
 
             var sw = Stopwatch.StartNew();
-            for (int i = 0; i < iterations; i++)
+            for (int i = 0; i < Iterations; i++)
             {
                 source1.Value = i;
             }
             sw.Stop();
 
-            double avgNs = sw.Elapsed.TotalMilliseconds * 1000000 / iterations;
+            double avgNs = sw.Elapsed.TotalMilliseconds * 1000000 / Iterations;
 
-            UnityEngine.Debug.Log($"[Bridge BENCHMARK] ComputedProperty ({iterations} source updates):");
+            UnityEngine.Debug.Log($"[Bridge BENCHMARK] ComputedProperty ({Iterations} source updates):");
             UnityEngine.Debug.Log($"  Total Time: {sw.ElapsedMilliseconds}ms");
             UnityEngine.Debug.Log($"  Avg: {avgNs:F0}ns per update");
             UnityEngine.Debug.Log($"  Notifications fired: {readCount}");

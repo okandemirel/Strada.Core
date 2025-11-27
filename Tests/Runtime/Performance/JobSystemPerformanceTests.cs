@@ -7,7 +7,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 
-namespace Strada.Core.Tests.Performance
+namespace Strada.Core.Tests.Runtime.Performance
 {
     public struct JBenchPosition : IComponent { public float X, Y, Z; }
     public struct JBenchVelocity : IComponent { public float Vx, Vy, Vz; }
@@ -48,10 +48,10 @@ namespace Strada.Core.Tests.Performance
         [Test]
         public void Benchmark_100k_ParallelVsSequential_TargetSpeedup()
         {
-            const int entityCount = 100_000;
-            const int frames = 10;
+            const int EntityCount = 100_000;
+            const int Frames = 10;
 
-            for (int i = 0; i < entityCount; i++)
+            for (int i = 0; i < EntityCount; i++)
             {
                 var entity = _entityManager.CreateEntity();
                 _entityManager.AddComponent(entity, new JBenchPosition { X = i, Y = i, Z = i });
@@ -59,7 +59,7 @@ namespace Strada.Core.Tests.Performance
             }
 
             var swSequential = Stopwatch.StartNew();
-            for (int frame = 0; frame < frames; frame++)
+            for (int frame = 0; frame < Frames; frame++)
             {
                 _entityManager.ForEach<JBenchPosition, JBenchVelocity>((int e, ref JBenchPosition p, ref JBenchVelocity v) =>
                 {
@@ -74,7 +74,7 @@ namespace Strada.Core.Tests.Performance
             _entityManager.ScheduleParallel<JBenchMoveJob, JBenchPosition, JBenchVelocity>(job).Complete();
 
             var swParallel = Stopwatch.StartNew();
-            for (int frame = 0; frame < frames; frame++)
+            for (int frame = 0; frame < Frames; frame++)
             {
                 _entityManager.RunParallel<JBenchMoveJob, JBenchPosition, JBenchVelocity>(job);
             }
@@ -82,9 +82,9 @@ namespace Strada.Core.Tests.Performance
 
             float speedup = (float)swSequential.ElapsedMilliseconds / swParallel.ElapsedMilliseconds;
 
-            UnityEngine.Debug.Log($"[JOB SYSTEM] 100k entities, {frames} frames:");
-            UnityEngine.Debug.Log($"  Sequential: {swSequential.ElapsedMilliseconds}ms ({swSequential.ElapsedMilliseconds * 1000.0 / frames / entityCount * 1000:F0}ns/entity/frame)");
-            UnityEngine.Debug.Log($"  Parallel:   {swParallel.ElapsedMilliseconds}ms ({swParallel.ElapsedMilliseconds * 1000.0 / frames / entityCount * 1000:F0}ns/entity/frame)");
+            UnityEngine.Debug.Log($"[JOB SYSTEM] 100k entities, {Frames} frames:");
+            UnityEngine.Debug.Log($"  Sequential: {swSequential.ElapsedMilliseconds}ms ({swSequential.ElapsedMilliseconds * 1000.0 / Frames / EntityCount * 1000:F0}ns/entity/frame)");
+            UnityEngine.Debug.Log($"  Parallel:   {swParallel.ElapsedMilliseconds}ms ({swParallel.ElapsedMilliseconds * 1000.0 / Frames / EntityCount * 1000:F0}ns/entity/frame)");
             UnityEngine.Debug.Log($"  Speedup:    {speedup:F1}x");
 
             Assert.Greater(speedup, 1.5f, "Parallel should be at least 1.5x faster");
@@ -150,9 +150,9 @@ namespace Strada.Core.Tests.Performance
         [Test]
         public void Benchmark_JobChaining_100k()
         {
-            const int entityCount = 100_000;
+            const int EntityCount = 100_000;
 
-            for (int i = 0; i < entityCount; i++)
+            for (int i = 0; i < EntityCount; i++)
             {
                 var entity = _entityManager.CreateEntity();
                 _entityManager.AddComponent(entity, new JBenchPosition { X = i, Y = i, Z = i });
@@ -174,7 +174,7 @@ namespace Strada.Core.Tests.Performance
             sw.Stop();
 
             double msPerFrame = sw.ElapsedMilliseconds / 10.0;
-            UnityEngine.Debug.Log($"[JOB CHAINING] 3 chained jobs x 10 frames ({entityCount} entities):");
+            UnityEngine.Debug.Log($"[JOB CHAINING] 3 chained jobs x 10 frames ({EntityCount} entities):");
             UnityEngine.Debug.Log($"  Total: {sw.ElapsedMilliseconds}ms");
             UnityEngine.Debug.Log($"  Per frame: {msPerFrame:F2}ms");
 

@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using FsCheck;
 using NUnit.Framework;
 using Strada.Core.ECS;
-using Strada.Core.Tests.Generators;
+using Strada.Core.Tests.Runtime.Generators;
 
-namespace Strada.Core.Tests.ECS.Core
+namespace Strada.Core.Tests.Runtime.ECS.Core
 {
     /// <summary>
     /// Property-based tests for ECS entity lifecycle.

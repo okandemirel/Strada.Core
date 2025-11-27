@@ -6,7 +6,7 @@ using Strada.Core.Bridge;
 using Strada.Core.Communication;
 using Strada.Core.DI;
 using Strada.Core.ECS;
-using Strada.Core.Tests.Generators;
+using Strada.Core.Tests.Runtime.Generators;
 
 namespace Strada.Core.Tests.Runtime.Bridge
 {

@@ -3,7 +3,7 @@ using Strada.Core.ECS;
 using Strada.Core.ECS.Reactive;
 using Unity.PerformanceTesting;
 
-namespace Strada.Core.Tests.Performance
+namespace Strada.Core.Tests.Runtime.Performance
 {
     [TestFixture]
     [Category("Performance")]

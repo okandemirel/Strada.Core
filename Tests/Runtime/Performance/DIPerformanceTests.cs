@@ -3,7 +3,7 @@ using System.Diagnostics;
 using NUnit.Framework;
 using Strada.Core.DI;
 
-namespace Strada.Core.Tests.Performance
+namespace Strada.Core.Tests.Runtime.Performance
 {
     // Simple service - no dependencies
     public class SimpleService
@@ -262,13 +262,13 @@ namespace Strada.Core.Tests.Performance
         [Test]
         public void Benchmark_ContainerBuild_100Types()
         {
-            const int typeCount = 100;
+            const int TypeCount = 100;
 
             var sw = Stopwatch.StartNew();
             var builder = new ContainerBuilder();
 
             // Register 100 different factory registrations
-            for (int i = 0; i < typeCount; i++)
+            for (int i = 0; i < TypeCount; i++)
             {
                 builder.RegisterFactory<SimpleService>(_ => new SimpleService());
             }
@@ -277,9 +277,9 @@ namespace Strada.Core.Tests.Performance
             sw.Stop();
             container.Dispose();
 
-            UnityEngine.Debug.Log($"=== STRADA DI: Container Build ({typeCount} registrations) ===");
+            UnityEngine.Debug.Log($"=== STRADA DI: Container Build ({TypeCount} registrations) ===");
             UnityEngine.Debug.Log($"  Total: {sw.Elapsed.TotalMilliseconds:F2}ms");
-            UnityEngine.Debug.Log($"  Per-registration: {sw.Elapsed.TotalMilliseconds * 1000 / typeCount:F2}μs");
+            UnityEngine.Debug.Log($"  Per-registration: {sw.Elapsed.TotalMilliseconds * 1000 / TypeCount:F2}μs");
 
             Assert.Less(sw.ElapsedMilliseconds, 50, "100 registrations should build under 50ms");
         }
@@ -287,12 +287,12 @@ namespace Strada.Core.Tests.Performance
         [Test]
         public void Benchmark_ContainerBuild_1000Types()
         {
-            const int typeCount = 1000;
+            const int TypeCount = 1000;
 
             var sw = Stopwatch.StartNew();
             var builder = new ContainerBuilder();
 
-            for (int i = 0; i < typeCount; i++)
+            for (int i = 0; i < TypeCount; i++)
             {
                 builder.RegisterFactory<SimpleService>(_ => new SimpleService());
             }
@@ -301,9 +301,9 @@ namespace Strada.Core.Tests.Performance
             sw.Stop();
             container.Dispose();
 
-            UnityEngine.Debug.Log($"=== STRADA DI: Container Build ({typeCount} registrations) ===");
+            UnityEngine.Debug.Log($"=== STRADA DI: Container Build ({TypeCount} registrations) ===");
             UnityEngine.Debug.Log($"  Total: {sw.Elapsed.TotalMilliseconds:F2}ms");
-            UnityEngine.Debug.Log($"  Per-registration: {sw.Elapsed.TotalMilliseconds * 1000 / typeCount:F2}μs");
+            UnityEngine.Debug.Log($"  Per-registration: {sw.Elapsed.TotalMilliseconds * 1000 / TypeCount:F2}μs");
 
             Assert.Less(sw.ElapsedMilliseconds, 200, "1000 registrations should build under 200ms");
         }
@@ -353,7 +353,7 @@ namespace Strada.Core.Tests.Performance
             builder.Register<ServiceA>(Lifetime.Scoped);
             using var container = builder.Build();
 
-            const int iterations = 1000;
+            const int Iterations = 1000;
 
             // Warmup
             for (int i = 0; i < 10; i++)
@@ -364,16 +364,16 @@ namespace Strada.Core.Tests.Performance
 
             // Benchmark scope creation + first resolution
             var sw = Stopwatch.StartNew();
-            for (int i = 0; i < iterations; i++)
+            for (int i = 0; i < Iterations; i++)
             {
                 using var scope = container.CreateScope();
                 var _ = scope.Resolve<ServiceA>();
             }
             sw.Stop();
 
-            double usPerOp = sw.Elapsed.TotalMilliseconds * 1000 / iterations;
+            double usPerOp = sw.Elapsed.TotalMilliseconds * 1000 / Iterations;
 
-            UnityEngine.Debug.Log($"=== STRADA DI: Scope Creation + Resolve ({iterations:N0} cycles) ===");
+            UnityEngine.Debug.Log($"=== STRADA DI: Scope Creation + Resolve ({Iterations:N0} cycles) ===");
             UnityEngine.Debug.Log($"  Total: {sw.Elapsed.TotalMilliseconds:F2}ms");
             UnityEngine.Debug.Log($"  Per-cycle: {usPerOp:F2}μs");
 

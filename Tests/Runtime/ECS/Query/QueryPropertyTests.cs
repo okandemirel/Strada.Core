@@ -3,9 +3,9 @@ using FsCheck;
 using NUnit.Framework;
 using Strada.Core.ECS;
 using Strada.Core.ECS.Query;
-using Strada.Core.Tests.Generators;
+using Strada.Core.Tests.Runtime.Generators;
 
-namespace Strada.Core.Tests.ECS.Query
+namespace Strada.Core.Tests.Runtime.ECS.Query
 {
     /// <summary>
     /// Property-based tests for ECS query iteration.

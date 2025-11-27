@@ -6,7 +6,7 @@ using Strada.Core.ECS;
 using Strada.Core.MVCS;
 using UnityEngine;
 
-namespace Strada.Core.Tests.Bridge
+namespace Strada.Core.Tests.Runtime.Bridge
 {
     [TestFixture]
     public class BridgeTests

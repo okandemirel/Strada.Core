@@ -2,7 +2,7 @@ using NUnit.Framework;
 using Strada.Core.ECS;
 using Strada.Core.ECS.Query;
 
-namespace Strada.Core.Tests.ECS.Query
+namespace Strada.Core.Tests.Runtime.ECS.Query
 {
     public struct Position : IComponent { public float X, Y; }
     public struct Velocity : IComponent { public float X, Y; }

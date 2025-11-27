@@ -2,7 +2,7 @@ using System;
 using FsCheck;
 using Strada.Core.ECS;
 
-namespace Strada.Core.Tests.Generators
+namespace Strada.Core.Tests.Runtime.Generators
 {
     /// <summary>
     /// Test component for property-based testing.

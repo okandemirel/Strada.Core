@@ -27,154 +27,154 @@ namespace Strada.Core.Tests.Runtime.Performance
         [Test]
         public void Benchmark_100k_CommandDispatches()
         {
-            const int iterations = 100000;
-            const int warmup = 1000;
+            const int Iterations = 100000;
+            const int Warmup = 1000;
             int counter = 0;
 
             _bus.RegisterCommandHandler<BenchmarkCommand>(cmd => counter += cmd.Value);
 
             // Warmup
-            for (int i = 0; i < warmup; i++)
+            for (int i = 0; i < Warmup; i++)
             {
                 _bus.Send(new BenchmarkCommand { Value = 1 });
             }
             counter = 0;
 
             var sw = Stopwatch.StartNew();
-            for (int i = 0; i < iterations; i++)
+            for (int i = 0; i < Iterations; i++)
             {
                 _bus.Send(new BenchmarkCommand { Value = 1 });
             }
             sw.Stop();
 
-            double avgNanoseconds = sw.Elapsed.TotalMilliseconds * 1000000 / iterations;
+            double avgNanoseconds = sw.Elapsed.TotalMilliseconds * 1000000 / Iterations;
 
-            UnityEngine.Debug.Log($"[StradaBus] Command Dispatch ({iterations} dispatches):");
+            UnityEngine.Debug.Log($"[StradaBus] Command Dispatch ({Iterations} dispatches):");
             UnityEngine.Debug.Log($"  Total Time: {sw.ElapsedMilliseconds}ms");
             UnityEngine.Debug.Log($"  Avg: {avgNanoseconds:F0}ns per dispatch");
-            UnityEngine.Debug.Log($"  Throughput: {iterations / sw.Elapsed.TotalSeconds:F0} dispatches/sec");
+            UnityEngine.Debug.Log($"  Throughput: {Iterations / sw.Elapsed.TotalSeconds:F0} dispatches/sec");
 
-            Assert.AreEqual(iterations, counter);
+            Assert.AreEqual(Iterations, counter);
             Assert.Less(sw.ElapsedMilliseconds, 20, "Command dispatch too slow (Target: <20ms for 100k)");
         }
 
         [Test]
         public void Benchmark_100k_QueryDispatches()
         {
-            const int iterations = 100000;
-            const int warmup = 1000;
+            const int Iterations = 100000;
+            const int Warmup = 1000;
 
             _bus.RegisterQueryHandler<BenchmarkQuery, int>(q => q.Input * 2);
 
             // Warmup
-            for (int i = 0; i < warmup; i++)
+            for (int i = 0; i < Warmup; i++)
             {
                 _bus.Query<BenchmarkQuery, int>(new BenchmarkQuery { Input = i });
             }
 
             var sw = Stopwatch.StartNew();
             int sum = 0;
-            for (int i = 0; i < iterations; i++)
+            for (int i = 0; i < Iterations; i++)
             {
                 sum += _bus.Query<BenchmarkQuery, int>(new BenchmarkQuery { Input = 1 });
             }
             sw.Stop();
 
-            double avgNanoseconds = sw.Elapsed.TotalMilliseconds * 1000000 / iterations;
+            double avgNanoseconds = sw.Elapsed.TotalMilliseconds * 1000000 / Iterations;
 
-            UnityEngine.Debug.Log($"[StradaBus] Query Dispatch ({iterations} queries):");
+            UnityEngine.Debug.Log($"[StradaBus] Query Dispatch ({Iterations} queries):");
             UnityEngine.Debug.Log($"  Total Time: {sw.ElapsedMilliseconds}ms");
             UnityEngine.Debug.Log($"  Avg: {avgNanoseconds:F0}ns per query");
-            UnityEngine.Debug.Log($"  Throughput: {iterations / sw.Elapsed.TotalSeconds:F0} queries/sec");
+            UnityEngine.Debug.Log($"  Throughput: {Iterations / sw.Elapsed.TotalSeconds:F0} queries/sec");
 
-            Assert.AreEqual(iterations * 2, sum);
+            Assert.AreEqual(Iterations * 2, sum);
             Assert.Less(sw.ElapsedMilliseconds, 20, "Query dispatch too slow (Target: <20ms for 100k)");
         }
 
         [Test]
         public void Benchmark_100k_EventPublishes_SingleSubscriber()
         {
-            const int iterations = 100000;
-            const int warmup = 1000;
+            const int Iterations = 100000;
+            const int Warmup = 1000;
             int counter = 0;
 
             _bus.Subscribe<BenchmarkEvent>(evt => counter += evt.Value);
 
             // Warmup
-            for (int i = 0; i < warmup; i++)
+            for (int i = 0; i < Warmup; i++)
             {
                 _bus.Publish(new BenchmarkEvent { Value = 1 });
             }
             counter = 0;
 
             var sw = Stopwatch.StartNew();
-            for (int i = 0; i < iterations; i++)
+            for (int i = 0; i < Iterations; i++)
             {
                 _bus.Publish(new BenchmarkEvent { Value = 1 });
             }
             sw.Stop();
 
-            double avgNanoseconds = sw.Elapsed.TotalMilliseconds * 1000000 / iterations;
+            double avgNanoseconds = sw.Elapsed.TotalMilliseconds * 1000000 / Iterations;
 
-            UnityEngine.Debug.Log($"[StradaBus] Event Publish - Single Subscriber ({iterations} publishes):");
+            UnityEngine.Debug.Log($"[StradaBus] Event Publish - Single Subscriber ({Iterations} publishes):");
             UnityEngine.Debug.Log($"  Total Time: {sw.ElapsedMilliseconds}ms");
             UnityEngine.Debug.Log($"  Avg: {avgNanoseconds:F0}ns per publish");
-            UnityEngine.Debug.Log($"  Throughput: {iterations / sw.Elapsed.TotalSeconds:F0} publishes/sec");
+            UnityEngine.Debug.Log($"  Throughput: {Iterations / sw.Elapsed.TotalSeconds:F0} publishes/sec");
 
-            Assert.AreEqual(iterations, counter);
+            Assert.AreEqual(Iterations, counter);
             Assert.Less(sw.ElapsedMilliseconds, 20, "Event publish too slow (Target: <20ms for 100k)");
         }
 
         [Test]
         public void Benchmark_100k_EventPublishes_10Subscribers()
         {
-            const int iterations = 100000;
-            const int subscribers = 10;
-            const int warmup = 1000;
+            const int Iterations = 100000;
+            const int Subscribers = 10;
+            const int Warmup = 1000;
             int counter = 0;
 
-            for (int s = 0; s < subscribers; s++)
+            for (int s = 0; s < Subscribers; s++)
             {
                 _bus.Subscribe<BenchmarkEvent>(evt => counter += evt.Value);
             }
 
             // Warmup
-            for (int i = 0; i < warmup; i++)
+            for (int i = 0; i < Warmup; i++)
             {
                 _bus.Publish(new BenchmarkEvent { Value = 1 });
             }
             counter = 0;
 
             var sw = Stopwatch.StartNew();
-            for (int i = 0; i < iterations; i++)
+            for (int i = 0; i < Iterations; i++)
             {
                 _bus.Publish(new BenchmarkEvent { Value = 1 });
             }
             sw.Stop();
 
-            double avgNanoseconds = sw.Elapsed.TotalMilliseconds * 1000000 / iterations;
+            double avgNanoseconds = sw.Elapsed.TotalMilliseconds * 1000000 / Iterations;
 
-            UnityEngine.Debug.Log($"[StradaBus] Event Publish - {subscribers} Subscribers ({iterations} publishes):");
+            UnityEngine.Debug.Log($"[StradaBus] Event Publish - {Subscribers} Subscribers ({Iterations} publishes):");
             UnityEngine.Debug.Log($"  Total Time: {sw.ElapsedMilliseconds}ms");
-            UnityEngine.Debug.Log($"  Avg: {avgNanoseconds:F0}ns per publish (dispatching to {subscribers})");
-            UnityEngine.Debug.Log($"  Throughput: {iterations / sw.Elapsed.TotalSeconds:F0} publishes/sec");
+            UnityEngine.Debug.Log($"  Avg: {avgNanoseconds:F0}ns per publish (dispatching to {Subscribers})");
+            UnityEngine.Debug.Log($"  Throughput: {Iterations / sw.Elapsed.TotalSeconds:F0} publishes/sec");
 
-            Assert.AreEqual(iterations * subscribers, counter);
+            Assert.AreEqual(Iterations * Subscribers, counter);
             Assert.Less(sw.ElapsedMilliseconds, 50, "Event publish with 10 subscribers too slow (Target: <50ms for 100k)");
         }
 
         [Test]
         public void Benchmark_100k_PooledCommands()
         {
-            const int iterations = 100000;
-            const int warmup = 1000;
+            const int Iterations = 100000;
+            const int Warmup = 1000;
             int counter = 0;
 
             // Prewarm pool
             CommandPool<BenchmarkPooledCommand>.Instance.Prewarm(100);
 
             // Warmup
-            for (int i = 0; i < warmup; i++)
+            for (int i = 0; i < Warmup; i++)
             {
                 var cmd = BenchmarkPooledCommand.Rent();
                 cmd.Value = 1;
@@ -184,7 +184,7 @@ namespace Strada.Core.Tests.Runtime.Performance
             counter = 0;
 
             var sw = Stopwatch.StartNew();
-            for (int i = 0; i < iterations; i++)
+            for (int i = 0; i < Iterations; i++)
             {
                 var cmd = BenchmarkPooledCommand.Rent();
                 cmd.Value = 1;
@@ -193,14 +193,14 @@ namespace Strada.Core.Tests.Runtime.Performance
             }
             sw.Stop();
 
-            double avgNanoseconds = sw.Elapsed.TotalMilliseconds * 1000000 / iterations;
+            double avgNanoseconds = sw.Elapsed.TotalMilliseconds * 1000000 / Iterations;
 
-            UnityEngine.Debug.Log($"[StradaBus] Pooled Command Execute ({iterations} executions):");
+            UnityEngine.Debug.Log($"[StradaBus] Pooled Command Execute ({Iterations} executions):");
             UnityEngine.Debug.Log($"  Total Time: {sw.ElapsedMilliseconds}ms");
             UnityEngine.Debug.Log($"  Avg: {avgNanoseconds:F0}ns per execute (rent+execute+return)");
-            UnityEngine.Debug.Log($"  Throughput: {iterations / sw.Elapsed.TotalSeconds:F0} commands/sec");
+            UnityEngine.Debug.Log($"  Throughput: {Iterations / sw.Elapsed.TotalSeconds:F0} commands/sec");
 
-            Assert.AreEqual(iterations, counter);
+            Assert.AreEqual(Iterations, counter);
             Assert.Less(sw.ElapsedMilliseconds, 50, "Pooled command execution too slow (Target: <50ms for 100k)");
 
             // Cleanup
@@ -210,29 +210,29 @@ namespace Strada.Core.Tests.Runtime.Performance
         [Test]
         public void Benchmark_Subscribe_Unsubscribe_Cycles()
         {
-            const int iterations = 10000;
-            const int warmup = 100;
+            const int Iterations = 10000;
+            const int Warmup = 100;
 
             Action<BenchmarkEvent> handler = _ => { };
 
             // Warmup
-            for (int i = 0; i < warmup; i++)
+            for (int i = 0; i < Warmup; i++)
             {
                 _bus.Subscribe(handler);
                 _bus.Unsubscribe(handler);
             }
 
             var sw = Stopwatch.StartNew();
-            for (int i = 0; i < iterations; i++)
+            for (int i = 0; i < Iterations; i++)
             {
                 _bus.Subscribe(handler);
                 _bus.Unsubscribe(handler);
             }
             sw.Stop();
 
-            double avgMicroseconds = sw.Elapsed.TotalMilliseconds * 1000 / iterations;
+            double avgMicroseconds = sw.Elapsed.TotalMilliseconds * 1000 / Iterations;
 
-            UnityEngine.Debug.Log($"[StradaBus] Subscribe/Unsubscribe Cycles ({iterations} cycles):");
+            UnityEngine.Debug.Log($"[StradaBus] Subscribe/Unsubscribe Cycles ({Iterations} cycles):");
             UnityEngine.Debug.Log($"  Total Time: {sw.ElapsedMilliseconds}ms");
             UnityEngine.Debug.Log($"  Avg: {avgMicroseconds:F2}us per cycle");
 
@@ -242,7 +242,7 @@ namespace Strada.Core.Tests.Runtime.Performance
         [Test]
         public void Benchmark_MixedOperations()
         {
-            const int iterations = 10000;
+            const int Iterations = 10000;
             int cmdCount = 0;
             int querySum = 0;
             int evtCount = 0;
@@ -252,7 +252,7 @@ namespace Strada.Core.Tests.Runtime.Performance
             _bus.Subscribe<BenchmarkEvent>(e => evtCount++);
 
             var sw = Stopwatch.StartNew();
-            for (int i = 0; i < iterations; i++)
+            for (int i = 0; i < Iterations; i++)
             {
                 _bus.Send(new BenchmarkCommand { Value = i });
                 querySum += _bus.Query<BenchmarkQuery, int>(new BenchmarkQuery { Input = 1 });
@@ -260,16 +260,16 @@ namespace Strada.Core.Tests.Runtime.Performance
             }
             sw.Stop();
 
-            double avgMicroseconds = sw.Elapsed.TotalMilliseconds * 1000 / iterations;
+            double avgMicroseconds = sw.Elapsed.TotalMilliseconds * 1000 / Iterations;
 
-            UnityEngine.Debug.Log($"[StradaBus] Mixed Operations ({iterations} iterations, 3 ops each):");
+            UnityEngine.Debug.Log($"[StradaBus] Mixed Operations ({Iterations} iterations, 3 ops each):");
             UnityEngine.Debug.Log($"  Total Time: {sw.ElapsedMilliseconds}ms");
             UnityEngine.Debug.Log($"  Avg: {avgMicroseconds:F2}us per iteration (cmd+query+event)");
             UnityEngine.Debug.Log($"  Commands: {cmdCount}, Queries: {querySum / 2}, Events: {evtCount}");
 
-            Assert.AreEqual(iterations, cmdCount);
-            Assert.AreEqual(iterations * 2, querySum);
-            Assert.AreEqual(iterations, evtCount);
+            Assert.AreEqual(Iterations, cmdCount);
+            Assert.AreEqual(Iterations * 2, querySum);
+            Assert.AreEqual(Iterations, evtCount);
             Assert.Less(sw.ElapsedMilliseconds, 50, "Mixed operations too slow (Target: <50ms for 10k)");
         }
 

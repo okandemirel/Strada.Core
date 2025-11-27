@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using FsCheck;
 using NUnit.Framework;
 using Strada.Core.Bridge;
-using Strada.Core.Tests.Generators;
+using Strada.Core.Tests.Runtime.Generators;
 
 namespace Strada.Core.Tests.Runtime.Bridge
 {
@@ -12,7 +12,7 @@ namespace Strada.Core.Tests.Runtime.Bridge
     /// Tests verify correctness properties that must hold across all valid inputs.
     /// </summary>
     [TestFixture]
-    public class ReactivePropertyPBT
+    public class ReactivePropertyPropertyTests
     {
         [OneTimeSetUp]
         public void Setup()

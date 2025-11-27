@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using FsCheck;
 using NUnit.Framework;
 using Strada.Core.Communication;
-using Strada.Core.Tests.Generators;
+using Strada.Core.Tests.Runtime.Generators;
 
 namespace Strada.Core.Tests.Runtime.Communication
 {

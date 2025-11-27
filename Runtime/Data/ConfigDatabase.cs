@@ -79,8 +79,8 @@ namespace Strada.Core.Data
         }
     }
 
-    [CreateAssetMenu(fileName = "CD_Database", menuName = "Strada/Config Database")]
-    public sealed class CD_Database : ScriptableObject
+    [CreateAssetMenu(fileName = "ConfigDatabaseAsset", menuName = "Strada/Config Database")]
+    public sealed class ConfigDatabaseAsset : ScriptableObject
     {
         [SerializeField] private List<ConfigData> _configs = new();
 

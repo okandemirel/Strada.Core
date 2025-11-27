@@ -241,25 +241,21 @@ namespace Strada.Core.Editor
 
         #region Documentation (Priority 200-299)
 
-        [MenuItem(MenuRoot + "Documentation/Getting Started", priority = 200)]
-        private static void OpenGettingStarted()
+        [MenuItem(MenuRoot + "Documentation/Open Local Docs", priority = 200)]
+        private static void OpenLocalDocumentation()
         {
-            Application.OpenURL("https://strada-framework.dev/docs/getting-started");
+            var readmePath = "Packages/com.strada.core/README.md";
+            if (System.IO.File.Exists(readmePath))
+            {
+                EditorUtility.RevealInFinder(readmePath);
+            }
+            else
+            {
+                Debug.LogWarning("[Strada] Documentation not found at: " + readmePath);
+            }
         }
 
-        [MenuItem(MenuRoot + "Documentation/API Reference", priority = 201)]
-        private static void OpenAPIReference()
-        {
-            Application.OpenURL("https://strada-framework.dev/docs/api");
-        }
-
-        [MenuItem(MenuRoot + "Documentation/Architecture Guide", priority = 202)]
-        private static void OpenArchitectureGuide()
-        {
-            Application.OpenURL("https://strada-framework.dev/docs/architecture");
-        }
-
-        [MenuItem(MenuRoot + "Documentation/Examples", priority = 210)]
+        [MenuItem(MenuRoot + "Documentation/Open Examples", priority = 210)]
         private static void OpenExamples()
         {
             var examplesPath = "Packages/com.strada.core/Samples~";
@@ -269,7 +265,7 @@ namespace Strada.Core.Editor
             }
             else
             {
-                Application.OpenURL("https://strada-framework.dev/docs/examples");
+                Debug.LogWarning("[Strada] Examples folder not found at: " + examplesPath);
             }
         }
 
@@ -289,25 +285,6 @@ namespace Strada.Core.Editor
                 "Architecture: Truly unified DI+MVCS+ECS\n\n" +
                 "© 2025 Strada Framework Team",
                 "OK");
-        }
-
-        [MenuItem(MenuRoot + "Help/Report Issue", priority = 1001)]
-        private static void ReportIssue()
-        {
-            Application.OpenURL("https://github.com/strada-framework/strada-core/issues/new");
-        }
-
-        [MenuItem(MenuRoot + "Help/Join Discord", priority = 1002)]
-        private static void JoinDiscord()
-        {
-            Application.OpenURL("https://discord.gg/strada");
-        }
-
-        [MenuItem(MenuRoot + "Help/Check for Updates", priority = 1003)]
-        private static void CheckForUpdates()
-        {
-            Debug.Log("[Strada] Checking for updates...");
-            Application.OpenURL("https://strada-framework.dev/releases");
         }
 
         #endregion
