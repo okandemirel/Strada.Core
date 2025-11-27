@@ -68,7 +68,6 @@ namespace Strada.Core.Editor.Windows
         private BusDataProvider _busDataProvider;
 
 
-        [MenuItem("Strada/Debugger/Bus Debugger", priority = 104)]
         public static void ShowWindow()
         {
             var window = GetWindow<BusDebuggerWindow>("Bus Debugger");

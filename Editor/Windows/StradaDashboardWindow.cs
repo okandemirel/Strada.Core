@@ -102,7 +102,6 @@ namespace Strada.Core.Editor.Windows
         private readonly Color _criticalColor = new Color(1.0f, 0.4f, 0.4f);
         private readonly Color _normalColor = new Color(0.7f, 0.9f, 0.7f);
 
-        [MenuItem("Strada/Dashboard", priority = 0)]
         public static void ShowWindow()
         {
             var window = GetWindow<StradaDashboardWindow>("Strada Dashboard");

@@ -55,7 +55,6 @@ namespace Strada.Core.Editor.Windows
         // Tab names
         private readonly string[] _tabNames = { "Benchmarks", "Results", "History", "Settings" };
         
-        [MenuItem("Strada/Debugger/Benchmark Runner", priority = 104)]
         public static void ShowWindow()
         {
             var window = GetWindow<BenchmarkRunnerWindow>("Benchmark Runner");

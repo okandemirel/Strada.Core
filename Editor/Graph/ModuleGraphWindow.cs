@@ -25,7 +25,6 @@ namespace Strada.Core.Editor.Graph
         private float _refreshInterval = 1f;
         private double _lastRefreshTime;
 
-        [MenuItem("Strada/Debugger/Module Graph", false, 101)]
         public static void ShowWindow()
         {
             var window = GetWindow<ModuleGraphWindow>();

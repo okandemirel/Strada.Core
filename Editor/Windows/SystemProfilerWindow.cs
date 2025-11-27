@@ -49,7 +49,6 @@ namespace Strada.Core.Editor.Windows
         private readonly Color _criticalColor = new Color(1.0f, 0.4f, 0.4f);
         private readonly Color _phaseHeaderColor = new Color(0.3f, 0.5f, 0.7f);
         
-        [MenuItem("Strada/Debugger/System Profiler", priority = 103)]
         public static void ShowWindow()
         {
             var window = GetWindow<SystemProfilerWindow>("System Profiler");

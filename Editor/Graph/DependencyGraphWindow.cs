@@ -27,7 +27,6 @@ namespace Strada.Core.Editor.Graph
         private float _refreshInterval = 1f;
         private double _lastRefreshTime;
 
-        [MenuItem("Strada/Debugger/Dependency Graph", false, 100)]
         public static void ShowWindow()
         {
             var window = GetWindow<DependencyGraphWindow>();

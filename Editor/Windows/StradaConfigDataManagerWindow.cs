@@ -66,7 +66,6 @@ namespace Strada.Core.Editor.Windows
             public DateTime ValidatedAt;
         }
 
-        [MenuItem("Strada/Tools/Config Data Manager", priority = 102)]
         public static void ShowWindow()
         {
             var window = GetWindow<StradaConfigDataManagerWindow>("Config Data Manager");

@@ -56,6 +56,9 @@ namespace Strada.Core.Editor.CodeGen
                         if (!typeof(IModuleInstaller).IsAssignableFrom(type))
                             continue;
 
+                        if (!IsTypeAccessible(type))
+                            continue;
+
                         var priorityAttr = type.GetCustomAttribute<ModulePriorityAttribute>();
                         int priority = priorityAttr?.Priority ?? 0;
 
@@ -146,6 +149,14 @@ namespace Strada.Core.Editor.CodeGen
             var argNames = string.Join(", ", args.Select(GetFullTypeName));
 
             return $"{baseName.Replace("+", ".")}<{argNames}>";
+        }
+
+        private static bool IsTypeAccessible(Type type)
+        {
+            if (type.IsNested)
+                return type.IsNestedPublic && IsTypeAccessible(type.DeclaringType);
+
+            return type.IsPublic;
         }
 
         private struct ModuleTypeInfo
