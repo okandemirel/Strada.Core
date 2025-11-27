@@ -875,7 +875,7 @@ namespace Strada.Core.Editor.Windows
         private int GetEntityComponentCount(int entityId)
         {
             if (!_worldProvider.IsAvailable) return 0;
-            return World.Current?.Entities?.Store?.GetEntityComponentCount(entityId) ?? 0;
+            return World.Current?.EntityManager?.Store?.GetEntityComponentCount(entityId) ?? 0;
         }
 
         #endregion

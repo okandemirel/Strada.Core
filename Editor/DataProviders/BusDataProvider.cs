@@ -37,7 +37,7 @@ namespace Strada.Core.Editor.DataProviders
             get
             {
                 if (!Application.isPlaying) return false;
-                return World.Current?.Bus != null;
+                return World.Current?.MessageBus != null;
             }
         }
 
@@ -150,10 +150,10 @@ namespace Strada.Core.Editor.DataProviders
 
             try
             {
-                var bus = World.Current.Bus;
+                var bus = World.Current.MessageBus;
                 
                 // Use reflection to call GetSubscriberCount<T>
-                var method = typeof(StradaBus).GetMethod("GetSubscriberCount");
+                var method = typeof(MessageBus).GetMethod("GetSubscriberCount");
                 if (method != null)
                 {
                     var genericMethod = method.MakeGenericMethod(messageType);
@@ -243,8 +243,8 @@ namespace Strada.Core.Editor.DataProviders
 
             try
             {
-                var bus = World.Current.Bus;
-                var busType = typeof(StradaBus);
+                var bus = World.Current.MessageBus;
+                var busType = typeof(MessageBus);
                 var flags = BindingFlags.NonPublic | BindingFlags.Instance;
 
                 var handlersField = busType.GetField("_commandHandlers", flags);

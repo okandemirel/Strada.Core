@@ -19,7 +19,7 @@ namespace Strada.Core.Tests.Runtime.Bridge
     {
         private EntityManager _entityManager;
         private IContainer _container;
-        private StradaBus _bus;
+        private MessageBus _bus;
 
         [OneTimeSetUp]
         public void OneTimeSetUp()
@@ -31,11 +31,11 @@ namespace Strada.Core.Tests.Runtime.Bridge
         public void SetUp()
         {
             _entityManager = new EntityManager();
-            _bus = new StradaBus();
+            _bus = new MessageBus();
             
             var builder = new ContainerBuilder();
             builder.RegisterInstance(_entityManager);
-            builder.RegisterInstance<IStradaBus>(_bus);
+            builder.RegisterInstance<IMessageBus>(_bus);
             _container = builder.Build();
         }
 

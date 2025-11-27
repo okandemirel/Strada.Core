@@ -142,7 +142,7 @@ namespace Strada.Core.Tests.Runtime.Bridge
             public float Y;
         }
 
-        private class TestView : StradaView { }
+        private class TestView : View { }
 
         private class TestMediator : ViewMediator<TestView>
         {

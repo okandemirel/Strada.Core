@@ -8,12 +8,12 @@ namespace Strada.Core.Tests.Runtime.Commands
     [TestFixture]
     public class CommandBusTests
     {
-        private StradaBus _bus;
+        private MessageBus _bus;
 
         [SetUp]
         public void SetUp()
         {
-            _bus = new StradaBus();
+            _bus = new MessageBus();
         }
 
         [TearDown]
@@ -118,10 +118,10 @@ namespace Strada.Core.Tests.Runtime.Commands
     public class CommandBusPerformanceTests
     {
         [Test]
-        public void Benchmark_100k_TypedCommands()
+        public void Command_Execute_InvokesHandler()
         {
-            var bus = new StradaBus();
             var sum = 0;
+            var bus = new MessageBus();
             bus.RegisterCommandHandler<BenchmarkCommand>(cmd => sum += cmd.Value);
 
             var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -140,7 +140,7 @@ namespace Strada.Core.Tests.Runtime.Commands
         [Test]
         public void Benchmark_100k_PooledCommands()
         {
-            var bus = new StradaBus();
+            var bus = new MessageBus();
             CommandPool<BenchmarkPooledCommand>.Instance.Prewarm(100);
             var sum = 0;
 

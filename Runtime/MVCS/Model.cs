@@ -6,7 +6,7 @@ using Strada.Core.MVCS.Interfaces;
 
 namespace Strada.Core.MVCS
 {
-    public abstract class StradaModel : IModel, IInitializable, IDisposable
+    public abstract class Model : IModel, IInitializable, IDisposable
     {
         private readonly List<IDisposable> _disposables = new(4);
         private bool _initialized;
@@ -61,7 +61,7 @@ namespace Strada.Core.MVCS
         }
     }
 
-    public abstract class StradaModel<TData> : StradaModel where TData : class, new()
+    public abstract class Model<TData> : Model where TData : class, new()
     {
         private ReactiveProperty<TData> _dataProperty;
 
@@ -91,7 +91,7 @@ namespace Strada.Core.MVCS
         public override bool Validate() => base.Validate() && Data != null;
     }
 
-    public abstract class ReactiveModel : StradaModel
+    public abstract class ReactiveModel : Model
     {
         private readonly Dictionary<string, object> _properties = new(8);
 

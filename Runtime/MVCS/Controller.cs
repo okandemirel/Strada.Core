@@ -6,15 +6,15 @@ namespace Strada.Core.MVCS
     /// <summary>
     /// Base class for controllers. Controllers handle input and coordinate between Views and Services.
     /// </summary>
-    public abstract class StradaController : StradaBase, IController
+    public abstract class Controller : StradaBase, IController
     {
-        public virtual void Tick(float deltaTime) { }
+        // Tick removed to avoid double-ticking. Implement ITickable if needed.
     }
 
     /// <summary>
     /// Controller with strongly-typed model injection.
     /// </summary>
-    public abstract class StradaController<TModel> : StradaController where TModel : class, IModel
+    public abstract class Controller<TModel> : Controller where TModel : class, IModel
     {
         protected TModel Model { get; private set; }
 
@@ -28,7 +28,7 @@ namespace Strada.Core.MVCS
     /// <summary>
     /// Controller that receives Tick updates every frame.
     /// </summary>
-    public abstract class TickableController : StradaController, ITickable
+    public abstract class TickableController : Controller, ITickable
     {
         public virtual void Tick(float deltaTime) { }
     }
@@ -36,7 +36,7 @@ namespace Strada.Core.MVCS
     /// <summary>
     /// Controller that receives FixedTick updates at fixed intervals.
     /// </summary>
-    public abstract class FixedTickableController : StradaController, IFixedTickable
+    public abstract class FixedTickableController : Controller, IFixedTickable
     {
         public virtual void FixedTick(float fixedDeltaTime) { }
     }
@@ -44,7 +44,7 @@ namespace Strada.Core.MVCS
     /// <summary>
     /// Controller that receives all tick types: Tick, FixedTick, and LateTick.
     /// </summary>
-    public abstract class FullTickController : StradaController, ITickable, IFixedTickable, ILateTickable
+    public abstract class FullTickController : Controller, ITickable, IFixedTickable, ILateTickable
     {
         public virtual void Tick(float deltaTime) { }
         public virtual void FixedTick(float fixedDeltaTime) { }

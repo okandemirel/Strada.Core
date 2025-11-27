@@ -12,8 +12,8 @@ namespace Strada.Core.Bridge
         private bool _registeredWithLoop;
 
         public World World => _world;
-        public EntityManager Entities => _world?.Entities;
-        public StradaBus Bus => _world?.Bus;
+        public EntityManager EntityManager => _world?.EntityManager;
+        public MessageBus MessageBus => _world?.MessageBus;
         public bool AutoUpdate { get => _autoUpdate; set => _autoUpdate = value; }
 
         public WorldService() { }

@@ -388,7 +388,7 @@ namespace Strada.Core.Editor.Benchmarking
             {
                 sw.Restart();
                 int count = 0;
-                world.Entities.ForEach<TestComponent>((int entityIndex, ref TestComponent c) => count++);
+                world.EntityManager.ForEach<TestComponent>((int entityIndex, ref TestComponent c) => count++);
                 sw.Stop();
                 timings[i] = sw.Elapsed.TotalMilliseconds;
             }
@@ -414,7 +414,7 @@ namespace Strada.Core.Editor.Benchmarking
             var sw = new Stopwatch();
             long memoryBefore = GC.GetTotalMemory(true);
             
-            var bus = new StradaBus();
+            var bus = new MessageBus();
             int receivedCount = 0;
             bus.Subscribe<TestEvent>(e => receivedCount++);
             
@@ -445,7 +445,7 @@ namespace Strada.Core.Editor.Benchmarking
             var sw = new Stopwatch();
             long memoryBefore = GC.GetTotalMemory(true);
             
-            var bus = new StradaBus();
+            var bus = new MessageBus();
             bus.RegisterCommandHandler<TestCommand>(cmd => { /* no-op handler */ });
             
             var testCommand = new TestCommand { Id = 1 };

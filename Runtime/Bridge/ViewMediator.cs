@@ -7,14 +7,14 @@ using Strada.Core.MVCS;
 
 namespace Strada.Core.Bridge
 {
-    public abstract class ViewMediator<TView> : IDisposable where TView : StradaView
+    public abstract class ViewMediator<TView> : IDisposable where TView : View
     {
         private readonly List<IComponentBinding> _bindings = new(8);
         private readonly List<IDisposable> _disposables = new(4);
         private readonly List<Action> _unsubscribeActions = new(4);
         private EntityManager _entities;
         private IContainer _container;
-        private IStradaBus _bus;
+        private IMessageBus _bus;
         private TView _view;
         private Entity _entity;
         private bool _bound;
@@ -22,7 +22,7 @@ namespace Strada.Core.Bridge
 
         protected EntityManager Entities => _entities;
         protected IContainer Container => _container;
-        protected IStradaBus Bus => _bus;
+        protected IMessageBus MessageBus => _bus;
         protected TView View => _view;
         protected Entity Entity => _entity;
         public bool IsBound => _bound;
@@ -162,7 +162,7 @@ namespace Strada.Core.Bridge
         }
 
         /// <summary>
-        /// Subscribe to any event via StradaBus.
+        /// Subscribe to any event via MessageBus.
         /// Auto-unsubscribes when Unbind is called.
         /// </summary>
         protected void Subscribe<TEvent>(Action<TEvent> handler) where TEvent : struct
@@ -173,15 +173,15 @@ namespace Strada.Core.Bridge
         }
 
         /// <summary>
-        /// Publish an event via StradaBus.
+        /// Publish an event via MessageBus.
         /// </summary>
-        protected void Publish<TEvent>(TEvent evt) where TEvent : struct
+        protected void Publish<TEvent>(TEvent message) where TEvent : struct
         {
-            _bus?.Publish(evt);
+            _bus?.Publish(message);
         }
 
         /// <summary>
-        /// Send a command via StradaBus to ECS systems.
+        /// Send a command via MessageBus to ECS systems.
         /// </summary>
         protected void SendCommand<TCommand>(TCommand command) where TCommand : struct
         {

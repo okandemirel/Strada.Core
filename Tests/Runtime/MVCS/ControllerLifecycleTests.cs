@@ -17,7 +17,7 @@ namespace Strada.Core.Tests.Runtime.MVCS
         public void SetUp()
         {
             var builder = new ContainerBuilder();
-            builder.Register<StradaBus>(Lifetime.Singleton);
+            builder.Register<MessageBus>(Lifetime.Singleton);
             _container = builder.Build();
         }
 
@@ -82,7 +82,7 @@ namespace Strada.Core.Tests.Runtime.MVCS
             InjectionProcessor.Inject(controller, _container);
             controller.Initialize();
 
-            var bus = _container.Resolve<StradaBus>();
+            var bus = _container.Resolve<MessageBus>();
             int beforeCount = bus.GetSubscriberCount<TestEvent>();
 
             controller.Dispose();
@@ -108,7 +108,7 @@ namespace Strada.Core.Tests.Runtime.MVCS
             container.Dispose();
         }
 
-        private class TestController : StradaController
+        private class TestController : Controller
         {
             public int InitCount;
             public int DisposeCount;
@@ -128,7 +128,7 @@ namespace Strada.Core.Tests.Runtime.MVCS
 
         private struct TestEvent { }
 
-        private class SubscribingController : StradaController
+        private class SubscribingController : Controller
         {
             protected override void OnInitialize()
             {
@@ -138,9 +138,9 @@ namespace Strada.Core.Tests.Runtime.MVCS
             private void OnTestEvent(TestEvent evt) { }
         }
 
-        private class TestModel : StradaModel { }
+        private class TestModel : Model { }
 
-        private class ModelController : StradaController<TestModel>
+        private class ModelController : Controller<TestModel>
         {
             public TestModel GetModel() => Model;
         }

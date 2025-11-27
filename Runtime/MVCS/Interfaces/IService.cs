@@ -28,19 +28,6 @@ namespace Strada.Core.MVCS.Interfaces
         /// Use this to set up the service, load resources, subscribe to events, etc.
         /// </remarks>
         void Initialize();
-
-        /// <summary>
-        /// Ticks the service logic.
-        /// </summary>
-        /// <param name="deltaTime">Time elapsed since last tick in seconds.</param>
-        /// <remarks>
-        /// Optional: Not all services need per-frame ticks.
-        /// Default implementation does nothing.
-        /// </remarks>
-        void Tick(float deltaTime)
-        {
-            // Optional: Default implementation does nothing
-        }
     }
 
     /// <summary>

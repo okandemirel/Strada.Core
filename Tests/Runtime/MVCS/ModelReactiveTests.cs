@@ -132,12 +132,12 @@ namespace Strada.Core.Tests.Runtime.MVCS
             Assert.AreSame(prop1, prop2);
         }
 
-        private class TestModel : StradaModel
+        private class TestModel : Model
         {
             public bool IsInit => IsInitialized;
         }
 
-        private class PropertyModel : StradaModel
+        private class PropertyModel : Model
         {
             private ReactiveProperty<int> _health;
 
@@ -150,7 +150,7 @@ namespace Strada.Core.Tests.Runtime.MVCS
             public void SetHealth(int value) => _health.Value = value;
         }
 
-        private class CollectionModel : StradaModel
+        private class CollectionModel : Model
         {
             private ReactiveCollection<string> _items;
 
@@ -169,7 +169,7 @@ namespace Strada.Core.Tests.Runtime.MVCS
             public string Name;
         }
 
-        private class DataModel : StradaModel<PlayerData>
+        private class DataModel : Model<PlayerData>
         {
             public PlayerData GetData() => Data;
 

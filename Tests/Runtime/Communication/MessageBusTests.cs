@@ -7,14 +7,14 @@ using Strada.Core.Communication;
 namespace Strada.Core.Tests.Runtime.Communication
 {
     [TestFixture]
-    public class StradaBusTests
+    public class MessageBusTests
     {
-        private StradaBus _bus;
+        private MessageBus _bus;
 
         [SetUp]
         public void SetUp()
         {
-            _bus = new StradaBus();
+            _bus = new MessageBus();
         }
 
         [TearDown]

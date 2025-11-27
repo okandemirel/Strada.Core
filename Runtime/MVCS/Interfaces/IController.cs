@@ -18,12 +18,6 @@ namespace Strada.Core.MVCS.Interfaces
         /// Initializes the controller with its dependencies.
         /// </summary>
         void Initialize();
-
-        /// <summary>
-        /// Ticks the controller logic.
-        /// </summary>
-        /// <param name="deltaTime">Time elapsed since last tick in seconds.</param>
-        void Tick(float deltaTime);
     }
 
     /// <summary>

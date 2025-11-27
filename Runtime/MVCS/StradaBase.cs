@@ -22,8 +22,8 @@ namespace Strada.Core.MVCS
 
         protected IContainer Container { get; private set; }
         protected World World { get; private set; }
-        protected EntityManager Entities { get; private set; }
-        protected StradaBus Bus { get; private set; }
+        protected EntityManager EntityManager { get; private set; }
+        protected MessageBus MessageBus { get; private set; }
         protected bool IsInitialized => _initialized;
         protected bool IsDisposed => _disposed;
 
@@ -33,9 +33,9 @@ namespace Strada.Core.MVCS
             Container = container;
             container.TryResolve(out World world);
             World = world;
-            Entities = world?.Entities;
-            container.TryResolve(out StradaBus bus);
-            Bus = bus;
+            EntityManager = world?.EntityManager;
+            container.TryResolve(out MessageBus bus);
+            MessageBus = bus;
         }
 
         public void Initialize()
@@ -66,26 +66,26 @@ namespace Strada.Core.MVCS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected void Subscribe<T>(Action<T> handler) where T : struct
         {
-            Bus?.Subscribe(handler);
-            _unsubscribes.Add(() => Bus?.Unsubscribe(handler));
+            MessageBus?.Subscribe(handler);
+            _unsubscribes.Add(() => MessageBus?.Unsubscribe(handler));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected void Publish<T>(T evt) where T : struct
+        protected void Publish<T>(T message) where T : struct
         {
-            Bus?.Publish(evt);
+            MessageBus?.Publish(message);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected void Send<T>(T command) where T : struct
         {
-            Bus?.Send(command);
+            MessageBus?.Send(command);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected TResult Query<TQuery, TResult>(TQuery query) where TQuery : struct, IQuery<TResult>
         {
-            return Bus != null ? Bus.Query<TQuery, TResult>(query) : default;
+            return MessageBus != null ? MessageBus.Query<TQuery, TResult>(query) : default;
         }
 
         protected void AddDisposable(IDisposable disposable)
@@ -94,10 +94,10 @@ namespace Strada.Core.MVCS
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected Entity CreateEntity() => Entities?.CreateEntity() ?? default;
+        protected Entity CreateEntity() => EntityManager?.CreateEntity() ?? default;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected void DestroyEntity(Entity entity) => Entities?.DestroyEntity(entity);
+        protected void DestroyEntity(Entity entity) => EntityManager?.DestroyEntity(entity);
 
         public void Dispose()
         {

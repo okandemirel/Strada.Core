@@ -522,7 +522,7 @@ namespace Strada.Core.Editor.Windows
             
             // Get systems from the world's scheduler via reflection
             // since SystemScheduler doesn't expose systems directly
-            var scheduler = World.Current.Scheduler;
+            var scheduler = World.Current.SystemScheduler;
             if (scheduler == null) return;
             
             try
@@ -576,7 +576,7 @@ namespace Strada.Core.Editor.Windows
         {
             if (World.Current == null) return;
             
-            var scheduler = World.Current.Scheduler;
+            var scheduler = World.Current.SystemScheduler;
             if (scheduler == null) return;
             
             try
@@ -604,7 +604,7 @@ namespace Strada.Core.Editor.Windows
                                 // Simulate timing capture (in real implementation, 
                                 // this would hook into actual system execution)
                                 // For now, we estimate based on entity count
-                                var entityCount = World.Current?.Entities?.EntityCount ?? 0;
+                                var entityCount = World.Current?.EntityManager?.EntityCount ?? 0;
                                 var baseTime = 0.01 + UnityEngine.Random.Range(0f, 0.1f);
                                 var scaledTime = baseTime + entityCount * 0.00001;
                                 

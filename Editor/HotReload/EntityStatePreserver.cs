@@ -19,7 +19,7 @@ namespace Strada.Core.Editor.HotReload
         public static WorldStateSnapshot CaptureState()
         {
             var world = World.Current;
-            if (world == null || world.Entities == null)
+            if (world == null || world.EntityManager == null)
             {
                 return null;
             }
@@ -32,7 +32,7 @@ namespace Strada.Core.Editor.HotReload
             
             try
             {
-                var entityManager = world.Entities;
+                var entityManager = world.EntityManager;
                 var store = entityManager.Store;
                 var entityIndices = entityManager.GetAllEntities();
                 var componentTypes = store.GetComponentTypes();
@@ -93,13 +93,13 @@ namespace Strada.Core.Editor.HotReload
             }
             
             var world = World.Current;
-            if (world == null || world.Entities == null)
+            if (world == null || world.EntityManager == null)
             {
                 Debug.LogWarning("[EntityStatePreserver] Cannot restore state: No active world");
                 return false;
             }
             
-            var entityManager = world.Entities;
+            var entityManager = world.EntityManager;
             var store = entityManager.Store;
             var restoredCount = 0;
             var failedCount = 0;

@@ -8,7 +8,7 @@ using Strada.Core.Tests.Runtime.Generators;
 namespace Strada.Core.Tests.Runtime.Communication
 {
     /// <summary>
-    /// Property-based tests for StradaBus messaging system.
+    /// Property-based tests for MessageBus messaging system.
     /// Tests verify correctness properties that must hold across all valid inputs.
     /// </summary>
     [TestFixture]
@@ -53,7 +53,7 @@ namespace Strada.Core.Tests.Runtime.Communication
 
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 10: Event Delivery Completeness**
-        /// For any event published to StradaBus with N subscribers,
+        /// For any event published to MessageBus with N subscribers,
         /// all N subscribers SHALL receive the event exactly once.
         /// **Validates: Requirements 4.1**
         /// </summary>
@@ -68,7 +68,7 @@ namespace Strada.Core.Tests.Runtime.Communication
                 (subscriberCount, eventValue) =>
                 {
                     // Arrange
-                    using var bus = new StradaBus();
+                    using var bus = new MessageBus();
                     var receivedValues = new List<int>();
                     var receiveCounts = new int[subscriberCount];
 
@@ -124,7 +124,7 @@ namespace Strada.Core.Tests.Runtime.Communication
                 (subscriberCount, publishCount) =>
                 {
                     // Arrange
-                    using var bus = new StradaBus();
+                    using var bus = new MessageBus();
                     var totalReceived = new int[subscriberCount];
 
                     for (int i = 0; i < subscriberCount; i++)
@@ -158,7 +158,7 @@ namespace Strada.Core.Tests.Runtime.Communication
 
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 11: Command Handler Invocation**
-        /// For any command sent to StradaBus with a registered handler,
+        /// For any command sent to MessageBus with a registered handler,
         /// the handler SHALL be invoked exactly once with the command data.
         /// **Validates: Requirements 4.2**
         /// </summary>
@@ -172,7 +172,7 @@ namespace Strada.Core.Tests.Runtime.Communication
                 (commandValue) =>
                 {
                     // Arrange
-                    using var bus = new StradaBus();
+                    using var bus = new MessageBus();
                     int invokeCount = 0;
                     int receivedValue = 0;
 
@@ -207,7 +207,7 @@ namespace Strada.Core.Tests.Runtime.Communication
                 (sendCount) =>
                 {
                     // Arrange
-                    using var bus = new StradaBus();
+                    using var bus = new MessageBus();
                     int invokeCount = 0;
                     var receivedValues = new List<int>();
 
@@ -246,7 +246,7 @@ namespace Strada.Core.Tests.Runtime.Communication
 
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 12: Query Result Correctness**
-        /// For any query sent to StradaBus, the returned result SHALL equal
+        /// For any query sent to MessageBus, the returned result SHALL equal
         /// the value returned by the registered handler.
         /// **Validates: Requirements 4.3**
         /// </summary>
@@ -260,7 +260,7 @@ namespace Strada.Core.Tests.Runtime.Communication
                 (multiplier) =>
                 {
                     // Arrange
-                    using var bus = new StradaBus();
+                    using var bus = new MessageBus();
                     const int baseValue = 10;
                     int expectedResult = baseValue * multiplier;
 
@@ -291,7 +291,7 @@ namespace Strada.Core.Tests.Runtime.Communication
                 (id) =>
                 {
                     // Arrange
-                    using var bus = new StradaBus();
+                    using var bus = new MessageBus();
                     string expectedResult = $"Result_{id}";
 
                     bus.RegisterQueryHandler<TestStringQuery, string>(q => $"Result_{q.Id}");
@@ -322,7 +322,7 @@ namespace Strada.Core.Tests.Runtime.Communication
                 (multiplier, queryCount) =>
                 {
                     // Arrange
-                    using var bus = new StradaBus();
+                    using var bus = new MessageBus();
                     bus.RegisterQueryHandler<TestQuery, int>(q => 10 * q.Multiplier);
 
                     // Act - query multiple times
@@ -366,7 +366,7 @@ namespace Strada.Core.Tests.Runtime.Communication
                 (publishCount) =>
                 {
                     // Arrange
-                    using var bus = new StradaBus();
+                    using var bus = new MessageBus();
                     int invokeCount = 0;
                     Action<TestEvent> handler = _ => invokeCount++;
 
@@ -410,7 +410,7 @@ namespace Strada.Core.Tests.Runtime.Communication
                     if (subscriberCount < 2) subscriberCount = 2; // Need at least 2 subscribers
 
                     // Arrange
-                    using var bus = new StradaBus();
+                    using var bus = new MessageBus();
                     var invokeCounts = new int[subscriberCount];
                     var handlers = new Action<TestEvent>[subscriberCount];
 
@@ -462,7 +462,7 @@ namespace Strada.Core.Tests.Runtime.Communication
                 (subscriberCount) =>
                 {
                     // Arrange
-                    using var bus = new StradaBus();
+                    using var bus = new MessageBus();
                     var handlers = new Action<TestEvent>[subscriberCount];
 
                     for (int i = 0; i < subscriberCount; i++)

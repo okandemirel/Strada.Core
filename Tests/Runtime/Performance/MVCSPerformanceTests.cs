@@ -19,7 +19,7 @@ namespace Strada.Core.Tests.Runtime.Performance
         public void SetUp()
         {
             var builder = new ContainerBuilder();
-            builder.Register<StradaBus>(Lifetime.Singleton);
+            builder.Register<MessageBus>(Lifetime.Singleton);
             _container = builder.Build();
         }
 
@@ -314,12 +314,12 @@ namespace Strada.Core.Tests.Runtime.Performance
             protected override void OnInitialize() { }
         }
 
-        private class BenchmarkController : StradaController
+        private class BenchmarkController : Controller
         {
             protected override void OnInitialize() { }
         }
 
-        private class MultiPropertyModel : StradaModel
+        private class MultiPropertyModel : Model
         {
             private readonly int _propertyCount;
             private ReactiveProperty<int>[] _properties;

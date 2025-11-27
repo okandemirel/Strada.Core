@@ -15,7 +15,7 @@ namespace Strada.Core.Editor.Inspectors
     /// - Force Sync and Force Push buttons
     /// Requirements: 10.1, 10.3, 10.4, 10.5
     /// </summary>
-    [CustomEditor(typeof(StradaView), true)]
+    [CustomEditor(typeof(View), true)]
     public class ViewMediatorInspector : UnityEditor.Editor
     {
         private static readonly Color SyncedColor = new Color(0.2f, 0.8f, 0.3f);
@@ -55,7 +55,7 @@ namespace Strada.Core.Editor.Inspectors
 
         private void RefreshMediatorReference()
         {
-            var view = target as StradaView;
+            var view = target as View;
             if (view == null) return;
 
             // Look for a mediator field in the view or its parent classes
@@ -79,7 +79,7 @@ namespace Strada.Core.Editor.Inspectors
             }
         }
 
-        private object FindMediatorForView(StradaView view)
+        private object FindMediatorForView(View view)
         {
             // Check MediatorRegistry if available
             var registryType = Type.GetType("Strada.Core.Bridge.MediatorRegistry, Strada.Core");

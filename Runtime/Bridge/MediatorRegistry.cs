@@ -12,10 +12,10 @@ namespace Strada.Core.Bridge
     {
         TMediator Create<TMediator, TView>(Entity entity, TView view)
             where TMediator : ViewMediator<TView>, new()
-            where TView : StradaView;
+            where TView : View;
         void Release<TMediator, TView>(TMediator mediator)
             where TMediator : ViewMediator<TView>, new()
-            where TView : StradaView;
+            where TView : View;
         void SyncAll();
         void ReleaseAll();
     }
@@ -36,7 +36,7 @@ namespace Strada.Core.Bridge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TMediator Create<TMediator, TView>(Entity entity, TView view)
             where TMediator : ViewMediator<TView>, new()
-            where TView : StradaView
+            where TView : View
         {
             var mediator = MediatorPool<TMediator, TView>.Instance.Rent();
             mediator.Initialize(_container);
@@ -48,7 +48,7 @@ namespace Strada.Core.Bridge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Release<TMediator, TView>(TMediator mediator)
             where TMediator : ViewMediator<TView>, new()
-            where TView : StradaView
+            where TView : View
         {
             mediator.Unbind();
             _activeMediators.Remove(mediator);
@@ -88,7 +88,7 @@ namespace Strada.Core.Bridge
 
     internal static class MediatorPool<TMediator, TView>
         where TMediator : ViewMediator<TView>, new()
-        where TView : StradaView
+        where TView : View
     {
         private static MediatorPoolInstance _instance;
         public static MediatorPoolInstance Instance => _instance ??= new MediatorPoolInstance();

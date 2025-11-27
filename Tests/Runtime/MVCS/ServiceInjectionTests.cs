@@ -14,7 +14,7 @@ namespace Strada.Core.Tests.Runtime.MVCS
         public void SetUp()
         {
             var builder = new ContainerBuilder();
-            builder.Register<StradaBus>(Lifetime.Singleton);
+            builder.Register<MessageBus>(Lifetime.Singleton);
             _container = builder.Build();
         }
 
@@ -113,7 +113,7 @@ namespace Strada.Core.Tests.Runtime.MVCS
             public int DisposeCount;
             public bool IsInit => IsInitialized;
             public IContainer InjectedContainer => Container;
-            public StradaBus InjectedBus => Bus;
+            public MessageBus InjectedBus => MessageBus;
 
             protected override void OnInitialize()
             {

@@ -72,7 +72,7 @@ namespace Strada.Core.Editor.Validation
             if (type == null || type.IsInterface || type.IsAbstract)
                 return false;
 
-            return typeof(StradaView).IsAssignableFrom(type);
+            return typeof(View).IsAssignableFrom(type);
         }
 
 

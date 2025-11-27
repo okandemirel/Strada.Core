@@ -13,16 +13,12 @@ namespace Strada.Core.ECS.Systems
         private bool _disposed;
 
         protected EntityManager EntityManager { get; private set; }
-        protected StradaBus Bus { get; private set; }
+        protected MessageBus MessageBus { get; private set; }
 
-        public bool IsInitialized => _initialized;
-        public bool IsDisposed => _disposed;
-
-        [Inject]
-        public void Inject(EntityManager entityManager, StradaBus bus = null)
+        public void Inject(EntityManager entityManager, MessageBus bus = null)
         {
             EntityManager = entityManager;
-            Bus = bus;
+            MessageBus = bus;
         }
 
         public void Initialize()
@@ -84,13 +80,13 @@ namespace Strada.Core.ECS.Systems
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected void Publish<T>(T evt) where T : struct
         {
-            Bus?.Publish(evt);
+            MessageBus?.Publish(evt);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected void Send<T>(T command) where T : struct
         {
-            Bus?.Send(command);
+            MessageBus?.Send(command);
         }
     }
 

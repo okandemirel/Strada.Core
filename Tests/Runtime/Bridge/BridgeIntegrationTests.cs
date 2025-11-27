@@ -20,7 +20,7 @@ namespace Strada.Core.Tests.Runtime.Bridge
         private World _world;
         private ContainerBuilder _builder;
         private IContainer _container;
-        private StradaBus _bus;
+        private MessageBus _bus;
         private EntityManager _entities;
 
         [SetUp]
@@ -31,15 +31,15 @@ namespace Strada.Core.Tests.Runtime.Bridge
                 .WithInitialEntityCapacity(128)
                 .Build();
             
-            _bus = _world.Bus;
-            _entities = _world.Entities;
+            _bus = _world.MessageBus;
+            _entities = _world.EntityManager;
             
             // Build DI Container with ECS components registered
             _builder = new ContainerBuilder();
             _builder.RegisterInstance(_world);
             _builder.RegisterInstance(_entities);
             _builder.RegisterInstance(_bus);
-            _builder.RegisterInstance<IStradaBus>(_bus);
+            _builder.RegisterInstance<IMessageBus>(_bus);
             _container = _builder.Build();
             
             _world.Initialize();
@@ -380,7 +380,7 @@ namespace Strada.Core.Tests.Runtime.Bridge
 
         #region Test Views
 
-        private class TestHealthView : StradaView
+        private class TestHealthView : View
         {
             public float DisplayedHealth { get; private set; }
 
@@ -394,7 +394,7 @@ namespace Strada.Core.Tests.Runtime.Bridge
 
         #region Test Controllers
 
-        private class TestHealthController : StradaController
+        private class TestHealthController : Controller
         {
             public int ReceivedEventCount { get; private set; }
             public Entity LastReceivedEntity { get; private set; }
@@ -413,7 +413,7 @@ namespace Strada.Core.Tests.Runtime.Bridge
             }
         }
 
-        private class TestHealthControllerWithView : StradaController
+        private class TestHealthControllerWithView : Controller
         {
             private readonly TestHealthView _view;
 
@@ -433,7 +433,7 @@ namespace Strada.Core.Tests.Runtime.Bridge
             }
         }
 
-        private class TestDamageController : StradaController
+        private class TestDamageController : Controller
         {
             public void SendDamageCommand(Entity target, float amount)
             {
@@ -441,7 +441,7 @@ namespace Strada.Core.Tests.Runtime.Bridge
             }
         }
 
-        private class TestCombatController : StradaController
+        private class TestCombatController : Controller
         {
             public void SendDamage(Entity target, float amount)
             {

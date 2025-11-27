@@ -5,6 +5,10 @@ using Strada.Core.MVCS.Interfaces;
 
 namespace Strada.Core.MVCS
 {
+    /// <summary>
+    /// Orchestrates the MVCS (Model-View-Controller-Service) architecture.
+    /// Manages the lifecycle, ticking, and updates of Controllers and Services.
+    /// </summary>
     public sealed class MVCSManager : IDisposable, ILoopRunner
     {
         private readonly List<IController> _controllers = new();
@@ -16,9 +20,19 @@ namespace Strada.Core.MVCS
         private bool _disposed;
         private bool _registeredWithLoop;
 
+        /// <summary>
+        /// Gets the number of registered controllers.
+        /// </summary>
         public int ControllerCount => _controllers.Count;
+
+        /// <summary>
+        /// Gets the number of registered services.
+        /// </summary>
         public int ServiceCount => _services.Count;
 
+        /// <summary>
+        /// Registers a controller and adds it to relevant update loops.
+        /// </summary>
         public void RegisterController(IController controller)
         {
             _controllers.Add(controller);
@@ -36,6 +50,9 @@ namespace Strada.Core.MVCS
                 _lateTickables.Add(lateTickable);
         }
 
+        /// <summary>
+        /// Registers a service and adds it to relevant update loops.
+        /// </summary>
         public void RegisterService(IService service)
         {
             _services.Add(service);
@@ -50,6 +67,10 @@ namespace Strada.Core.MVCS
                 _lateTickables.Add(lateTickable);
         }
 
+        /// <summary>
+        /// Initializes all registered services and controllers.
+        /// Services are initialized first, ordered by priority.
+        /// </summary>
         public void Initialize()
         {
             var orderedServices = _services
@@ -64,6 +85,9 @@ namespace Strada.Core.MVCS
             RegisterWithPlayerLoop();
         }
 
+        /// <summary>
+        /// Registers update callbacks with the StradaPlayerLoop.
+        /// </summary>
         public void RegisterWithPlayerLoop()
         {
             if (_registeredWithLoop) return;
@@ -74,6 +98,9 @@ namespace Strada.Core.MVCS
             StradaPlayerLoop.RegisterFixedUpdate(OnFixedUpdate);
         }
 
+        /// <summary>
+        /// Unregisters update callbacks from the StradaPlayerLoop.
+        /// </summary>
         public void UnregisterFromPlayerLoop()
         {
             if (!_registeredWithLoop) return;
@@ -90,12 +117,6 @@ namespace Strada.Core.MVCS
 
         public void OnUpdate(float deltaTime)
         {
-            for (int i = 0; i < _controllers.Count; i++)
-                _controllers[i].Tick(deltaTime);
-
-            for (int i = 0; i < _services.Count; i++)
-                _services[i].Tick(deltaTime);
-
             for (int i = 0; i < _tickables.Count; i++)
                 _tickables[i].Tick(deltaTime);
         }
@@ -115,16 +136,25 @@ namespace Strada.Core.MVCS
                 _lateTickables[i].LateTick(deltaTime);
         }
 
+        /// <summary>
+        /// Retrieves a registered service of the specified type.
+        /// </summary>
         public T GetService<T>() where T : class, IService
         {
             return _services.OfType<T>().FirstOrDefault();
         }
 
+        /// <summary>
+        /// Retrieves a registered controller of the specified type.
+        /// </summary>
         public T GetController<T>() where T : class, IController
         {
             return _controllers.OfType<T>().FirstOrDefault();
         }
 
+        /// <summary>
+        /// Disposes the manager and all registered components.
+        /// </summary>
         public void Dispose()
         {
             if (_disposed)

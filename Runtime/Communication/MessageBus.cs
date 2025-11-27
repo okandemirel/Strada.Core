@@ -27,14 +27,14 @@ namespace Strada.Core.Communication
         ValueTask<TResult> HandleAsync(TQuery query, CancellationToken ct = default);
     }
 
-    public interface IStradaBus : IDisposable
+    public interface IMessageBus : IDisposable
     {
         void Send<TCommand>(ref TCommand command) where TCommand : struct;
         void Send<TCommand>(TCommand command) where TCommand : struct;
         TResult Query<TQuery, TResult>(ref TQuery query) where TQuery : struct, IQuery<TResult>;
         TResult Query<TQuery, TResult>(TQuery query) where TQuery : struct, IQuery<TResult>;
-        void Publish<TEvent>(ref TEvent evt) where TEvent : struct;
-        void Publish<TEvent>(TEvent evt) where TEvent : struct;
+        void Publish<TEvent>(ref TEvent message) where TEvent : struct;
+        void Publish<TEvent>(TEvent message) where TEvent : struct;
         void Execute(ICommand command);
         void ExecuteAsync(IAsyncCommand command, Action onComplete = null);
         void RegisterCommandHandler<TCommand>(Action<TCommand> handler) where TCommand : struct;
@@ -47,16 +47,16 @@ namespace Strada.Core.Communication
         void Clear();
 
         // Modern async/await support
-        ValueTask SendAsync<TCommand>(TCommand command, CancellationToken ct = default) where TCommand : struct;
+        ValueTask SendAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default) where TCommand : struct;
         void RegisterAsyncCommandHandler<TCommand>(IAsyncAwaitCommandHandler<TCommand> handler) where TCommand : struct;
         void RegisterAsyncCommandHandler<TCommand>(Func<TCommand, CancellationToken, ValueTask> handler) where TCommand : struct;
-        ValueTask<TResult> QueryAsync<TQuery, TResult>(TQuery query, CancellationToken ct = default) where TQuery : struct, IAsyncQuery<TResult>;
+        ValueTask<TResult> QueryAsync<TQuery, TResult>(TQuery query, CancellationToken cancellationToken = default) where TQuery : struct, IAsyncQuery<TResult>;
         void RegisterAsyncQueryHandler<TQuery, TResult>(IAsyncQueryHandler<TQuery, TResult> handler) where TQuery : struct, IAsyncQuery<TResult>;
         void RegisterAsyncQueryHandler<TQuery, TResult>(Func<TQuery, CancellationToken, ValueTask<TResult>> handler) where TQuery : struct, IAsyncQuery<TResult>;
-        ValueTask ExecuteAsync(IAsyncAwaitCommand command, CancellationToken ct = default);
+        ValueTask ExecuteAsync(IAsyncAwaitCommand command, CancellationToken cancellationToken = default);
     }
 
-    public sealed class StradaBus : IStradaBus
+    public sealed class MessageBus : IMessageBus
     {
         private static int _nextTypeId;
         private object[] _commandHandlers = new object[64];
@@ -80,7 +80,7 @@ namespace Strada.Core.Communication
                 ((Action<TCommand>)_commandHandlers[id])(command);
                 return;
             }
-            ThrowNoHandler<TCommand>("command");
+            ThrowHandlerNotFoundException<TCommand>("command");
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -96,7 +96,7 @@ namespace Strada.Core.Communication
             if (id <= _maxQueryId && _queryHandlers[id] != null)
                 return ((IQueryHandler<TQuery, TResult>)_queryHandlers[id]).Handle(ref query);
 
-            ThrowNoHandler<TQuery>("query");
+            ThrowHandlerNotFoundException<TQuery>("query");
             return default;
         }
 
@@ -107,19 +107,19 @@ namespace Strada.Core.Communication
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Publish<TEvent>(ref TEvent evt) where TEvent : struct
+        public void Publish<TEvent>(ref TEvent message) where TEvent : struct
         {
             var id = EventTypeId<TEvent>.Id;
             if (id > _maxEventId) return;
 
             var channel = _eventChannels[id] as EventChannel<TEvent>;
-            channel?.Publish(ref evt);
+            channel?.Publish(ref message);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Publish<TEvent>(TEvent evt) where TEvent : struct
+        public void Publish<TEvent>(TEvent message) where TEvent : struct
         {
-            Publish(ref evt);
+            Publish(ref message);
         }
 
         public void RegisterCommandHandler<TCommand>(Action<TCommand> handler) where TCommand : struct
@@ -222,15 +222,15 @@ namespace Strada.Core.Communication
 
         #region Modern Async/Await Support
 
-        public async ValueTask SendAsync<TCommand>(TCommand command, CancellationToken ct = default) where TCommand : struct
+        public async ValueTask SendAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default) where TCommand : struct
         {
             var id = AsyncCommandTypeId<TCommand>.Id;
             if (id <= _maxAsyncCommandId && _asyncCommandHandlers[id] != null)
             {
-                await ((Func<TCommand, CancellationToken, ValueTask>)_asyncCommandHandlers[id])(command, ct);
+                await ((Func<TCommand, CancellationToken, ValueTask>)_asyncCommandHandlers[id])(command, cancellationToken);
                 return;
             }
-            ThrowNoHandler<TCommand>("async command");
+            ThrowHandlerNotFoundException<TCommand>("async command");
         }
 
         public void RegisterAsyncCommandHandler<TCommand>(IAsyncAwaitCommandHandler<TCommand> handler) where TCommand : struct
@@ -246,15 +246,15 @@ namespace Strada.Core.Communication
             if (id > _maxAsyncCommandId) _maxAsyncCommandId = id;
         }
 
-        public async ValueTask<TResult> QueryAsync<TQuery, TResult>(TQuery query, CancellationToken ct = default) 
+        public async ValueTask<TResult> QueryAsync<TQuery, TResult>(TQuery query, CancellationToken cancellationToken = default) 
             where TQuery : struct, IAsyncQuery<TResult>
         {
             var id = AsyncQueryTypeId<TQuery>.Id;
             if (id <= _maxAsyncQueryId && _asyncQueryHandlers[id] != null)
             {
-                return await ((Func<TQuery, CancellationToken, ValueTask<TResult>>)_asyncQueryHandlers[id])(query, ct);
+                return await ((Func<TQuery, CancellationToken, ValueTask<TResult>>)_asyncQueryHandlers[id])(query, cancellationToken);
             }
-            ThrowNoHandler<TQuery>("async query");
+            ThrowHandlerNotFoundException<TQuery>("async query");
             return default;
         }
 
@@ -273,9 +273,9 @@ namespace Strada.Core.Communication
             if (id > _maxAsyncQueryId) _maxAsyncQueryId = id;
         }
 
-        public ValueTask ExecuteAsync(IAsyncAwaitCommand command, CancellationToken ct = default)
+        public ValueTask ExecuteAsync(IAsyncAwaitCommand command, CancellationToken cancellationToken = default)
         {
-            return command.ExecuteAsync(ct);
+            return command.ExecuteAsync(cancellationToken);
         }
 
         private static class AsyncCommandTypeId<T>
@@ -302,7 +302,7 @@ namespace Strada.Core.Communication
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void ThrowNoHandler<T>(string type) =>
+        private static void ThrowHandlerNotFoundException<T>(string type) =>
             throw new InvalidOperationException($"No {type} handler registered for '{typeof(T).Name}'");
 
         private static class CommandTypeId<T>
@@ -328,12 +328,12 @@ namespace Strada.Core.Communication
             public int Count => _count;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Publish(ref T evt)
+            public void Publish(ref T message)
             {
                 var count = _count;
                 var handlers = _handlers;
                 for (int i = 0; i < count; i++)
-                    handlers[i](evt);
+                    handlers[i](message);
             }
 
             public void Subscribe(Action<T> handler)

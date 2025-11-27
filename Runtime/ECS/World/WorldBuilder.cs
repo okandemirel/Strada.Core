@@ -31,7 +31,7 @@ namespace Strada.Core.ECS
         {
             var entities = new EntityManager();
             var scheduler = new SystemScheduler();
-            var bus = new StradaBus();
+            var bus = new MessageBus();
 
             var world = new World(entities, scheduler, bus);
 

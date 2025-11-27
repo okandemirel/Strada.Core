@@ -758,7 +758,7 @@ namespace Strada.Core.Editor.Windows
         private int GetEntityComponentCount(int entityId)
         {
             if (!_worldDataProvider.IsAvailable) return 0;
-            return World.Current?.Entities?.Store?.GetEntityComponentCount(entityId) ?? 0;
+            return World.Current?.EntityManager?.Store?.GetEntityComponentCount(entityId) ?? 0;
         }
 
         private int GetEntityVersion(int entityId)
@@ -767,7 +767,7 @@ namespace Strada.Core.Editor.Windows
 
             try
             {
-                var entityManager = World.Current?.Entities;
+                var entityManager = World.Current?.EntityManager;
                 if (entityManager == null) return 0;
 
                 var versionsField = typeof(EntityManager).GetField("_entityVersions",
@@ -786,7 +786,7 @@ namespace Strada.Core.Editor.Windows
         private bool EntityHasComponent(int entityId, Type componentType)
         {
             if (!_worldDataProvider.IsAvailable) return false;
-            return World.Current?.Entities?.Store?.HasComponent(entityId, componentType) ?? false;
+            return World.Current?.EntityManager?.Store?.HasComponent(entityId, componentType) ?? false;
         }
 
         #endregion
@@ -859,7 +859,7 @@ namespace Strada.Core.Editor.Windows
 
             try
             {
-                var entityManager = World.Current?.Entities;
+                var entityManager = World.Current?.EntityManager;
                 if (entityManager == null) return;
 
                 // Create default component instance
@@ -891,7 +891,7 @@ namespace Strada.Core.Editor.Windows
 
             try
             {
-                var store = World.Current?.Entities?.Store;
+                var store = World.Current?.EntityManager?.Store;
                 if (store == null) return;
 
                 // Use reflection to get the storage and remove the component

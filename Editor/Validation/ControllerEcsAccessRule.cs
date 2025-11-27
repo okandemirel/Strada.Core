@@ -39,7 +39,7 @@ namespace Strada.Core.Editor.Validation
             if (type == null || type.IsInterface || type.IsAbstract)
                 return false;
 
-            return typeof(StradaController).IsAssignableFrom(type);
+            return typeof(Controller).IsAssignableFrom(type);
         }
 
         public IEnumerable<ValidationIssue> Validate(Type type)

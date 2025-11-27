@@ -8,6 +8,12 @@ namespace Strada.Core.DI
     {
         private readonly Dictionary<Type, Registration> _registrations = new();
 
+        /// <summary>
+        /// Registers a service with an interface and implementation type.
+        /// </summary>
+        /// <typeparam name="TInterface">The interface type.</typeparam>
+        /// <typeparam name="TImplementation">The implementation type.</typeparam>
+        /// <param name="lifetime">The lifetime of the service (Singleton or Transient).</param>
         public ContainerBuilder Register<TInterface, TImplementation>(Lifetime lifetime = Lifetime.Singleton)
             where TInterface : class
             where TImplementation : class, TInterface
@@ -18,6 +24,11 @@ namespace Strada.Core.DI
             return this;
         }
 
+        /// <summary>
+        /// Registers a concrete type as itself.
+        /// </summary>
+        /// <typeparam name="T">The concrete type.</typeparam>
+        /// <param name="lifetime">The lifetime of the service.</param>
         public ContainerBuilder Register<T>(Lifetime lifetime = Lifetime.Singleton) where T : class
         {
             ValidateType(typeof(T));
@@ -25,16 +36,27 @@ namespace Strada.Core.DI
             return this;
         }
 
+        /// <summary>
+        /// Registers a service using a factory delegate.
+        /// </summary>
+        /// <typeparam name="T">The service type.</typeparam>
+        /// <param name="factory">The factory function.</param>
+        /// <param name="lifetime">The lifetime of the service.</param>
         public ContainerBuilder RegisterFactory<T>(Func<IContainer, T> factory, Lifetime lifetime = Lifetime.Transient)
             where T : class
         {
             if (factory == null)
                 throw new ArgumentNullException(nameof(factory));
 
-            _registrations[typeof(T)] = Registration.FromFactory(typeof(T), c => factory(c), lifetime);
+            _registrations[typeof(T)] = Registration.FromFactory(typeof(T), container => factory(container), lifetime);
             return this;
         }
 
+        /// <summary>
+        /// Registers an existing instance as a singleton.
+        /// </summary>
+        /// <typeparam name="T">The service type.</typeparam>
+        /// <param name="instance">The instance to register.</param>
         public ContainerBuilder RegisterInstance<T>(T instance) where T : class
         {
             if (instance == null)
@@ -44,6 +66,11 @@ namespace Strada.Core.DI
             return this;
         }
 
+        /// <summary>
+        /// Builds the container and validates dependencies.
+        /// </summary>
+        /// <returns>The built IContainer.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if circular dependencies are detected.</exception>
         public IContainer Build()
         {
             DetectCircularDependencies();

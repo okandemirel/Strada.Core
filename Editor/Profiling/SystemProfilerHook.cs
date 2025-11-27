@@ -108,7 +108,7 @@ namespace Strada.Core.Editor.Profiling
         {
             if (_activeProfiler == null || World.Current == null) return;
             
-            var scheduler = World.Current.Scheduler;
+            var scheduler = World.Current.SystemScheduler;
             if (scheduler == null) return;
             
             try

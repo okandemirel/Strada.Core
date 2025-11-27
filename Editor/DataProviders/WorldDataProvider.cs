@@ -39,7 +39,7 @@ namespace Strada.Core.Editor.DataProviders
 
             try
             {
-                return World.Current.Entities.GetAllEntities();
+                return World.Current.EntityManager.GetAllEntities();
             }
             catch
             {
@@ -56,7 +56,7 @@ namespace Strada.Core.Editor.DataProviders
 
             try
             {
-                return World.Current.Entities.Store.GetComponentTypes();
+                return World.Current.EntityManager.Store.GetComponentTypes();
             }
             catch
             {
@@ -73,7 +73,7 @@ namespace Strada.Core.Editor.DataProviders
 
             try
             {
-                return World.Current.Entities.Store.GetComponentBoxed(entityId, componentType);
+                return World.Current.EntityManager.Store.GetComponentBoxed(entityId, componentType);
             }
             catch
             {
@@ -90,7 +90,7 @@ namespace Strada.Core.Editor.DataProviders
 
             try
             {
-                World.Current.Entities.Store.SetComponentBoxed(entityId, componentType, value);
+                World.Current.EntityManager.Store.SetComponentBoxed(entityId, componentType, value);
             }
             catch (Exception ex)
             {
@@ -107,7 +107,7 @@ namespace Strada.Core.Editor.DataProviders
 
             try
             {
-                var entityIds = World.Current.Entities.GetAllEntities();
+                var entityIds = World.Current.EntityManager.GetAllEntities();
                 return entityIds.Contains(entityId);
             }
             catch
@@ -124,7 +124,7 @@ namespace Strada.Core.Editor.DataProviders
             if (!IsAvailable) yield break;
 
             var componentTypes = GetComponentTypes();
-            var store = World.Current.Entities.Store;
+            var store = World.Current.EntityManager.Store;
 
             foreach (var componentType in componentTypes)
             {
@@ -149,14 +149,14 @@ namespace Strada.Core.Editor.DataProviders
             var snapshot = new WorldSnapshot
             {
                 Timestamp = DateTime.Now,
-                EntityCount = world.Entities.EntityCount,
-                ComponentTypeCount = world.Entities.Store.GetComponentTypes().Count(),
+                EntityCount = world.EntityManager.EntityCount,
+                ComponentTypeCount = world.EntityManager.Store.GetComponentTypes().Count(),
                 Entities = new List<EntityInfo>(),
                 Systems = new List<Models.SystemInfo>()
             };
 
             // Enumerate entities
-            foreach (var entityId in world.Entities.GetAllEntities())
+            foreach (var entityId in world.EntityManager.GetAllEntities())
             {
                 var entityInfo = new EntityInfo
                 {
@@ -179,7 +179,7 @@ namespace Strada.Core.Editor.DataProviders
             try
             {
                 // Access entity versions via reflection
-                var entityManager = World.Current.Entities;
+                var entityManager = World.Current.EntityManager;
                 var versionsField = typeof(EntityManager).GetField("_entityVersions", 
                     BindingFlags.NonPublic | BindingFlags.Instance);
                 
