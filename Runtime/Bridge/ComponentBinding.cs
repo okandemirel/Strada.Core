@@ -4,6 +4,21 @@ using Strada.Core.ECS;
 
 namespace Strada.Core.Bridge
 {
+    /// <summary>
+    /// Represents the synchronization state of a component binding.
+    /// </summary>
+    public enum BindingSyncState
+    {
+        /// <summary>Binding has not been synced yet.</summary>
+        NotSynced,
+        /// <summary>Binding is in sync with ECS data.</summary>
+        Synced,
+        /// <summary>Binding encountered an error during sync.</summary>
+        Error,
+        /// <summary>Entity no longer exists.</summary>
+        EntityDestroyed
+    }
+
     public sealed class ComponentBinding<TComponent, TProperty> : IComponentBinding
         where TComponent : unmanaged, IComponent
     {
@@ -15,9 +30,14 @@ namespace Strada.Core.Bridge
         private TProperty _lastValue;
         private bool _disposed;
         private bool _dirty;
+        private BindingSyncState _syncState = BindingSyncState.NotSynced;
+        private string _lastError;
 
         public TProperty Value => _lastValue;
         public bool IsDirty => _dirty;
+        public Type ComponentType => typeof(TComponent);
+        public BindingSyncState SyncState => _syncState;
+        public string LastError => _lastError;
 
         public ComponentBinding(
             EntityManager entities,
@@ -61,16 +81,39 @@ namespace Strada.Core.Bridge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Sync()
         {
-            if (!_entities.Exists(_entity)) return;
-            if (!_entities.HasComponent<TComponent>(_entity)) return;
-
-            var component = _entities.GetComponent<TComponent>(_entity);
-            var newValue = _selector(component);
-
-            if (!Equals(_lastValue, newValue))
+            try
             {
-                _lastValue = newValue;
-                _onChanged?.Invoke(newValue);
+                if (!_entities.Exists(_entity))
+                {
+                    _syncState = BindingSyncState.EntityDestroyed;
+                    _lastError = "Entity no longer exists";
+                    return;
+                }
+
+                if (!_entities.HasComponent<TComponent>(_entity))
+                {
+                    _syncState = BindingSyncState.Error;
+                    _lastError = $"Entity does not have component {typeof(TComponent).Name}";
+                    return;
+                }
+
+                var component = _entities.GetComponent<TComponent>(_entity);
+                var newValue = _selector(component);
+
+                if (!Equals(_lastValue, newValue))
+                {
+                    _lastValue = newValue;
+                    _dirty = true;
+                    _onChanged?.Invoke(newValue);
+                }
+
+                _syncState = BindingSyncState.Synced;
+                _lastError = null;
+            }
+            catch (Exception ex)
+            {
+                _syncState = BindingSyncState.Error;
+                _lastError = ex.Message;
             }
         }
 
@@ -118,9 +161,14 @@ namespace Strada.Core.Bridge
         private TComponent _lastValue;
         private bool _disposed;
         private bool _dirty;
+        private BindingSyncState _syncState = BindingSyncState.NotSynced;
+        private string _lastError;
 
         public ref readonly TComponent Value => ref _lastValue;
         public bool IsDirty => _dirty;
+        public Type ComponentType => typeof(TComponent);
+        public BindingSyncState SyncState => _syncState;
+        public string LastError => _lastError;
 
         public AutoSyncBinding(EntityManager entities, Entity entity, Action<TComponent> onChanged)
         {
@@ -135,14 +183,37 @@ namespace Strada.Core.Bridge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Sync()
         {
-            if (!_entities.Exists(_entity)) return;
-            if (!_entities.HasComponent<TComponent>(_entity)) return;
-
-            var current = _entities.GetComponent<TComponent>(_entity);
-            if (!_lastValue.Equals(current))
+            try
             {
-                _lastValue = current;
-                _onChanged?.Invoke(current);
+                if (!_entities.Exists(_entity))
+                {
+                    _syncState = BindingSyncState.EntityDestroyed;
+                    _lastError = "Entity no longer exists";
+                    return;
+                }
+
+                if (!_entities.HasComponent<TComponent>(_entity))
+                {
+                    _syncState = BindingSyncState.Error;
+                    _lastError = $"Entity does not have component {typeof(TComponent).Name}";
+                    return;
+                }
+
+                var current = _entities.GetComponent<TComponent>(_entity);
+                if (!_lastValue.Equals(current))
+                {
+                    _lastValue = current;
+                    _dirty = true;
+                    _onChanged?.Invoke(current);
+                }
+
+                _syncState = BindingSyncState.Synced;
+                _lastError = null;
+            }
+            catch (Exception ex)
+            {
+                _syncState = BindingSyncState.Error;
+                _lastError = ex.Message;
             }
         }
 

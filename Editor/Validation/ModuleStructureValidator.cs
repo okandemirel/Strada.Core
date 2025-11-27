@@ -1,12 +1,18 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 
 namespace Strada.Core.Editor.Validation
 {
-    public static class ModuleStructureValidator
+    /// <summary>
+    /// Validates module folder structure and naming conventions.
+    /// Requirements: 14.6
+    /// </summary>
+    public class ModuleStructureValidator
     {
         private static readonly string[] RequiredFolders =
         {
@@ -26,6 +32,9 @@ namespace Strada.Core.Editor.Validation
             "Signals",
             "StateMachines"
         };
+
+        // PascalCase pattern for module names
+        private static readonly Regex PascalCasePattern = new Regex(@"^[A-Z][a-zA-Z0-9]*$", RegexOptions.Compiled);
 
         [MenuItem("Strada/Validate Module Structure")]
         public static void ValidateAllModules()
@@ -48,7 +57,7 @@ namespace Strada.Core.Editor.Validation
 
             foreach (var modulePath in modules)
             {
-                ValidateModule(modulePath, issues);
+                issues.AddRange(ValidateModule(modulePath));
             }
 
             if (issues.Count == 0)
@@ -60,62 +69,105 @@ namespace Strada.Core.Editor.Validation
                 Debug.LogWarning($"[Strada] Found {issues.Count} issues in module structure:");
                 foreach (var issue in issues)
                 {
-                    if (issue.IsError)
-                        Debug.LogError($"  ERROR: {issue.Message}");
-                    else
-                        Debug.LogWarning($"  WARNING: {issue.Message}");
+                    switch (issue.Severity)
+                    {
+                        case ValidationSeverity.Error:
+                            Debug.LogError($"  ERROR: {issue.Message}");
+                            break;
+                        case ValidationSeverity.Warning:
+                            Debug.LogWarning($"  WARNING: {issue.Message}");
+                            break;
+                        default:
+                            Debug.Log($"  INFO: {issue.Message}");
+                            break;
+                    }
                 }
             }
         }
 
-        private static void ValidateModule(string modulePath, List<ValidationIssue> issues)
+
+        /// <summary>
+        /// Validates a single module's structure.
+        /// </summary>
+        public static IEnumerable<ValidationIssue> ValidateModule(string modulePath)
         {
+            var issues = new List<ValidationIssue>();
             var moduleName = Path.GetFileName(modulePath);
 
+            // Validate module naming convention
             if (!moduleName.EndsWith("Module"))
             {
                 issues.Add(new ValidationIssue(
+                    ValidationSeverity.Error,
                     $"Module folder '{moduleName}' should end with 'Module' (e.g., {moduleName}Module)",
-                    true));
+                    $"Rename folder to '{moduleName}Module'")
+                    .WithFile(modulePath));
             }
 
+            // Validate PascalCase naming
+            var baseName = moduleName.Replace("Module", "");
+            if (!string.IsNullOrEmpty(baseName) && !IsPascalCase(baseName))
+            {
+                issues.Add(new ValidationIssue(
+                    ValidationSeverity.Warning,
+                    $"Module name '{moduleName}' should follow PascalCase convention",
+                    "Use PascalCase for module names (e.g., PlayerModule, InventoryModule)")
+                    .WithFile(modulePath));
+            }
+
+            // Check for Scripts folder
             var scriptsPath = Path.Combine(modulePath, "Scripts");
             if (!Directory.Exists(scriptsPath))
             {
                 issues.Add(new ValidationIssue(
+                    ValidationSeverity.Error,
                     $"Module '{moduleName}' is missing required 'Scripts' folder",
-                    true));
-                return;
+                    "Create a 'Scripts' folder inside the module directory")
+                    .WithFile(modulePath));
+                return issues;
             }
 
+            // Validate required folders
             foreach (var required in RequiredFolders)
             {
                 var folderPath = Path.Combine(scriptsPath, required);
                 if (!Directory.Exists(folderPath))
                 {
                     issues.Add(new ValidationIssue(
+                        ValidationSeverity.Error,
                         $"Module '{moduleName}' is missing required folder: Scripts/{required}",
-                        true));
+                        $"Create folder: {Path.Combine(scriptsPath, required)}")
+                        .WithFile(scriptsPath));
                 }
             }
 
-            var assemblyDefPath = Path.Combine(scriptsPath, $"{moduleName.Replace("Module", "")}.asmdef");
+            // Check for assembly definition
+            var assemblyDefPath = Path.Combine(scriptsPath, $"{baseName}.asmdef");
             if (!File.Exists(assemblyDefPath))
             {
                 var altPath = Path.Combine(scriptsPath, $"{moduleName}.asmdef");
                 if (!File.Exists(altPath))
                 {
                     issues.Add(new ValidationIssue(
+                        ValidationSeverity.Warning,
                         $"Module '{moduleName}' is missing assembly definition file",
-                        false));
+                        $"Create an assembly definition file at: {assemblyDefPath}")
+                        .WithFile(scriptsPath));
                 }
             }
 
-            ValidateFileNaming(scriptsPath, moduleName, issues);
+            // Validate file naming conventions
+            issues.AddRange(ValidateFileNaming(scriptsPath, moduleName));
+
+            return issues;
         }
 
-        private static void ValidateFileNaming(string scriptsPath, string moduleName, List<ValidationIssue> issues)
+        /// <summary>
+        /// Validates file naming conventions within a module.
+        /// </summary>
+        private static IEnumerable<ValidationIssue> ValidateFileNaming(string scriptsPath, string moduleName)
         {
+            var issues = new List<ValidationIssue>();
             var csFiles = Directory.GetFiles(scriptsPath, "*.cs", SearchOption.AllDirectories);
             var modulePrefix = moduleName.Replace("Module", "");
 
@@ -123,25 +175,73 @@ namespace Strada.Core.Editor.Validation
             {
                 var fileName = Path.GetFileNameWithoutExtension(file);
 
+                // Check PascalCase for all C# files
+                if (!IsPascalCase(fileName))
+                {
+                    issues.Add(new ValidationIssue(
+                        ValidationSeverity.Warning,
+                        $"File '{fileName}.cs' in '{moduleName}' should follow PascalCase convention",
+                        "Rename file to use PascalCase")
+                        .WithFile(file));
+                }
+
+                // Check MonoBehaviour naming
                 if (fileName.Contains("MonoBehaviour") && !fileName.StartsWith(modulePrefix))
                 {
                     issues.Add(new ValidationIssue(
-                        $"MonoBehaviour '{fileName}' in '{moduleName}' should be prefixed with '{modulePrefix}'",
-                        false));
+                        ValidationSeverity.Info,
+                        $"MonoBehaviour '{fileName}' in '{moduleName}' could be prefixed with '{modulePrefix}'",
+                        $"Consider renaming to '{modulePrefix}{fileName}'")
+                        .WithFile(file));
                 }
             }
+
+            return issues;
         }
 
-        private struct ValidationIssue
+        /// <summary>
+        /// Checks if a string follows PascalCase convention.
+        /// </summary>
+        public static bool IsPascalCase(string name)
         {
-            public string Message;
-            public bool IsError;
+            if (string.IsNullOrEmpty(name))
+                return false;
 
-            public ValidationIssue(string message, bool isError)
+            // Must start with uppercase letter
+            if (!char.IsUpper(name[0]))
+                return false;
+
+            // Should not have consecutive underscores or start/end with underscore
+            if (name.Contains("__") || name.StartsWith("_") || name.EndsWith("_"))
+                return false;
+
+            // Allow alphanumeric characters only (and single underscores between words)
+            return PascalCasePattern.IsMatch(name.Replace("_", ""));
+        }
+
+        /// <summary>
+        /// Gets all module paths in the project.
+        /// </summary>
+        public static IEnumerable<string> GetModulePaths()
+        {
+            var modulesPath = Path.Combine(Application.dataPath, "Modules");
+            if (!Directory.Exists(modulesPath))
+                return Enumerable.Empty<string>();
+
+            return Directory.GetDirectories(modulesPath);
+        }
+
+        /// <summary>
+        /// Validates all modules and returns all issues.
+        /// </summary>
+        public static IEnumerable<ValidationIssue> ValidateAllModulesAndGetIssues()
+        {
+            var issues = new List<ValidationIssue>();
+            foreach (var modulePath in GetModulePaths())
             {
-                Message = message;
-                IsError = isError;
+                issues.AddRange(ValidateModule(modulePath));
             }
+            return issues;
         }
     }
 }

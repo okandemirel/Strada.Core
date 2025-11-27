@@ -62,9 +62,13 @@ namespace Strada.Core.Communication
         private object[] _commandHandlers = new object[64];
         private object[] _queryHandlers = new object[64];
         private object[] _eventChannels = new object[64];
+        private object[] _asyncCommandHandlers = new object[64];
+        private object[] _asyncQueryHandlers = new object[64];
         private int _maxCommandId;
         private int _maxQueryId;
         private int _maxEventId;
+        private int _maxAsyncCommandId;
+        private int _maxAsyncQueryId;
         private bool _disposed;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -200,9 +204,13 @@ namespace Strada.Core.Communication
             Array.Clear(_commandHandlers, 0, _commandHandlers.Length);
             Array.Clear(_queryHandlers, 0, _queryHandlers.Length);
             Array.Clear(_eventChannels, 0, _eventChannels.Length);
+            Array.Clear(_asyncCommandHandlers, 0, _asyncCommandHandlers.Length);
+            Array.Clear(_asyncQueryHandlers, 0, _asyncQueryHandlers.Length);
             _maxCommandId = 0;
             _maxQueryId = 0;
             _maxEventId = 0;
+            _maxAsyncCommandId = 0;
+            _maxAsyncQueryId = 0;
         }
 
         public void Dispose()
@@ -211,6 +219,76 @@ namespace Strada.Core.Communication
             _disposed = true;
             Clear();
         }
+
+        #region Modern Async/Await Support
+
+        public async ValueTask SendAsync<TCommand>(TCommand command, CancellationToken ct = default) where TCommand : struct
+        {
+            var id = AsyncCommandTypeId<TCommand>.Id;
+            if (id <= _maxAsyncCommandId && _asyncCommandHandlers[id] != null)
+            {
+                await ((Func<TCommand, CancellationToken, ValueTask>)_asyncCommandHandlers[id])(command, ct);
+                return;
+            }
+            ThrowNoHandler<TCommand>("async command");
+        }
+
+        public void RegisterAsyncCommandHandler<TCommand>(IAsyncAwaitCommandHandler<TCommand> handler) where TCommand : struct
+        {
+            RegisterAsyncCommandHandler<TCommand>((cmd, ct) => handler.HandleAsync(cmd, ct));
+        }
+
+        public void RegisterAsyncCommandHandler<TCommand>(Func<TCommand, CancellationToken, ValueTask> handler) where TCommand : struct
+        {
+            var id = AsyncCommandTypeId<TCommand>.Id;
+            EnsureCapacity(ref _asyncCommandHandlers, id);
+            _asyncCommandHandlers[id] = handler;
+            if (id > _maxAsyncCommandId) _maxAsyncCommandId = id;
+        }
+
+        public async ValueTask<TResult> QueryAsync<TQuery, TResult>(TQuery query, CancellationToken ct = default) 
+            where TQuery : struct, IAsyncQuery<TResult>
+        {
+            var id = AsyncQueryTypeId<TQuery>.Id;
+            if (id <= _maxAsyncQueryId && _asyncQueryHandlers[id] != null)
+            {
+                return await ((Func<TQuery, CancellationToken, ValueTask<TResult>>)_asyncQueryHandlers[id])(query, ct);
+            }
+            ThrowNoHandler<TQuery>("async query");
+            return default;
+        }
+
+        public void RegisterAsyncQueryHandler<TQuery, TResult>(IAsyncQueryHandler<TQuery, TResult> handler) 
+            where TQuery : struct, IAsyncQuery<TResult>
+        {
+            RegisterAsyncQueryHandler<TQuery, TResult>((q, ct) => handler.HandleAsync(q, ct));
+        }
+
+        public void RegisterAsyncQueryHandler<TQuery, TResult>(Func<TQuery, CancellationToken, ValueTask<TResult>> handler) 
+            where TQuery : struct, IAsyncQuery<TResult>
+        {
+            var id = AsyncQueryTypeId<TQuery>.Id;
+            EnsureCapacity(ref _asyncQueryHandlers, id);
+            _asyncQueryHandlers[id] = handler;
+            if (id > _maxAsyncQueryId) _maxAsyncQueryId = id;
+        }
+
+        public ValueTask ExecuteAsync(IAsyncAwaitCommand command, CancellationToken ct = default)
+        {
+            return command.ExecuteAsync(ct);
+        }
+
+        private static class AsyncCommandTypeId<T>
+        {
+            public static readonly int Id = Interlocked.Increment(ref _nextTypeId);
+        }
+
+        private static class AsyncQueryTypeId<T>
+        {
+            public static readonly int Id = Interlocked.Increment(ref _nextTypeId);
+        }
+
+        #endregion
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void EnsureCapacity(ref object[] array, int id)

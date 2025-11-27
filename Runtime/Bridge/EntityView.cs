@@ -7,11 +7,40 @@ using UnityEngine;
 
 namespace Strada.Core.Bridge
 {
+    /// <summary>
+    /// Interface for component bindings that sync ECS component data to callbacks.
+    /// </summary>
     public interface IComponentBinding : IDisposable
     {
+        /// <summary>
+        /// Sync ECS component data to the binding's callback.
+        /// </summary>
         void Sync();
+
+        /// <summary>
+        /// Push the binding's cached value back to the ECS component.
+        /// </summary>
         void Push();
+
+        /// <summary>
+        /// Gets whether the binding has detected a change since last sync.
+        /// </summary>
         bool IsDirty { get; }
+
+        /// <summary>
+        /// Gets the component type this binding is watching.
+        /// </summary>
+        Type ComponentType { get; }
+
+        /// <summary>
+        /// Gets the current sync state of the binding.
+        /// </summary>
+        BindingSyncState SyncState { get; }
+
+        /// <summary>
+        /// Gets the last error message if sync failed.
+        /// </summary>
+        string LastError { get; }
     }
 
     public abstract class EntityView : MonoBehaviour, IDisposable
@@ -161,6 +190,8 @@ namespace Strada.Core.Bridge
         private T _cachedValue;
         private bool _dirty;
         private bool _disposed;
+        private BindingSyncState _syncState = BindingSyncState.NotSynced;
+        private string _lastError;
 
         public event Action<T> OnChanged;
 
@@ -178,6 +209,9 @@ namespace Strada.Core.Bridge
         }
 
         public bool IsDirty => _dirty;
+        public Type ComponentType => typeof(T);
+        public BindingSyncState SyncState => _syncState;
+        public string LastError => _lastError;
 
         public ComponentBinding(EntityManager entityManager, Entity entity)
         {
@@ -203,13 +237,41 @@ namespace Strada.Core.Bridge
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Sync()
         {
-            if (!_entityManager.HasComponent<T>(_entity))
-                return;
+            try
+            {
+                if (_entityManager == null)
+                {
+                    _syncState = BindingSyncState.Error;
+                    _lastError = "EntityManager is null";
+                    return;
+                }
 
-            var current = _entityManager.GetComponent<T>(_entity);
-            _cachedValue = current;
-            _dirty = false;
-            OnChanged?.Invoke(current);
+                if (!_entityManager.Exists(_entity))
+                {
+                    _syncState = BindingSyncState.EntityDestroyed;
+                    _lastError = "Entity no longer exists";
+                    return;
+                }
+
+                if (!_entityManager.HasComponent<T>(_entity))
+                {
+                    _syncState = BindingSyncState.Error;
+                    _lastError = $"Entity does not have component {typeof(T).Name}";
+                    return;
+                }
+
+                var current = _entityManager.GetComponent<T>(_entity);
+                _cachedValue = current;
+                _dirty = false;
+                _syncState = BindingSyncState.Synced;
+                _lastError = null;
+                OnChanged?.Invoke(current);
+            }
+            catch (Exception ex)
+            {
+                _syncState = BindingSyncState.Error;
+                _lastError = ex.Message;
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

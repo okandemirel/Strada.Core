@@ -24,6 +24,7 @@ namespace Strada.Core.ECS
         }
 
         public EntityManager Entities => _entities;
+        public SystemScheduler Scheduler => _scheduler;
         public StradaBus Bus => _bus;
         public bool IsInitialized => _initialized;
 

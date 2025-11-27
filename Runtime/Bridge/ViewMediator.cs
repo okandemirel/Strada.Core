@@ -27,6 +27,11 @@ namespace Strada.Core.Bridge
         protected Entity Entity => _entity;
         public bool IsBound => _bound;
 
+        /// <summary>
+        /// Gets the list of active component bindings for editor inspection.
+        /// </summary>
+        public IReadOnlyList<IComponentBinding> Bindings => _bindings;
+
         public void Initialize(IContainer container)
         {
             _container = container;
