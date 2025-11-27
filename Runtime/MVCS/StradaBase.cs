@@ -84,6 +84,26 @@ namespace Strada.Core.MVCS
             MessageBus?.Send(command);
         }
 
+        /// <summary>
+        /// Register a command handler. Commands have exactly one handler and are used for direct actions.
+        /// Use this instead of Subscribe for messages that represent requests/actions.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected void RegisterCommandHandler<T>(Action<T> handler) where T : struct
+        {
+            MessageBus?.RegisterCommandHandler(handler);
+        }
+
+        /// <summary>
+        /// Register a query handler. Queries return data and have exactly one handler.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected void RegisterQueryHandler<TQuery, TResult>(Func<TQuery, TResult> handler)
+            where TQuery : struct, IQuery<TResult>
+        {
+            MessageBus?.RegisterQueryHandler(handler);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected TResult Query<TQuery, TResult>(TQuery query) where TQuery : struct, IQuery<TResult>
         {
