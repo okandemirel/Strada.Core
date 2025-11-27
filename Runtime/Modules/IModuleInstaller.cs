@@ -50,7 +50,6 @@ namespace Strada.Core.Modules
         /// </remarks>
         void Initialize(IContainer container)
         {
-            // Optional: Default implementation does nothing
         }
 
         /// <summary>
@@ -63,7 +62,6 @@ namespace Strada.Core.Modules
         /// </remarks>
         void Shutdown()
         {
-            // Optional: Default implementation does nothing
         }
     }
 }

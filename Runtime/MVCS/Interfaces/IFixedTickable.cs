@@ -1,4 +1,4 @@
-namespace Strada.Core.MVCS
+namespace Strada.Core.MVCS.Interfaces
 {
     public interface IFixedTickable
     {

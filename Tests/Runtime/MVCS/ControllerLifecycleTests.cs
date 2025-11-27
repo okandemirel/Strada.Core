@@ -1,12 +1,9 @@
-using System;
 using NUnit.Framework;
 using Strada.Core.Communication;
 using Strada.Core.DI;
-using Strada.Core.DI.Attributes;
 using Strada.Core.MVCS;
-using Strada.Core.MVCS.Interfaces;
 
-namespace Strada.Core.Tests.Runtime.MVCS
+namespace Strada.Core.Tests.Tests.Runtime.MVCS
 {
     [TestFixture]
     public class ControllerLifecycleTests

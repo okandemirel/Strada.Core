@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using Strada.Core.Communication;
+using Strada.Core.ECS.Core;
 
-namespace Strada.Core.ECS
+namespace Strada.Core.ECS.World
 {
     public sealed class WorldBuilder
     {

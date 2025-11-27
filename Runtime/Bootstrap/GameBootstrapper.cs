@@ -7,6 +7,7 @@ using UnityEngine;
 using Strada.Core.DI;
 using Strada.Core.Modules;
 using Strada.Core;
+using Strada.Core.Core;
 
 namespace Strada.Core.Bootstrap
 {
@@ -234,7 +235,6 @@ namespace Strada.Core.Bootstrap
 
             var builder = new ContainerBuilder();
 
-            // Auto-binding: Register all [AutoRegister*] attributed types
             if (_config.EnableAutoBinding)
             {
                 Log("Registering auto-bindings...");

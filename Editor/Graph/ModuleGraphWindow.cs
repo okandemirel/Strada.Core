@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Strada.Core.Editor.DataProviders;
 using UnityEditor;
 using UnityEngine;
@@ -48,18 +47,14 @@ namespace Strada.Core.Editor.Graph
             var root = rootVisualElement;
             root.Clear();
 
-            // Create toolbar
             CreateToolbar(root);
 
-            // Create cycle warning banner
             CreateCycleWarningBanner(root);
 
-            // Main content area
             var mainContent = new VisualElement();
             mainContent.style.flexDirection = FlexDirection.Row;
             mainContent.style.flexGrow = 1;
 
-            // Create graph view
             _graphView = new ModuleGraphView();
             _graphView.style.flexGrow = 1;
             _graphView.OnNodeSelected += OnNodeSelected;
@@ -67,15 +62,12 @@ namespace Strada.Core.Editor.Graph
             _graphView.OnGraphRefreshed += OnGraphRefreshed;
             mainContent.Add(_graphView);
 
-            // Create initialization order panel
             CreateInitOrderPanel(mainContent);
 
             root.Add(mainContent);
 
-            // Create status bar
             CreateStatusBar(root);
 
-            // Initial refresh
             RefreshGraph();
         }
 
@@ -92,37 +84,30 @@ namespace Strada.Core.Editor.Graph
             _toolbar.style.borderBottomWidth = 1;
             _toolbar.style.borderBottomColor = new Color(0.1f, 0.1f, 0.1f);
 
-            // Refresh button
             var refreshButton = new Button(RefreshGraph) { text = "Refresh" };
             refreshButton.style.marginRight = 8;
             _toolbar.Add(refreshButton);
 
-            // Validate All button
             var validateButton = new Button(ValidateModules) { text = "Validate All" };
             validateButton.style.marginRight = 8;
             _toolbar.Add(validateButton);
 
-            // Frame All button
             var frameAllButton = new Button(() => _graphView?.FrameAll()) { text = "Frame All" };
             frameAllButton.style.marginRight = 8;
             _toolbar.Add(frameAllButton);
 
-            // Clear Highlights button
             var clearHighlightsButton = new Button(() => _graphView?.ClearHighlights()) { text = "Clear Highlights" };
             clearHighlightsButton.style.marginRight = 8;
             _toolbar.Add(clearHighlightsButton);
 
-            // Toggle Init Order Panel
             var toggleInitOrderButton = new Button(ToggleInitOrderPanel) { text = "Toggle Init Order" };
             toggleInitOrderButton.style.marginRight = 8;
             _toolbar.Add(toggleInitOrderButton);
 
-            // Spacer
             var spacer = new VisualElement();
             spacer.style.flexGrow = 1;
             _toolbar.Add(spacer);
 
-            // Search field
             var searchContainer = new VisualElement();
             searchContainer.style.flexDirection = FlexDirection.Row;
             searchContainer.style.alignItems = Align.Center;
@@ -256,7 +241,6 @@ namespace Strada.Core.Editor.Graph
 
         private void OnGraphRefreshed()
         {
-            // Update cycle warning
             if (_graphView.HasCycle && _graphView.CyclePath != null)
             {
                 _cycleWarningBanner.style.display = DisplayStyle.Flex;
@@ -273,10 +257,8 @@ namespace Strada.Core.Editor.Graph
                 _cycleWarningBanner.style.display = DisplayStyle.None;
             }
 
-            // Update initialization order panel
             UpdateInitOrderPanel();
 
-            // Update status
             _statusLabel.text = $"Last refresh: {DateTime.Now:HH:mm:ss}";
 
             var provider = ModuleDataProvider.Instance;
@@ -307,7 +289,6 @@ namespace Strada.Core.Editor.Graph
                 item.style.fontSize = 11;
                 item.style.color = new Color(0.8f, 0.8f, 0.8f);
 
-                // Alternate background
                 if (i % 2 == 1)
                 {
                     item.style.backgroundColor = new Color(0.18f, 0.18f, 0.18f);
@@ -388,7 +369,6 @@ namespace Strada.Core.Editor.Graph
 
         private void OnNodeHovered(ModuleNode node)
         {
-            // Could show tooltip or update status
         }
 
         private void OnPlayModeStateChanged(PlayModeStateChange state)

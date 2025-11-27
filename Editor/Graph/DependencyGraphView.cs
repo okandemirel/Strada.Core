@@ -4,7 +4,6 @@ using System.Linq;
 using Strada.Core.DI;
 using Strada.Core.Editor.DataProviders;
 using Strada.Core.Editor.DataProviders.Models;
-using UnityEditor;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -73,15 +72,12 @@ namespace Strada.Core.Editor.Graph
 
         private void SetupGraphView()
         {
-            // Enable zoom and pan
             SetupZoom(ContentZoomer.DefaultMinScale, ContentZoomer.DefaultMaxScale);
-            
-            // Set background
+
             var gridBackground = new GridBackground();
             Insert(0, gridBackground);
             gridBackground.StretchToParentSize();
 
-            // Set default size
             style.flexGrow = 1;
             style.flexShrink = 1;
         }
@@ -106,19 +102,16 @@ namespace Strada.Core.Editor.Graph
 
         private void SetupStyleSheet()
         {
-            // Apply custom styles
             styleSheets.Add(Resources.Load<StyleSheet>("DependencyGraphStyles"));
         }
 
         private void RegisterCallbacks()
         {
-            // Handle selection changes
             graphViewChanged += OnGraphViewChanged;
         }
 
         private GraphViewChange OnGraphViewChanged(GraphViewChange change)
         {
-            // Handle node selection
             if (change.movedElements != null)
             {
                 foreach (var element in change.movedElements)
@@ -164,7 +157,6 @@ namespace Strada.Core.Editor.Graph
             _hasCycle = graph.HasCycle;
             _cyclePath = graph.CyclePath;
 
-            // Create nodes
             foreach (var nodeData in graph.Nodes)
             {
                 var node = CreateServiceNode(nodeData);
@@ -173,7 +165,6 @@ namespace Strada.Core.Editor.Graph
                 AddElement(node);
             }
 
-            // Create edges
             foreach (var edgeData in graph.Edges)
             {
                 if (_nodeMap.TryGetValue(edgeData.Source, out var sourceNode) &&
@@ -185,10 +176,8 @@ namespace Strada.Core.Editor.Graph
                 }
             }
 
-            // Layout nodes
             LayoutNodes();
 
-            // Apply current filter
             ApplyLifetimeFilter();
 
             OnGraphRefreshed?.Invoke();
@@ -197,8 +186,7 @@ namespace Strada.Core.Editor.Graph
         private ServiceNode CreateServiceNode(DependencyNode nodeData)
         {
             var node = new ServiceNode(nodeData.ServiceType, nodeData.ImplementationType, nodeData.Lifetime);
-            
-            // Setup hover callback
+
             node.RegisterCallback<MouseEnterEvent>(evt => OnNodeHovered?.Invoke(node));
             node.RegisterCallback<PointerDownEvent>(evt =>
             {
@@ -230,7 +218,6 @@ namespace Strada.Core.Editor.Graph
         {
             if (_allNodes.Count == 0) return;
 
-            // Use topological sort for layout
             var levels = ComputeNodeLevels();
             var levelCounts = new Dictionary<int, int>();
 
@@ -245,7 +232,6 @@ namespace Strada.Core.Editor.Graph
                 node.SetPosition(new Rect(x, y, NODE_WIDTH, NODE_HEIGHT));
             }
 
-            // Frame all content
             FrameAll();
         }
 
@@ -254,7 +240,6 @@ namespace Strada.Core.Editor.Graph
             var levels = new Dictionary<Type, int>();
             var visited = new HashSet<Type>();
 
-            // Find root nodes (no incoming edges)
             var hasIncoming = new HashSet<Type>();
             foreach (var edge in _allEdges)
             {
@@ -267,10 +252,9 @@ namespace Strada.Core.Editor.Graph
             var roots = _allNodes.Where(n => !hasIncoming.Contains(n.ServiceType)).ToList();
             if (roots.Count == 0 && _allNodes.Count > 0)
             {
-                roots.Add(_allNodes[0]); // Fallback if all nodes have incoming edges (cycle)
+                roots.Add(_allNodes[0]);
             }
 
-            // BFS to assign levels
             var queue = new Queue<(Type type, int level)>();
             foreach (var root in roots)
             {
@@ -321,7 +305,6 @@ namespace Strada.Core.Editor.Graph
         /// </summary>
         public void HighlightNodeDependencies(ServiceNode node)
         {
-            // Reset all highlights
             foreach (var n in _allNodes)
             {
                 n.RemoveFromClassList("highlighted");
@@ -338,7 +321,6 @@ namespace Strada.Core.Editor.Graph
 
             node.AddToClassList("highlighted");
 
-            // Highlight dependencies (what this node depends on)
             foreach (var edge in node.OutputPort.connections)
             {
                 if (edge.input?.node is ServiceNode depNode)
@@ -348,7 +330,6 @@ namespace Strada.Core.Editor.Graph
                 }
             }
 
-            // Highlight dependents (what depends on this node)
             foreach (var edge in node.InputPort.connections)
             {
                 if (edge.output?.node is ServiceNode depNode)

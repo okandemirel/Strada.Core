@@ -4,7 +4,7 @@ using NUnit.Framework;
 using Strada.Core.Commands;
 using Strada.Core.Communication;
 
-namespace Strada.Core.Tests.Runtime.Communication
+namespace Strada.Core.Tests.Tests.Runtime.Communication
 {
     [TestFixture]
     public class MessageBusTests
@@ -22,8 +22,6 @@ namespace Strada.Core.Tests.Runtime.Communication
         {
             _bus?.Dispose();
         }
-
-        #region Command Tests
 
         [Test]
         public void Send_WithRegisteredHandler_ExecutesHandler()
@@ -84,10 +82,6 @@ namespace Strada.Core.Tests.Runtime.Communication
             Assert.AreEqual(1, handler2Called);
         }
 
-        #endregion
-
-        #region Query Tests
-
         [Test]
         public void Query_WithRegisteredHandler_ReturnsResult()
         {
@@ -97,7 +91,7 @@ namespace Strada.Core.Tests.Runtime.Communication
 
             var result = _bus.Query<GetValueQuery, int>(query);
 
-            Assert.AreEqual(50, result); // 10 * 5
+            Assert.AreEqual(50, result);
         }
 
         [Test]
@@ -109,7 +103,7 @@ namespace Strada.Core.Tests.Runtime.Communication
 
             var result = _bus.Query<GetValueQuery, int>(ref query);
 
-            Assert.AreEqual(30, result); // 10 * 3
+            Assert.AreEqual(30, result);
         }
 
         [Test]
@@ -139,10 +133,6 @@ namespace Strada.Core.Tests.Runtime.Communication
 
             Assert.AreEqual("Name_42", result);
         }
-
-        #endregion
-
-        #region Event Tests
 
         [Test]
         public void Publish_WithSubscriber_NotifiesSubscriber()
@@ -218,7 +208,7 @@ namespace Strada.Core.Tests.Runtime.Communication
 
             _bus.Unsubscribe(handler);
             _bus.Publish(new TestEvent());
-            Assert.AreEqual(1, callCount); // Should not increment
+            Assert.AreEqual(1, callCount);
         }
 
         [Test]
@@ -247,10 +237,6 @@ namespace Strada.Core.Tests.Runtime.Communication
             Assert.DoesNotThrow(() => _bus.Unsubscribe(handler));
         }
 
-        #endregion
-
-        #region Execute (ICommand) Tests
-
         [Test]
         public void Execute_ICommand_ExecutesCommand()
         {
@@ -264,7 +250,6 @@ namespace Strada.Core.Tests.Runtime.Communication
         [Test]
         public void Execute_PooledCommand_ReturnsToPool()
         {
-            // Track execution externally since command state is reset on return
             bool wasExecuted = false;
             var command = TestPooledCommand.Rent();
             command.Value = 123;
@@ -273,12 +258,8 @@ namespace Strada.Core.Tests.Runtime.Communication
             _bus.Execute(command);
 
             Assert.IsTrue(wasExecuted);
-            Assert.AreEqual(0, command.Value); // Reset after return to pool
+            Assert.AreEqual(0, command.Value);
         }
-
-        #endregion
-
-        #region ExecuteAsync Tests
 
         [Test]
         public void ExecuteAsync_CallsOnComplete()
@@ -288,7 +269,6 @@ namespace Strada.Core.Tests.Runtime.Communication
 
             _bus.ExecuteAsync(command, () => completed = true);
 
-            // Simulate async completion
             command.Complete();
 
             Assert.IsTrue(completed);
@@ -303,12 +283,8 @@ namespace Strada.Core.Tests.Runtime.Communication
             _bus.ExecuteAsync(command);
             command.Complete();
 
-            Assert.AreEqual(0, command.TestValue); // Reset after return
+            Assert.AreEqual(0, command.TestValue);
         }
-
-        #endregion
-
-        #region Clear Tests
 
         [Test]
         public void Clear_RemovesAllCommandHandlers()
@@ -341,10 +317,6 @@ namespace Strada.Core.Tests.Runtime.Communication
             Assert.AreEqual(0, _bus.GetSubscriberCount<TestEvent>());
         }
 
-        #endregion
-
-        #region Dispose Tests
-
         [Test]
         public void Dispose_ClearsAllHandlers()
         {
@@ -353,7 +325,6 @@ namespace Strada.Core.Tests.Runtime.Communication
 
             _bus.Dispose();
 
-            // After dispose, handlers should be cleared
             Assert.AreEqual(0, _bus.GetSubscriberCount<TestEvent>());
         }
 
@@ -367,10 +338,6 @@ namespace Strada.Core.Tests.Runtime.Communication
                 _bus.Dispose();
             });
         }
-
-        #endregion
-
-        #region Type Safety Tests
 
         [Test]
         public void Commands_AreSeparatedByType()
@@ -415,10 +382,6 @@ namespace Strada.Core.Tests.Runtime.Communication
             Assert.AreEqual("test", stringResult);
         }
 
-        #endregion
-
-        #region Large Handler Count Tests
-
         [Test]
         public void Subscribe_ManyHandlers_AllReceiveEvents()
         {
@@ -442,17 +405,12 @@ namespace Strada.Core.Tests.Runtime.Communication
             const int typeCount = 100;
             var results = new int[typeCount];
 
-            // This tests that the type ID system handles many types
             _bus.RegisterCommandHandler<TestCommand>(c => results[0] = c.Value);
 
             _bus.Send(new TestCommand { Value = 42 });
 
             Assert.AreEqual(42, results[0]);
         }
-
-        #endregion
-
-        #region Test Types
 
         private struct TestCommand
         {
@@ -572,7 +530,6 @@ namespace Strada.Core.Tests.Runtime.Communication
 
             public void Execute()
             {
-                // Not used for async
             }
 
             public void Reset()
@@ -586,7 +543,5 @@ namespace Strada.Core.Tests.Runtime.Communication
                 Reset();
             }
         }
-
-        #endregion
     }
 }

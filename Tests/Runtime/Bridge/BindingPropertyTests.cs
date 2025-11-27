@@ -6,9 +6,10 @@ using Strada.Core.Bridge;
 using Strada.Core.Communication;
 using Strada.Core.DI;
 using Strada.Core.ECS;
-using Strada.Core.Tests.Runtime.Generators;
+using Strada.Core.ECS.Core;
+using Strada.Core.Tests.Tests.Runtime.Generators;
 
-namespace Strada.Core.Tests.Runtime.Bridge
+namespace Strada.Core.Tests.Tests.Runtime.Bridge
 {
     /// <summary>
     /// Property-based tests for Bridge component bindings.
@@ -32,7 +33,7 @@ namespace Strada.Core.Tests.Runtime.Bridge
         {
             _entityManager = new EntityManager();
             _bus = new MessageBus();
-            
+
             var builder = new ContainerBuilder();
             builder.RegisterInstance(_entityManager);
             builder.RegisterInstance<IMessageBus>(_bus);
@@ -46,8 +47,6 @@ namespace Strada.Core.Tests.Runtime.Bridge
             _bus?.Dispose();
             _container?.Dispose();
         }
-
-        #region Generators
 
         /// <summary>
         /// Generator for integer property values.
@@ -72,11 +71,6 @@ namespace Strada.Core.Tests.Runtime.Bridge
         /// </summary>
         private static Gen<int> SubscriberCountGen => Gen.Choose(1, 10);
 
-        #endregion
-
-
-        #region Property 19: ComponentBinding Sync Detection
-
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 19: ComponentBinding Sync Detection**
         /// For any ComponentBinding, when the bound component's selected property changes,
@@ -92,7 +86,6 @@ namespace Strada.Core.Tests.Runtime.Bridge
                 DistinctValuePairGen.ToArbitrary(),
                 (valuePair) =>
                 {
-                    // Arrange
                     var entity = _entityManager.CreateEntity();
                     _entityManager.AddComponent(entity, new TestBindingComponent { Value = valuePair.oldValue });
 
@@ -109,11 +102,9 @@ namespace Strada.Core.Tests.Runtime.Bridge
                             callbackValue = v;
                         });
 
-                    // Act - change component value externally
                     _entityManager.SetComponent(entity, new TestBindingComponent { Value = valuePair.newValue });
                     binding.Sync();
 
-                    // Assert - callback invoked with new value
                     return callbackInvoked && callbackValue == valuePair.newValue;
                 });
 
@@ -134,7 +125,6 @@ namespace Strada.Core.Tests.Runtime.Bridge
                 IntValueGen.ToArbitrary(),
                 (value) =>
                 {
-                    // Arrange
                     var entity = _entityManager.CreateEntity();
                     _entityManager.AddComponent(entity, new TestBindingComponent { Value = value });
 
@@ -146,10 +136,8 @@ namespace Strada.Core.Tests.Runtime.Bridge
                         c => c.Value,
                         _ => callbackCount++);
 
-                    // Act - sync without changing value
                     binding.Sync();
 
-                    // Assert - callback not invoked (value unchanged from initial)
                     return callbackCount == 0;
                 });
 
@@ -171,7 +159,6 @@ namespace Strada.Core.Tests.Runtime.Bridge
                 Gen.Choose(2, 5).ToArbitrary(),
                 (initialValue, changeCount) =>
                 {
-                    // Arrange
                     var entity = _entityManager.CreateEntity();
                     _entityManager.AddComponent(entity, new TestBindingComponent { Value = initialValue });
 
@@ -183,14 +170,12 @@ namespace Strada.Core.Tests.Runtime.Bridge
                         c => c.Value,
                         v => receivedValues.Add(v));
 
-                    // Act - make multiple distinct changes with syncs
                     for (int i = 1; i <= changeCount; i++)
                     {
                         _entityManager.SetComponent(entity, new TestBindingComponent { Value = initialValue + i * 100 });
                         binding.Sync();
                     }
 
-                    // Assert - callback invoked for each change
                     if (receivedValues.Count != changeCount)
                         return false;
 
@@ -205,11 +190,6 @@ namespace Strada.Core.Tests.Runtime.Bridge
 
             property.Check(config);
         }
-
-        #endregion
-
-
-        #region Property 20: ComponentBinding Push Correctness
 
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 20: ComponentBinding Push Correctness**
@@ -227,7 +207,6 @@ namespace Strada.Core.Tests.Runtime.Bridge
                 IntValueGen.ToArbitrary(),
                 (initialValue, pushValue) =>
                 {
-                    // Arrange
                     var entity = _entityManager.CreateEntity();
                     _entityManager.AddComponent(entity, new TestBindingComponent { Value = initialValue });
 
@@ -238,10 +217,8 @@ namespace Strada.Core.Tests.Runtime.Bridge
                         (c, v) => new TestBindingComponent { Value = v },
                         _ => { });
 
-                    // Act
                     binding.Push(pushValue);
 
-                    // Assert - ECS component contains pushed value
                     var component = _entityManager.GetComponent<TestBindingComponent>(entity);
                     return component.Value == pushValue;
                 });
@@ -264,21 +241,17 @@ namespace Strada.Core.Tests.Runtime.Bridge
                 IntValueGen.ToArbitrary(),
                 (initialValue, attemptedPushValue) =>
                 {
-                    // Arrange
                     var entity = _entityManager.CreateEntity();
                     _entityManager.AddComponent(entity, new TestBindingComponent { Value = initialValue });
 
-                    // Create binding without setter
                     var binding = new ComponentBinding<TestBindingComponent, int>(
                         _entityManager,
                         entity,
                         c => c.Value,
                         _ => { });
 
-                    // Act - try to push (should do nothing without setter)
                     binding.Push();
 
-                    // Assert - ECS component unchanged
                     var component = _entityManager.GetComponent<TestBindingComponent>(entity);
                     return component.Value == initialValue;
                 });
@@ -300,7 +273,6 @@ namespace Strada.Core.Tests.Runtime.Bridge
                 Gen.Choose(2, 5).ToArbitrary(),
                 (pushCount) =>
                 {
-                    // Arrange
                     var entity = _entityManager.CreateEntity();
                     _entityManager.AddComponent(entity, new TestBindingComponent { Value = 0 });
 
@@ -311,7 +283,6 @@ namespace Strada.Core.Tests.Runtime.Bridge
                         (c, v) => new TestBindingComponent { Value = v },
                         _ => { });
 
-                    // Act - multiple pushes
                     int lastPushedValue = 0;
                     for (int i = 1; i <= pushCount; i++)
                     {
@@ -319,18 +290,12 @@ namespace Strada.Core.Tests.Runtime.Bridge
                         binding.Push(lastPushedValue);
                     }
 
-                    // Assert - final value is last pushed value
                     var component = _entityManager.GetComponent<TestBindingComponent>(entity);
                     return component.Value == lastPushedValue;
                 });
 
             property.Check(config);
         }
-
-        #endregion
-
-
-        #region Property 21: ViewMediator Entity Filtering
 
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 21: ViewMediator Entity Filtering**
@@ -348,10 +313,8 @@ namespace Strada.Core.Tests.Runtime.Bridge
                 IntValueGen.ToArbitrary(),
                 (entityCount, newValue) =>
                 {
-                    // Ensure at least 2 entities for meaningful test
                     if (entityCount < 2) entityCount = 2;
 
-                    // Arrange - create multiple entities
                     var entities = new Entity[entityCount];
                     for (int i = 0; i < entityCount; i++)
                     {
@@ -359,11 +322,9 @@ namespace Strada.Core.Tests.Runtime.Bridge
                         _entityManager.AddComponent(entities[i], new TestBindingComponent { Value = i });
                     }
 
-                    // Pick one entity to bind to (first one)
                     var boundEntity = entities[0];
                     var receivedEvents = new List<ComponentChanged<TestBindingComponent>>();
 
-                    // Create a filter that mimics ViewMediator.OnComponentChanged behavior
                     Action<ComponentChanged<TestBindingComponent>> filter = e =>
                     {
                         if (e.Entity == boundEntity)
@@ -372,7 +333,6 @@ namespace Strada.Core.Tests.Runtime.Bridge
 
                     _bus.Subscribe(filter);
 
-                    // Act - publish events for ALL entities
                     for (int i = 0; i < entityCount; i++)
                     {
                         var evt = new ComponentChanged<TestBindingComponent>(
@@ -382,7 +342,6 @@ namespace Strada.Core.Tests.Runtime.Bridge
                         _bus.Publish(evt);
                     }
 
-                    // Assert - only received event for bound entity
                     if (receivedEvents.Count != 1)
                         return false;
 
@@ -406,7 +365,6 @@ namespace Strada.Core.Tests.Runtime.Bridge
                 Gen.Choose(1, 10).ToArbitrary(),
                 (eventCount) =>
                 {
-                    // Arrange
                     var boundEntity = _entityManager.CreateEntity();
                     _entityManager.AddComponent(boundEntity, new TestBindingComponent { Value = 0 });
 
@@ -423,17 +381,14 @@ namespace Strada.Core.Tests.Runtime.Bridge
 
                     _bus.Subscribe(filter);
 
-                    // Act - publish multiple events for bound entity, interspersed with other entity events
                     for (int i = 0; i < eventCount; i++)
                     {
-                        // Event for bound entity
                         var boundEvt = new ComponentChanged<TestBindingComponent>(
                             boundEntity,
                             new TestBindingComponent { Value = i },
                             new TestBindingComponent { Value = i + 1 });
                         _bus.Publish(boundEvt);
 
-                        // Event for other entity (should be filtered out)
                         var otherEvt = new ComponentChanged<TestBindingComponent>(
                             otherEntity,
                             new TestBindingComponent { Value = i * 10 },
@@ -441,7 +396,6 @@ namespace Strada.Core.Tests.Runtime.Bridge
                         _bus.Publish(otherEvt);
                     }
 
-                    // Assert - received exactly eventCount events, all for bound entity
                     if (receivedEvents.Count != eventCount)
                         return false;
 
@@ -471,7 +425,6 @@ namespace Strada.Core.Tests.Runtime.Bridge
                 EntityCountGen.ToArbitrary(),
                 (entityCount) =>
                 {
-                    // Arrange
                     var boundEntity = _entityManager.CreateEntity();
                     _entityManager.AddComponent(boundEntity, new TestBindingComponent { Value = 0 });
 
@@ -485,7 +438,6 @@ namespace Strada.Core.Tests.Runtime.Bridge
 
                     _bus.Subscribe(filter);
 
-                    // Act - publish events for OTHER entities only
                     for (int i = 0; i < entityCount; i++)
                     {
                         var otherEntity = _entityManager.CreateEntity();
@@ -498,17 +450,11 @@ namespace Strada.Core.Tests.Runtime.Bridge
                         _bus.Publish(evt);
                     }
 
-                    // Assert - no events received
                     return receivedEvents.Count == 0;
                 });
 
             property.Check(config);
         }
-
-        #endregion
-
-
-        #region Test Component
 
         /// <summary>
         /// Test component for binding property tests.
@@ -519,7 +465,5 @@ namespace Strada.Core.Tests.Runtime.Bridge
 
             public override string ToString() => $"TestBindingComponent(Value={Value})";
         }
-
-        #endregion
     }
 }

@@ -2,7 +2,7 @@ using NUnit.Framework;
 using Strada.Core.ECS;
 using Strada.Core.ECS.Reactive;
 
-namespace Strada.Core.Tests.Runtime.ECS.Reactive
+namespace Strada.Core.Tests.Tests.Runtime.ECS.Reactive
 {
     [TestFixture]
     public sealed class ReactiveEntityManagerTests

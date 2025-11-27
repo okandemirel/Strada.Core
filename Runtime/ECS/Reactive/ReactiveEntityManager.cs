@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using Strada.Core.ECS.Core;
 
 namespace Strada.Core.ECS.Reactive
 {

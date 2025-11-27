@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
+using Strada.Core.ECS.Core;
 using Strada.Core.ECS.Storage;
 
 namespace Strada.Core.ECS.Query

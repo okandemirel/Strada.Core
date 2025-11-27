@@ -86,7 +86,6 @@ namespace Strada.Core.DI
                 if (existing != null)
                     return existing;
 
-                // Pass 'this' (the scope) to the factory so it can resolve dependencies from this scope
                 var instance = _scopedFactories[index](this);
 
                 var prev = Interlocked.CompareExchange(ref _scopedInstances[index], instance, null);
@@ -99,7 +98,6 @@ namespace Strada.Core.DI
                 return instance;
             }
 
-            // Transient: Pass 'this' so dependencies come from this scope
             return _factories[index](this);
         }
 

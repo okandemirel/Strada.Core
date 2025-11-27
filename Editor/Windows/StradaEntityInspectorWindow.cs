@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Strada.Core.ECS;
+using Strada.Core.ECS.Core;
 using Strada.Core.ECS.Storage;
+using Strada.Core.ECS.World;
 using Strada.Core.Editor.DataProviders;
 using Strada.Core.Editor.DataProviders.Models;
 using UnityEditor;
@@ -18,39 +20,32 @@ namespace Strada.Core.Editor.Windows
     /// </summary>
     public class StradaEntityInspectorWindow : EditorWindow
     {
-        // Layout
         private const float MinEntityListWidth = 200f;
         private const float MaxEntityListWidth = 400f;
         private const float DefaultEntityListWidth = 280f;
         private float _entityListWidth = DefaultEntityListWidth;
         private bool _isResizing;
 
-        // Scroll positions
         private Vector2 _entityListScrollPosition;
         private Vector2 _componentScrollPosition;
 
-        // Selection state
         private int _selectedEntityId = -1;
         private HashSet<int> _expandedComponents = new HashSet<int>();
 
-        // Search and filter
         private string _searchQuery = "";
         private EntitySearchMode _searchMode = EntitySearchMode.All;
         private List<int> _filteredEntityIds = new List<int>();
         private List<int> _allEntityIds = new List<int>();
 
-        // Auto-refresh
         private bool _autoRefresh = true;
         private float _refreshInterval = 0.5f;
         private double _lastRefreshTime;
 
-        // Component type cache for "Add Component"
         private List<Type> _availableComponentTypes = new List<Type>();
         private string _addComponentSearch = "";
         private bool _showAddComponentDropdown;
         private Vector2 _addComponentScrollPosition;
 
-        // Styles
         private GUIStyle _headerStyle;
         private GUIStyle _entityItemStyle;
         private GUIStyle _selectedEntityStyle;
@@ -58,7 +53,6 @@ namespace Strada.Core.Editor.Windows
         private GUIStyle _fieldLabelStyle;
         private bool _stylesInitialized;
 
-        // Data provider
         private WorldDataProvider _worldDataProvider;
 
         public static void ShowWindow()
@@ -211,7 +205,6 @@ namespace Strada.Core.Editor.Windows
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
 
-            // Search field
             GUILayout.Label("Search:", GUILayout.Width(45));
             var newSearch = EditorGUILayout.TextField(_searchQuery, EditorStyles.toolbarSearchField, GUILayout.Width(150));
             if (newSearch != _searchQuery)
@@ -220,7 +213,6 @@ namespace Strada.Core.Editor.Windows
                 ApplySearchFilter();
             }
 
-            // Search mode dropdown
             var newMode = (EntitySearchMode)EditorGUILayout.EnumPopup(_searchMode, EditorStyles.toolbarDropDown, GUILayout.Width(100));
             if (newMode != _searchMode)
             {
@@ -230,10 +222,8 @@ namespace Strada.Core.Editor.Windows
 
             GUILayout.Space(10);
 
-            // Auto-refresh toggle
             _autoRefresh = GUILayout.Toggle(_autoRefresh, "Auto Refresh", EditorStyles.toolbarButton, GUILayout.Width(85));
 
-            // Refresh interval
             if (_autoRefresh)
             {
                 GUILayout.Label("Interval:", GUILayout.Width(50));
@@ -242,14 +232,12 @@ namespace Strada.Core.Editor.Windows
 
             GUILayout.FlexibleSpace();
 
-            // Stats
             GUILayout.Label($"Entities: {_allEntityIds.Count}", EditorStyles.toolbarButton);
             if (_filteredEntityIds.Count != _allEntityIds.Count)
             {
                 GUILayout.Label($"Filtered: {_filteredEntityIds.Count}", EditorStyles.toolbarButton);
             }
 
-            // Manual refresh button
             if (GUILayout.Button("Refresh", EditorStyles.toolbarButton, GUILayout.Width(55)))
             {
                 RefreshEntityList();
@@ -262,13 +250,10 @@ namespace Strada.Core.Editor.Windows
         {
             EditorGUILayout.BeginHorizontal();
 
-            // Left panel - Entity list
             DrawEntityListPanel();
 
-            // Resize handle
             DrawResizeHandle();
 
-            // Right panel - Component details
             DrawComponentDetailsPanel();
 
             EditorGUILayout.EndHorizontal();
@@ -312,7 +297,6 @@ namespace Strada.Core.Editor.Windows
 
             EditorGUILayout.BeginHorizontal(style);
 
-            // Entity button
             var componentCount = GetEntityComponentCount(entityId);
             var buttonContent = new GUIContent($"Entity [{entityId}]", $"Entity ID: {entityId}\nComponents: {componentCount}");
 
@@ -321,7 +305,6 @@ namespace Strada.Core.Editor.Windows
                 _selectedEntityId = entityId;
             }
 
-            // Component count badge
             GUILayout.Label($"[{componentCount}]", GUILayout.Width(35));
 
             EditorGUILayout.EndHorizontal();
@@ -351,7 +334,6 @@ namespace Strada.Core.Editor.Windows
                 }
             }
 
-            // Draw visual separator
             EditorGUI.DrawRect(resizeRect, new Color(0.15f, 0.15f, 0.15f, 1f));
         }
 
@@ -415,7 +397,6 @@ namespace Strada.Core.Editor.Windows
         {
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            // Search field
             EditorGUILayout.BeginHorizontal();
             GUILayout.Label("Search:", GUILayout.Width(50));
             _addComponentSearch = EditorGUILayout.TextField(_addComponentSearch);
@@ -425,7 +406,6 @@ namespace Strada.Core.Editor.Windows
             }
             EditorGUILayout.EndHorizontal();
 
-            // Filtered component list
             _addComponentScrollPosition = EditorGUILayout.BeginScrollView(_addComponentScrollPosition, GUILayout.MaxHeight(200));
 
             var filteredTypes = _availableComponentTypes
@@ -436,7 +416,6 @@ namespace Strada.Core.Editor.Windows
 
             foreach (var componentType in filteredTypes)
             {
-                // Check if entity already has this component
                 var hasComponent = EntityHasComponent(_selectedEntityId, componentType);
 
                 EditorGUI.BeginDisabledGroup(hasComponent);
@@ -480,7 +459,6 @@ namespace Strada.Core.Editor.Windows
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            // Component header with foldout and remove button
             EditorGUILayout.BeginHorizontal();
 
             var newExpanded = EditorGUILayout.Foldout(isExpanded, component.ComponentType.Name, true, _componentHeaderStyle);
@@ -494,7 +472,6 @@ namespace Strada.Core.Editor.Windows
 
             GUILayout.FlexibleSpace();
 
-            // Remove component button
             if (GUILayout.Button("×", GUILayout.Width(20), GUILayout.Height(18)))
             {
                 RemoveComponentFromEntity(_selectedEntityId, component.ComponentType);
@@ -502,7 +479,6 @@ namespace Strada.Core.Editor.Windows
 
             EditorGUILayout.EndHorizontal();
 
-            // Component fields
             if (newExpanded && component.Value != null)
             {
                 EditorGUI.indentLevel++;
@@ -647,7 +623,6 @@ namespace Strada.Core.Editor.Windows
                 }
                 else
                 {
-                    // Unsupported type - display as read-only
                     EditorGUILayout.LabelField(value?.ToString() ?? "null", EditorStyles.helpBox);
                 }
             }
@@ -659,9 +634,6 @@ namespace Strada.Core.Editor.Windows
             EditorGUILayout.EndHorizontal();
             return result;
         }
-
-
-        #region Entity Operations
 
         private void RefreshEntityList()
         {
@@ -735,7 +707,6 @@ namespace Strada.Core.Editor.Windows
 
         private void DetectDestroyedEntities()
         {
-            // Remove destroyed entities from the list
             var destroyedEntities = _allEntityIds.Where(id => !EntityExists(id)).ToList();
             foreach (var id in destroyedEntities)
             {
@@ -743,7 +714,6 @@ namespace Strada.Core.Editor.Windows
                 _filteredEntityIds.Remove(id);
             }
 
-            // Clear selection if selected entity was destroyed
             if (_selectedEntityId >= 0 && !EntityExists(_selectedEntityId))
             {
                 _selectedEntityId = -1;
@@ -789,15 +759,10 @@ namespace Strada.Core.Editor.Windows
             return World.Current?.EntityManager?.Store?.HasComponent(entityId, componentType) ?? false;
         }
 
-        #endregion
-
-        #region Component Operations
-
         private void CacheComponentTypes()
         {
             _availableComponentTypes.Clear();
 
-            // Find all types implementing IComponent that are unmanaged structs
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
             foreach (var assembly in assemblies)
             {
@@ -813,7 +778,6 @@ namespace Strada.Core.Editor.Windows
                 }
                 catch
                 {
-                    // Skip assemblies that can't be loaded
                 }
             }
 
@@ -831,7 +795,6 @@ namespace Strada.Core.Editor.Windows
             if (!type.IsValueType)
                 return false;
 
-            // Check if unmanaged (no reference type fields)
             return IsUnmanagedType(type);
         }
 
@@ -843,7 +806,6 @@ namespace Strada.Core.Editor.Windows
             if (!type.IsValueType)
                 return false;
 
-            // Check all fields are unmanaged
             foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
             {
                 if (!IsUnmanagedType(field.FieldType))
@@ -862,10 +824,8 @@ namespace Strada.Core.Editor.Windows
                 var entityManager = World.Current?.EntityManager;
                 if (entityManager == null) return;
 
-                // Create default component instance
                 var component = Activator.CreateInstance(componentType);
 
-                // Use reflection to call the generic AddComponent method
                 var store = entityManager.Store;
                 var getOrCreateMethod = typeof(ComponentStore).GetMethod("GetOrCreateStorage");
                 var genericMethod = getOrCreateMethod?.MakeGenericMethod(componentType);
@@ -894,7 +854,6 @@ namespace Strada.Core.Editor.Windows
                 var store = World.Current?.EntityManager?.Store;
                 if (store == null) return;
 
-                // Use reflection to get the storage and remove the component
                 var storagesField = typeof(ComponentStore).GetField("_storages",
                     BindingFlags.NonPublic | BindingFlags.Instance);
 
@@ -913,8 +872,6 @@ namespace Strada.Core.Editor.Windows
                 Debug.LogWarning($"[EntityInspector] Failed to remove component: {ex.Message}");
             }
         }
-
-        #endregion
     }
 
     /// <summary>

@@ -1,4 +1,4 @@
-namespace Strada.Core.ECS
+namespace Strada.Core.ECS.World
 {
     public enum UpdatePhase
     {

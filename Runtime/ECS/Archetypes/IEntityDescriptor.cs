@@ -1,4 +1,5 @@
 using System;
+using Strada.Core.ECS.Core;
 
 namespace Strada.Core.ECS.Archetypes
 {

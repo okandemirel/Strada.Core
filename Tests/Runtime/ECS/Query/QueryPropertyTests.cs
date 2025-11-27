@@ -2,10 +2,11 @@ using System.Collections.Generic;
 using FsCheck;
 using NUnit.Framework;
 using Strada.Core.ECS;
+using Strada.Core.ECS.Core;
 using Strada.Core.ECS.Query;
-using Strada.Core.Tests.Runtime.Generators;
+using Strada.Core.Tests.Tests.Runtime.Generators;
 
-namespace Strada.Core.Tests.Runtime.ECS.Query
+namespace Strada.Core.Tests.Tests.Runtime.ECS.Query
 {
     /// <summary>
     /// Property-based tests for ECS query iteration.
@@ -19,8 +20,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Query
         {
             StradaArbitraries.RegisterAll();
         }
-
-        #region Property 8: Query Completeness
 
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 8: Query Completeness**
@@ -45,7 +44,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Query
                         var entitiesWithComponent = new HashSet<int>();
                         var entitiesWithoutComponent = new HashSet<int>();
 
-                        // Create entities WITH TestComponent
                         for (int i = 0; i < withComponentCount; i++)
                         {
                             var entity = manager.CreateEntity();
@@ -53,22 +51,18 @@ namespace Strada.Core.Tests.Runtime.ECS.Query
                             entitiesWithComponent.Add(entity.Index);
                         }
 
-                        // Create entities WITHOUT TestComponent
                         for (int i = 0; i < withoutComponentCount; i++)
                         {
                             var entity = manager.CreateEntity();
-                            // Don't add TestComponent
                             entitiesWithoutComponent.Add(entity.Index);
                         }
 
-                        // Query and collect iterated entities
                         var iteratedEntities = new HashSet<int>();
                         manager.ForEach<TestComponent>((int entityIndex, ref TestComponent c) =>
                         {
                             iteratedEntities.Add(entityIndex);
                         });
 
-                        // Verify: iterated entities should exactly match entities with component
                         if (iteratedEntities.Count != entitiesWithComponent.Count)
                             return false;
 
@@ -78,7 +72,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Query
                                 return false;
                         }
 
-                        // Verify: no entity without component was iterated
                         foreach (var entityIndex in entitiesWithoutComponent)
                         {
                             if (iteratedEntities.Contains(entityIndex))
@@ -107,7 +100,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Query
         {
             var config = PropertyTestConfig.CreateConfig();
 
-            // Use a tuple generator to combine 4 parameters into one
             var countsGen = from bothCount in Gen.Choose(1, 30)
                             from onlyFirstCount in Gen.Choose(0, 20)
                             from onlySecondCount in Gen.Choose(0, 20)
@@ -125,7 +117,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Query
                     {
                         var entitiesWithBoth = new HashSet<int>();
 
-                        // Create entities with BOTH components
                         for (int i = 0; i < bothCount; i++)
                         {
                             var entity = manager.CreateEntity();
@@ -134,27 +125,23 @@ namespace Strada.Core.Tests.Runtime.ECS.Query
                             entitiesWithBoth.Add(entity.Index);
                         }
 
-                        // Create entities with only TestComponent
                         for (int i = 0; i < onlyFirstCount; i++)
                         {
                             var entity = manager.CreateEntity();
                             manager.AddComponent(entity, new TestComponent(i + 100, 0, false));
                         }
 
-                        // Create entities with only TestComponent2
                         for (int i = 0; i < onlySecondCount; i++)
                         {
                             var entity = manager.CreateEntity();
                             manager.AddComponent(entity, new TestComponent2(i + 200, i));
                         }
 
-                        // Create entities with neither component
                         for (int i = 0; i < neitherCount; i++)
                         {
                             manager.CreateEntity();
                         }
 
-                        // Query and collect iterated entities
                         var iteratedEntities = new HashSet<int>();
                         manager.ForEach<TestComponent, TestComponent2>(
                             (int entityIndex, ref TestComponent c1, ref TestComponent2 c2) =>
@@ -162,7 +149,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Query
                                 iteratedEntities.Add(entityIndex);
                             });
 
-                        // Verify: iterated entities should exactly match entities with both components
                         if (iteratedEntities.Count != entitiesWithBoth.Count)
                             return false;
 
@@ -205,7 +191,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Query
                     {
                         var entitiesWithAll = new HashSet<int>();
 
-                        // Create entities with ALL THREE components
                         for (int i = 0; i < allThreeCount; i++)
                         {
                             var entity = manager.CreateEntity();
@@ -215,13 +200,11 @@ namespace Strada.Core.Tests.Runtime.ECS.Query
                             entitiesWithAll.Add(entity.Index);
                         }
 
-                        // Create entities with only two components (various combinations)
                         for (int i = 0; i < partialCount; i++)
                         {
                             var entity = manager.CreateEntity();
                             manager.AddComponent(entity, new TestComponent(i + 100, 0, false));
                             manager.AddComponent(entity, new TestComponent2(i + 100, i));
-                            // Missing TestComponent3
                         }
 
                         for (int i = 0; i < partialCount; i++)
@@ -229,10 +212,8 @@ namespace Strada.Core.Tests.Runtime.ECS.Query
                             var entity = manager.CreateEntity();
                             manager.AddComponent(entity, new TestComponent(i + 200, 0, false));
                             manager.AddComponent(entity, new TestComponent3(i + 200, i));
-                            // Missing TestComponent2
                         }
 
-                        // Query and collect iterated entities
                         var iteratedEntities = new HashSet<int>();
                         manager.ForEach<TestComponent, TestComponent2, TestComponent3>(
                             (int entityIndex, ref TestComponent c1, ref TestComponent2 c2, ref TestComponent3 c3) =>
@@ -240,7 +221,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Query
                                 iteratedEntities.Add(entityIndex);
                             });
 
-                        // Verify: iterated entities should exactly match entities with all three components
                         if (iteratedEntities.Count != entitiesWithAll.Count)
                             return false;
 
@@ -281,7 +261,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Query
                     {
                         var expectedData = new Dictionary<int, int>();
 
-                        // Create entities with unique component values
                         for (int i = 0; i < entityCount; i++)
                         {
                             var entity = manager.CreateEntity();
@@ -289,7 +268,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Query
                             expectedData[entity.Index] = i * 10;
                         }
 
-                        // Query and verify data
                         bool allCorrect = true;
                         manager.ForEach<TestComponent>((int entityIndex, ref TestComponent c) =>
                         {
@@ -333,7 +311,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Query
                         var entities = new List<Entity>();
                         var survivingEntities = new HashSet<int>();
 
-                        // Create entities
                         for (int i = 0; i < totalCount; i++)
                         {
                             var entity = manager.CreateEntity();
@@ -342,21 +319,18 @@ namespace Strada.Core.Tests.Runtime.ECS.Query
                             survivingEntities.Add(entity.Index);
                         }
 
-                        // Destroy some entities
                         for (int i = 0; i < actualDestroyCount; i++)
                         {
                             manager.DestroyEntity(entities[i]);
                             survivingEntities.Remove(entities[i].Index);
                         }
 
-                        // Query and collect iterated entities
                         var iteratedEntities = new HashSet<int>();
                         manager.ForEach<TestComponent>((int entityIndex, ref TestComponent c) =>
                         {
                             iteratedEntities.Add(entityIndex);
                         });
 
-                        // Verify: only surviving entities are iterated
                         if (iteratedEntities.Count != survivingEntities.Count)
                             return false;
 
@@ -395,15 +369,12 @@ namespace Strada.Core.Tests.Runtime.ECS.Query
 
                     try
                     {
-                        // Create entities WITHOUT the queried component
                         for (int i = 0; i < entityCount; i++)
                         {
                             var entity = manager.CreateEntity();
-                            // Add a different component
                             manager.AddComponent(entity, new TestComponent2(i, i));
                         }
 
-                        // Query for TestComponent (which no entity has)
                         int iteratedCount = 0;
                         manager.ForEach<TestComponent>((int entityIndex, ref TestComponent c) =>
                         {
@@ -442,7 +413,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Query
                     {
                         var entities = new List<Entity>();
 
-                        // Create entities
                         for (int i = 0; i < entityCount; i++)
                         {
                             var entity = manager.CreateEntity();
@@ -450,13 +420,11 @@ namespace Strada.Core.Tests.Runtime.ECS.Query
                             entities.Add(entity);
                         }
 
-                        // Modify via query
                         manager.ForEach<TestComponent>((int entityIndex, ref TestComponent c) =>
                         {
                             c.Value *= multiplier;
                         });
 
-                        // Verify modifications
                         for (int i = 0; i < entityCount; i++)
                         {
                             var component = manager.GetComponent<TestComponent>(entities[i]);
@@ -474,7 +442,5 @@ namespace Strada.Core.Tests.Runtime.ECS.Query
 
             property.Check(config);
         }
-
-        #endregion
     }
 }

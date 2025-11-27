@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Strada.Core.ECS;
-using Strada.Core.ECS.Storage;
+using Strada.Core.ECS.Core;
+using Strada.Core.ECS.World;
 using Strada.Core.Editor.DataProviders.Models;
 using UnityEngine;
 
@@ -155,7 +155,6 @@ namespace Strada.Core.Editor.DataProviders
                 Systems = new List<Models.SystemInfo>()
             };
 
-            // Enumerate entities
             foreach (var entityId in world.EntityManager.GetAllEntities())
             {
                 var entityInfo = new EntityInfo
@@ -167,7 +166,6 @@ namespace Strada.Core.Editor.DataProviders
                 snapshot.Entities.Add(entityInfo);
             }
 
-            // Get system info (if accessible)
             snapshot.Systems = ExtractSystemInfo(world);
             snapshot.SystemCount = snapshot.Systems.Count;
 
@@ -178,7 +176,6 @@ namespace Strada.Core.Editor.DataProviders
         {
             try
             {
-                // Access entity versions via reflection
                 var entityManager = World.Current.EntityManager;
                 var versionsField = typeof(EntityManager).GetField("_entityVersions", 
                     BindingFlags.NonPublic | BindingFlags.Instance);
@@ -220,13 +217,11 @@ namespace Strada.Core.Editor.DataProviders
 
             try
             {
-                // Access scheduler via reflection
                 var schedulerField = typeof(World).GetField("_scheduler", 
                     BindingFlags.NonPublic | BindingFlags.Instance);
-                
+
                 if (schedulerField?.GetValue(world) is { } scheduler)
                 {
-                    // Try to get systems from scheduler
                     var systemsField = scheduler.GetType().GetField("_systems", 
                         BindingFlags.NonPublic | BindingFlags.Instance);
                     

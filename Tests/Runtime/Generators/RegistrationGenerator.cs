@@ -2,7 +2,7 @@ using System;
 using FsCheck;
 using Strada.Core.DI;
 
-namespace Strada.Core.Tests.Runtime.Generators
+namespace Strada.Core.Tests.Tests.Runtime.Generators
 {
     /// <summary>
     /// Test interfaces and classes for DI container property testing.
@@ -25,7 +25,7 @@ namespace Strada.Core.Tests.Runtime.Generators
     public class DisposableTestService : ITestServiceA, IDisposable
     {
         public bool IsDisposed { get; private set; }
-        
+
         public void Dispose()
         {
             IsDisposed = true;
@@ -38,7 +38,7 @@ namespace Strada.Core.Tests.Runtime.Generators
     public class ServiceWithDependency : ITestServiceB
     {
         public ITestServiceA Dependency { get; }
-        
+
         public ServiceWithDependency(ITestServiceA dependency)
         {
             Dependency = dependency;
@@ -52,7 +52,7 @@ namespace Strada.Core.Tests.Runtime.Generators
     {
         public ITestServiceA ServiceA { get; }
         public ITestServiceB ServiceB { get; }
-        
+
         public ServiceWithMultipleDependencies(ITestServiceA serviceA, ITestServiceB serviceB)
         {
             ServiceA = serviceA;
@@ -76,7 +76,7 @@ namespace Strada.Core.Tests.Runtime.Generators
             Lifetime = lifetime;
         }
 
-        public override string ToString() => 
+        public override string ToString() =>
             $"Registration({ServiceType.Name} -> {ImplementationType.Name}, {Lifetime})";
     }
 

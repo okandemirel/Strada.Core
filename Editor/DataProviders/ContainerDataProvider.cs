@@ -75,7 +75,6 @@ namespace Strada.Core.Editor.DataProviders
                 Registrations = ExtractRegistrations(container)
             };
 
-            // Calculate counts
             snapshot.RegistrationCount = snapshot.Registrations.Count;
             snapshot.SingletonCount = snapshot.Registrations.Count(r => r.Lifetime == Lifetime.Singleton);
             snapshot.TransientCount = snapshot.Registrations.Count(r => r.Lifetime == Lifetime.Transient);
@@ -93,7 +92,6 @@ namespace Strada.Core.Editor.DataProviders
 
             try
             {
-                // Use reflection to access internal fields
                 var containerType = typeof(FastContainer);
                 var flags = BindingFlags.NonPublic | BindingFlags.Instance;
 
@@ -121,13 +119,12 @@ namespace Strada.Core.Editor.DataProviders
                     var registration = new ServiceRegistrationInfo
                     {
                         ServiceType = serviceType,
-                        ImplementationType = serviceType, // Will be refined below
+                        ImplementationType = serviceType,
                         Lifetime = lifetimes[i],
                         HasInstance = singletons != null && singletons[i] != null,
                         Dependencies = GetConstructorDependencies(serviceType)
                     };
 
-                    // Try to get actual implementation type from singleton instance
                     if (registration.HasInstance && singletons[i] != null)
                     {
                         registration.ImplementationType = singletons[i].GetType();
@@ -148,7 +145,6 @@ namespace Strada.Core.Editor.DataProviders
         {
             try
             {
-                // Skip interfaces and abstract types
                 if (type.IsInterface || type.IsAbstract)
                     return Array.Empty<Type>();
 
@@ -156,7 +152,6 @@ namespace Strada.Core.Editor.DataProviders
                 if (constructors.Length == 0)
                     return Array.Empty<Type>();
 
-                // Find constructor with most parameters (same logic as FastContainer)
                 var bestCtor = constructors.OrderByDescending(c => c.GetParameters().Length).First();
                 return bestCtor.GetParameters().Select(p => p.ParameterType).ToArray();
             }
@@ -171,7 +166,6 @@ namespace Strada.Core.Editor.DataProviders
             var graph = new DependencyGraph();
             var typeToNode = new Dictionary<Type, DependencyNode>();
 
-            // Create nodes
             foreach (var reg in registrations)
             {
                 var node = new DependencyNode
@@ -184,7 +178,6 @@ namespace Strada.Core.Editor.DataProviders
                 typeToNode[reg.ServiceType] = node;
             }
 
-            // Create edges
             foreach (var reg in registrations)
             {
                 foreach (var depType in reg.Dependencies)
@@ -201,7 +194,6 @@ namespace Strada.Core.Editor.DataProviders
                 }
             }
 
-            // Detect cycles
             DetectCycles(graph, typeToNode);
 
             return graph;
@@ -222,7 +214,6 @@ namespace Strada.Core.Editor.DataProviders
                         graph.HasCycle = true;
                         graph.CyclePath = new List<Type>(path);
 
-                        // Mark circular edges
                         for (int i = 0; i < path.Count - 1; i++)
                         {
                             var edge = graph.Edges.FirstOrDefault(e => 

@@ -69,10 +69,9 @@ namespace Strada.Core.Editor.Graph
         private string GetDisplayName(Type type)
         {
             if (type == null) return "Unknown";
-            
+
             var name = type.Name;
-            
-            // Handle generic types
+
             if (type.IsGenericType)
             {
                 var genericArgs = type.GetGenericArguments();
@@ -86,7 +85,6 @@ namespace Strada.Core.Editor.Graph
 
         private void SetupPorts()
         {
-            // Input port - other services depend on this
             _inputPort = InstantiatePort(
                 Orientation.Horizontal,
                 Direction.Input,
@@ -96,7 +94,6 @@ namespace Strada.Core.Editor.Graph
             _inputPort.portColor = GetLifetimeColor();
             inputContainer.Add(_inputPort);
 
-            // Output port - this service depends on others
             _outputPort = InstantiatePort(
                 Orientation.Horizontal,
                 Direction.Output,
@@ -109,7 +106,6 @@ namespace Strada.Core.Editor.Graph
 
         private void SetupContent()
         {
-            // Lifetime badge
             _lifetimeBadge = new Label(Lifetime.ToString())
             {
                 name = "lifetime-badge"
@@ -129,8 +125,7 @@ namespace Strada.Core.Editor.Graph
             _lifetimeBadge.style.marginBottom = 4;
             _lifetimeBadge.style.alignSelf = Align.FlexStart;
 
-            // Implementation type label
-            var implTypeName = ImplementationType != ServiceType 
+            var implTypeName = ImplementationType != ServiceType
                 ? $"→ {GetDisplayName(ImplementationType)}" 
                 : "";
             
@@ -143,7 +138,6 @@ namespace Strada.Core.Editor.Graph
             _implementationLabel.style.marginTop = 2;
             _implementationLabel.style.unityFontStyleAndWeight = FontStyle.Italic;
 
-            // Full type name tooltip
             var fullNameLabel = new Label(ServiceType.FullName ?? ServiceType.Name)
             {
                 name = "fullname-label"
@@ -155,7 +149,6 @@ namespace Strada.Core.Editor.Graph
             fullNameLabel.style.textOverflow = TextOverflow.Ellipsis;
             fullNameLabel.style.maxWidth = 200;
 
-            // Add to extension container
             var contentContainer = new VisualElement();
             contentContainer.style.paddingLeft = 8;
             contentContainer.style.paddingRight = 8;
@@ -200,8 +193,7 @@ namespace Strada.Core.Editor.Graph
         private void ApplyLifetimeStyle()
         {
             var color = GetLifetimeColor();
-            
-            // Apply border color based on lifetime
+
             style.borderTopColor = color;
             style.borderBottomColor = color;
             style.borderLeftColor = color;
@@ -211,7 +203,6 @@ namespace Strada.Core.Editor.Graph
             style.borderLeftWidth = 2;
             style.borderRightWidth = 2;
 
-            // Add lifetime class for CSS styling
             AddToClassList($"lifetime-{Lifetime.ToString().ToLower()}");
         }
 
@@ -226,11 +217,8 @@ namespace Strada.Core.Editor.Graph
             };
         }
 
-        #region Context Menu Actions
-
         private bool CanNavigateToSource()
         {
-            // Check if we can find the source file for this type
             var type = ImplementationType ?? ServiceType;
             if (type == null) return false;
 
@@ -257,7 +245,6 @@ namespace Strada.Core.Editor.Graph
 
         private void ViewUsages()
         {
-            // Open Unity's search window with type name
             var searchQuery = $"ref:{ServiceType.Name}";
             EditorApplication.ExecuteMenuItem("Edit/Find References In Scene");
         }
@@ -266,7 +253,6 @@ namespace Strada.Core.Editor.Graph
         {
             if (!Application.isPlaying) return;
 
-            // Try to get the instance from the container
             var container = Bootstrap.GameBootstrapper.Container;
             if (container == null) return;
 
@@ -276,8 +262,7 @@ namespace Strada.Core.Editor.Graph
                 if (instance != null)
                 {
                     Debug.Log($"[ServiceNode] Runtime instance of {ServiceType.Name}: {instance}");
-                    
-                    // If it's a UnityEngine.Object, select it
+
                     if (instance is UnityEngine.Object unityObj)
                     {
                         Selection.activeObject = unityObj;
@@ -299,7 +284,5 @@ namespace Strada.Core.Editor.Graph
         {
             EditorGUIUtility.systemCopyBuffer = ServiceType.FullName ?? ServiceType.Name;
         }
-
-        #endregion
     }
 }

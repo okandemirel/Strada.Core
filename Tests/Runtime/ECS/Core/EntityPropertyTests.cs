@@ -2,9 +2,10 @@ using System.Collections.Generic;
 using FsCheck;
 using NUnit.Framework;
 using Strada.Core.ECS;
-using Strada.Core.Tests.Runtime.Generators;
+using Strada.Core.ECS.Core;
+using Strada.Core.Tests.Tests.Runtime.Generators;
 
-namespace Strada.Core.Tests.Runtime.ECS.Core
+namespace Strada.Core.Tests.Tests.Runtime.ECS.Core
 {
     /// <summary>
     /// Property-based tests for ECS entity lifecycle.
@@ -18,8 +19,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Core
         {
             StradaArbitraries.RegisterAll();
         }
-
-        #region Property 5: Entity Uniqueness
 
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 5: Entity Uniqueness**
@@ -36,25 +35,22 @@ namespace Strada.Core.Tests.Runtime.ECS.Core
                 Gen.Choose(1, 100).ToArbitrary(),
                 (entityCount) =>
                 {
-                    // Arrange
                     var manager = new EntityManager();
                     var entities = new List<Entity>();
 
                     try
                     {
-                        // Act - create N entities without destruction
                         for (int i = 0; i < entityCount; i++)
                         {
                             entities.Add(manager.CreateEntity());
                         }
 
-                        // Assert - all entities should have unique (Index, Version) pairs
                         var seen = new HashSet<(int Index, int Version)>();
                         foreach (var entity in entities)
                         {
                             var pair = (entity.Index, entity.Version);
                             if (!seen.Add(pair))
-                                return false; // Found duplicate
+                                return false;
                         }
 
                         return true;
@@ -82,12 +78,10 @@ namespace Strada.Core.Tests.Runtime.ECS.Core
                 Gen.Choose(1, 100).ToArbitrary(),
                 (entityCount) =>
                 {
-                    // Arrange
                     var manager = new EntityManager();
 
                     try
                     {
-                        // Act & Assert - all created entities should not be null
                         for (int i = 0; i < entityCount; i++)
                         {
                             var entity = manager.CreateEntity();
@@ -120,19 +114,16 @@ namespace Strada.Core.Tests.Runtime.ECS.Core
                 Gen.Choose(1, 100).ToArbitrary(),
                 (entityCount) =>
                 {
-                    // Arrange
                     var manager = new EntityManager();
                     var entities = new List<Entity>();
 
                     try
                     {
-                        // Act - create entities
                         for (int i = 0; i < entityCount; i++)
                         {
                             entities.Add(manager.CreateEntity());
                         }
 
-                        // Assert - all entities should exist
                         foreach (var entity in entities)
                         {
                             if (!manager.Exists(entity))
@@ -150,10 +141,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Core
             property.Check(config);
         }
 
-        #endregion
-
-        #region Property 6: Entity Version Increment
-
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 6: Entity Version Increment**
         /// For any entity that is destroyed and its index reused,
@@ -169,29 +156,22 @@ namespace Strada.Core.Tests.Runtime.ECS.Core
                 Gen.Choose(1, 50).ToArbitrary(),
                 (cycleCount) =>
                 {
-                    // Arrange
                     var manager = new EntityManager();
 
                     try
                     {
-                        // Create initial entity
                         var firstEntity = manager.CreateEntity();
                         int originalIndex = firstEntity.Index;
                         int previousVersion = firstEntity.Version;
 
-                        // Act - destroy and recreate multiple times
                         for (int i = 0; i < cycleCount; i++)
                         {
                             manager.DestroyEntity(firstEntity);
-                            
-                            // Create new entity - should reuse the index
+
                             var newEntity = manager.CreateEntity();
-                            
-                            // Assert - same index, greater version
+
                             if (newEntity.Index != originalIndex)
                             {
-                                // Index wasn't reused (could happen if other entities exist)
-                                // This is still valid behavior, just skip version check
                                 firstEntity = newEntity;
                                 originalIndex = newEntity.Index;
                                 previousVersion = newEntity.Version;
@@ -199,7 +179,7 @@ namespace Strada.Core.Tests.Runtime.ECS.Core
                             }
 
                             if (newEntity.Version <= previousVersion)
-                                return false; // Version should be strictly greater
+                                return false;
 
                             previousVersion = newEntity.Version;
                             firstEntity = newEntity;
@@ -230,25 +210,21 @@ namespace Strada.Core.Tests.Runtime.ECS.Core
                 Gen.Choose(1, 100).ToArbitrary(),
                 (entityCount) =>
                 {
-                    // Arrange
                     var manager = new EntityManager();
                     var entities = new List<Entity>();
 
                     try
                     {
-                        // Create entities
                         for (int i = 0; i < entityCount; i++)
                         {
                             entities.Add(manager.CreateEntity());
                         }
 
-                        // Act - destroy all entities
                         foreach (var entity in entities)
                         {
                             manager.DestroyEntity(entity);
                         }
 
-                        // Assert - none should exist anymore
                         foreach (var entity in entities)
                         {
                             if (manager.Exists(entity))
@@ -280,7 +256,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Core
                 Gen.Choose(1, 20).ToArbitrary(),
                 (cycleCount) =>
                 {
-                    // Arrange
                     var manager = new EntityManager();
                     var oldEntities = new List<Entity>();
 
@@ -288,23 +263,20 @@ namespace Strada.Core.Tests.Runtime.ECS.Core
                     {
                         for (int i = 0; i < cycleCount; i++)
                         {
-                            // Create and immediately destroy
                             var entity = manager.CreateEntity();
                             oldEntities.Add(entity);
                             manager.DestroyEntity(entity);
                         }
 
-                        // Create new entities (may reuse indices)
                         for (int i = 0; i < cycleCount; i++)
                         {
                             manager.CreateEntity();
                         }
 
-                        // Assert - old entity references should be invalid
                         foreach (var oldEntity in oldEntities)
                         {
                             if (manager.Exists(oldEntity))
-                                return false; // Old reference should not be valid
+                                return false;
                         }
 
                         return true;
@@ -333,26 +305,22 @@ namespace Strada.Core.Tests.Runtime.ECS.Core
                 Gen.Choose(0, 30).ToArbitrary(),
                 (createCount, destroyCount) =>
                 {
-                    // Arrange
                     var manager = new EntityManager();
                     var entities = new List<Entity>();
                     int actualDestroyCount = System.Math.Min(destroyCount, createCount);
 
                     try
                     {
-                        // Create entities
                         for (int i = 0; i < createCount; i++)
                         {
                             entities.Add(manager.CreateEntity());
                         }
 
-                        // Destroy some entities
                         for (int i = 0; i < actualDestroyCount; i++)
                         {
                             manager.DestroyEntity(entities[i]);
                         }
 
-                        // Assert - count should be createCount - actualDestroyCount
                         int expectedCount = createCount - actualDestroyCount;
                         return manager.EntityCount == expectedCount;
                     }
@@ -364,7 +332,5 @@ namespace Strada.Core.Tests.Runtime.ECS.Core
 
             property.Check(config);
         }
-
-        #endregion
     }
 }

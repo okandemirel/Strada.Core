@@ -16,7 +16,6 @@ namespace Strada.Core.Editor.Validation
         public string RuleName => "Service Unity Dependencies";
         public string Description => "Services should avoid Unity-specific dependencies (MonoBehaviour, Transform, GameObject) for better testability";
 
-        // Unity types that Services should avoid
         private static readonly Type[] UnityTypes = new[]
         {
             typeof(MonoBehaviour),
@@ -26,7 +25,6 @@ namespace Strada.Core.Editor.Validation
             typeof(ScriptableObject)
         };
 
-        // Unity type names to check (for types that might not be directly accessible)
         private static readonly string[] UnityTypeNames = new[]
         {
             "MonoBehaviour",
@@ -55,7 +53,6 @@ namespace Strada.Core.Editor.Validation
 
         public IEnumerable<ValidationIssue> Validate(Type type)
         {
-            // Check fields
             var fields = type.GetFields(BindingFlags.Instance | BindingFlags.Static | 
                                         BindingFlags.Public | BindingFlags.NonPublic);
             foreach (var field in fields)
@@ -70,8 +67,6 @@ namespace Strada.Core.Editor.Validation
                 }
             }
 
-
-            // Check properties
             var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Static | 
                                                 BindingFlags.Public | BindingFlags.NonPublic);
             foreach (var prop in properties)
@@ -85,7 +80,6 @@ namespace Strada.Core.Editor.Validation
                 }
             }
 
-            // Check constructor parameters
             var constructors = type.GetConstructors(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             foreach (var ctor in constructors)
             {
@@ -101,13 +95,11 @@ namespace Strada.Core.Editor.Validation
                 }
             }
 
-            // Check method parameters
             var methods = type.GetMethods(BindingFlags.Instance | BindingFlags.Static | 
                                           BindingFlags.Public | BindingFlags.NonPublic | 
                                           BindingFlags.DeclaredOnly);
             foreach (var method in methods)
             {
-                // Skip property accessors
                 if (method.IsSpecialName)
                     continue;
 
@@ -132,14 +124,12 @@ namespace Strada.Core.Editor.Validation
             if (type == null)
                 return false;
 
-            // Check against known Unity types
             foreach (var unityType in UnityTypes)
             {
                 if (type == unityType || type.IsSubclassOf(unityType))
                     return true;
             }
 
-            // Check type name
             var typeName = type.Name;
             foreach (var unityTypeName in UnityTypeNames)
             {
@@ -147,14 +137,11 @@ namespace Strada.Core.Editor.Validation
                     return true;
             }
 
-            // Check if it's in the UnityEngine namespace
             if (type.Namespace != null && type.Namespace.StartsWith("UnityEngine"))
             {
-                // Allow some Unity types that are value types or don't affect testability
                 if (type.IsValueType || type.IsEnum)
                     return false;
 
-                // Allow Unity math types
                 if (type == typeof(Vector2) || type == typeof(Vector3) || type == typeof(Vector4) ||
                     type == typeof(Quaternion) || type == typeof(Color) || type == typeof(Color32) ||
                     type == typeof(Matrix4x4) || type == typeof(Rect) || type == typeof(Bounds))
@@ -163,7 +150,6 @@ namespace Strada.Core.Editor.Validation
                 return true;
             }
 
-            // Check generic type arguments
             if (type.IsGenericType)
             {
                 foreach (var arg in type.GetGenericArguments())

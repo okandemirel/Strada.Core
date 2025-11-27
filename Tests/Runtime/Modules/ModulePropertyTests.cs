@@ -5,9 +5,9 @@ using FsCheck;
 using NUnit.Framework;
 using Strada.Core.DI;
 using Strada.Core.Modules;
-using Strada.Core.Tests.Runtime.Generators;
+using Strada.Core.Tests.Tests.Runtime.Generators;
 
-namespace Strada.Core.Tests.Runtime.Modules
+namespace Strada.Core.Tests.Tests.Runtime.Modules
 {
     /// <summary>
     /// Property-based tests for Module system.
@@ -22,24 +22,16 @@ namespace Strada.Core.Tests.Runtime.Modules
             StradaArbitraries.RegisterAll();
         }
 
-        #region Test Module Types
-
-        // Base test module installer for property tests
         private class TestModuleBase : IModuleInstaller
         {
             public void Install(IContainerBuilder builder) { }
         }
 
-        // Dynamically created module info for testing
         private class DynamicModuleInfo
         {
             public string Name { get; set; }
             public List<string> Dependencies { get; set; } = new List<string>();
         }
-
-        #endregion
-
-        #region Generators
 
         /// <summary>
         /// Generator for module count (reasonable size for testing).
@@ -73,12 +65,10 @@ namespace Strada.Core.Tests.Runtime.Modules
         {
             if (index == 0)
             {
-                // First module has no dependencies
                 return Gen.Constant(new DynamicModuleInfo { Name = $"Module{index}" });
             }
 
-            // Module can depend on any subset of modules with lower indices
-            return from depCount in Gen.Choose(0, Math.Min(index, 3)) // Limit deps to 3 for simplicity
+            return from depCount in Gen.Choose(0, Math.Min(index, 3))
                    from depIndices in Gen.ArrayOf(depCount, Gen.Choose(0, index - 1))
                    select new DynamicModuleInfo
                    {
@@ -103,7 +93,6 @@ namespace Strada.Core.Tests.Runtime.Modules
         {
             var modules = new List<DynamicModuleInfo>();
 
-            // Create the cycle: Module0 -> Module1 -> ... -> Module(n-1) -> Module0
             for (int i = 0; i < cycleSize; i++)
             {
                 modules.Add(new DynamicModuleInfo
@@ -113,7 +102,6 @@ namespace Strada.Core.Tests.Runtime.Modules
                 });
             }
 
-            // Add extra modules without cycles
             for (int i = 0; i < extraModules; i++)
             {
                 modules.Add(new DynamicModuleInfo
@@ -126,10 +114,6 @@ namespace Strada.Core.Tests.Runtime.Modules
             return modules;
         }
 
-        #endregion
-
-        #region Helper Methods
-
         /// <summary>
         /// Creates a ModuleRegistry populated with the given module graph.
         /// Uses dynamically created types to simulate real module dependencies.
@@ -139,18 +123,12 @@ namespace Strada.Core.Tests.Runtime.Modules
             var registry = new ModuleRegistry();
             var typeMap = new Dictionary<string, Type>();
 
-            // Create unique types for each module
             foreach (var module in graph)
             {
                 var installer = new TestModuleBase();
                 var moduleType = installer.GetType();
-                
-                // We need to create ModuleInfo directly since we can't create real types with attributes
-                // Instead, we'll use a workaround by creating the registry entries manually
             }
 
-            // Since we can't dynamically create types with attributes, we'll test the sorting logic
-            // by directly manipulating ModuleInfo objects
             return registry;
         }
 
@@ -164,18 +142,15 @@ namespace Strada.Core.Tests.Runtime.Modules
 
             foreach (var module in sortedModules)
             {
-                // Check that all dependencies have been processed
                 foreach (var dependency in module.Dependencies)
                 {
                     if (!processedTypes.Contains(dependency))
                     {
-                        // Dependency not yet processed - check if it exists in the list at all
                         var depExists = sortedModules.Any(m => m.Type == dependency);
                         if (depExists)
                         {
-                            return false; // Dependency exists but comes after this module
+                            return false;
                         }
-                        // If dependency doesn't exist, that's okay (external dependency)
                     }
                 }
 
@@ -184,10 +159,6 @@ namespace Strada.Core.Tests.Runtime.Modules
 
             return true;
         }
-
-        #endregion
-
-        #region Property 17: Module Topological Order
 
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 17: Module Topological Order**
@@ -204,25 +175,20 @@ namespace Strada.Core.Tests.Runtime.Modules
                 ValidDagGen.ToArbitrary(),
                 (moduleGraph) =>
                 {
-                    // Arrange
                     var registry = new ModuleRegistry();
                     var typeMap = new Dictionary<string, Type>();
                     var installers = new Dictionary<string, IModuleInstaller>();
-
-                    // Create test installers and register them
-                    // We'll use indices to track dependencies since we can't create real attributed types
                     var moduleInfos = new List<ModuleInfo>();
 
                     for (int i = 0; i < moduleGraph.Count; i++)
                     {
                         var graphModule = moduleGraph[i];
                         var installer = new TestModuleBase();
-                        
-                        // Create a unique "type" representation using the installer's hash
+
                         var moduleInfo = new ModuleInfo
                         {
                             Installer = installer,
-                            Type = typeof(TestModuleBase), // We'll use Name for tracking
+                            Type = typeof(TestModuleBase),
                             Name = graphModule.Name,
                             Priority = 0,
                             Dependencies = new List<Type>()
@@ -233,23 +199,14 @@ namespace Strada.Core.Tests.Runtime.Modules
                         installers[graphModule.Name] = installer;
                     }
 
-                    // Now set up dependencies using indices
-                    // Since we can't use real types, we'll verify the property differently
-                    // by checking that the sorting algorithm produces valid output
-
-                    // Register modules in random order
                     var shuffledGraph = moduleGraph.OrderBy(_ => Guid.NewGuid()).ToList();
                     foreach (var module in shuffledGraph)
                     {
                         registry.RegisterModule(installers[module.Name]);
                     }
 
-                    // Sort
                     registry.Sort();
 
-                    // Verify: Since all modules use the same type (TestModuleBase),
-                    // we need to verify using a different approach.
-                    // The registry should not throw and should maintain all modules.
                     return registry.Modules.Count == moduleGraph.Count;
                 });
 
@@ -270,20 +227,13 @@ namespace Strada.Core.Tests.Runtime.Modules
                 Gen.Choose(2, 10).ToArbitrary(),
                 (chainLength) =>
                 {
-                    // Arrange - create a chain: A <- B <- C <- D (D depends on C, C on B, etc.)
                     var registry = new ModuleRegistry();
-
-                    // We'll use the existing test module types from ModuleRegistryTests
-                    // For this test, we verify the sorting behavior with real attributed types
-
-                    // Create modules and register in reverse order
                     var modules = new List<IModuleInstaller>();
                     for (int i = 0; i < chainLength; i++)
                     {
                         modules.Add(new TestModuleBase());
                     }
 
-                    // Register in reverse order
                     for (int i = chainLength - 1; i >= 0; i--)
                     {
                         registry.RegisterModule(modules[i], priority: i);
@@ -291,7 +241,6 @@ namespace Strada.Core.Tests.Runtime.Modules
 
                     registry.Sort();
 
-                    // Verify all modules are present
                     return registry.Modules.Count == chainLength;
                 });
 
@@ -312,7 +261,6 @@ namespace Strada.Core.Tests.Runtime.Modules
                 Gen.Choose(1, 20).ToArbitrary(),
                 (moduleCount) =>
                 {
-                    // Arrange - create independent modules
                     var registry = new ModuleRegistry();
                     var installers = new List<IModuleInstaller>();
 
@@ -325,16 +273,11 @@ namespace Strada.Core.Tests.Runtime.Modules
 
                     registry.Sort();
 
-                    // Verify all modules are present after sorting
                     return registry.Modules.Count == moduleCount;
                 });
 
             property.Check(config);
         }
-
-        #endregion
-
-        #region Property 18: Circular Dependency Detection
 
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 18: Circular Dependency Detection**
@@ -348,23 +291,18 @@ namespace Strada.Core.Tests.Runtime.Modules
             var config = PropertyTestConfig.CreateConfig();
 
             var property = Prop.ForAll(
-                Gen.Choose(2, 6).ToArbitrary(), // Cycle size
+                Gen.Choose(2, 6).ToArbitrary(),
                 (cycleSize) =>
                 {
-                    // Arrange - create modules with circular dependency using real attributed types
                     var registry = new ModuleRegistry();
 
-                    // Use the existing CircularModuleA and CircularModuleB from ModuleRegistryTests
-                    // which have [ModuleDependsOn] attributes creating a cycle
                     registry.RegisterModule(new CircularModuleA());
                     registry.RegisterModule(new CircularModuleB());
 
-                    // Act
                     var isValid = registry.Validate(out var errorMessage);
 
-                    // Assert
-                    return !isValid && 
-                           errorMessage != null && 
+                    return !isValid &&
+                           errorMessage != null &&
                            errorMessage.Contains("Circular");
                 });
 
@@ -385,7 +323,6 @@ namespace Strada.Core.Tests.Runtime.Modules
                 Gen.Choose(1, 20).ToArbitrary(),
                 (moduleCount) =>
                 {
-                    // Arrange - create modules without cycles
                     var registry = new ModuleRegistry();
 
                     for (int i = 0; i < moduleCount; i++)
@@ -393,10 +330,8 @@ namespace Strada.Core.Tests.Runtime.Modules
                         registry.RegisterModule(new TestModuleBase(), priority: i);
                     }
 
-                    // Act
                     var isValid = registry.Validate(out var errorMessage);
 
-                    // Assert
                     return isValid && errorMessage == null;
                 });
 
@@ -411,14 +346,11 @@ namespace Strada.Core.Tests.Runtime.Modules
         [Test]
         public void CircularDependencyDetection_SelfReference_DetectedAsCycle()
         {
-            // Arrange
             var registry = new ModuleRegistry();
             registry.RegisterModule(new SelfReferencingModule());
 
-            // Act
             var isValid = registry.Validate(out var errorMessage);
 
-            // Assert - self-reference should be detected as a cycle
             Assert.IsFalse(isValid);
             Assert.IsNotNull(errorMessage);
             Assert.IsTrue(errorMessage.Contains("Circular"));
@@ -432,26 +364,18 @@ namespace Strada.Core.Tests.Runtime.Modules
         [Test]
         public void CircularDependencyDetection_ChainWithCycle_Detected()
         {
-            // Arrange - A -> B -> C -> B (cycle between B and C)
             var registry = new ModuleRegistry();
             registry.RegisterModule(new ChainModuleA());
             registry.RegisterModule(new ChainModuleB());
             registry.RegisterModule(new ChainModuleC());
 
-            // Act
             var isValid = registry.Validate(out var errorMessage);
 
-            // Assert
             Assert.IsFalse(isValid);
             Assert.IsNotNull(errorMessage);
             Assert.IsTrue(errorMessage.Contains("Circular"));
         }
 
-        #endregion
-
-        #region Test Module Types for Circular Dependencies
-
-        // Circular dependency: A -> B -> A
         [ModuleDependsOn(typeof(CircularModuleB))]
         private class CircularModuleA : IModuleInstaller
         {
@@ -464,14 +388,12 @@ namespace Strada.Core.Tests.Runtime.Modules
             public void Install(IContainerBuilder builder) { }
         }
 
-        // Self-referencing module
         [ModuleDependsOn(typeof(SelfReferencingModule))]
         private class SelfReferencingModule : IModuleInstaller
         {
             public void Install(IContainerBuilder builder) { }
         }
 
-        // Chain with cycle: A -> B -> C -> B
         [ModuleDependsOn(typeof(ChainModuleB))]
         private class ChainModuleA : IModuleInstaller
         {
@@ -490,7 +412,6 @@ namespace Strada.Core.Tests.Runtime.Modules
             public void Install(IContainerBuilder builder) { }
         }
 
-        // Valid chain: D -> E -> F (no cycle)
         [ModuleDependsOn(typeof(ValidChainModuleE))]
         private class ValidChainModuleD : IModuleInstaller
         {
@@ -507,7 +428,5 @@ namespace Strada.Core.Tests.Runtime.Modules
         {
             public void Install(IContainerBuilder builder) { }
         }
-
-        #endregion
     }
 }

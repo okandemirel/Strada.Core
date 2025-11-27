@@ -1,13 +1,13 @@
 using System.Diagnostics;
 using NUnit.Framework;
 using Strada.Core.ECS;
+using Strada.Core.ECS.Core;
 using Strada.Core.ECS.Jobs;
 using Strada.Core.ECS.Query;
 using Unity.Burst;
 using Unity.Collections;
-using Unity.Jobs;
 
-namespace Strada.Core.Tests.Runtime.Performance
+namespace Strada.Core.Tests.Tests.Runtime.Performance
 {
     public struct JBenchPosition : IComponent { public float X, Y, Z; }
     public struct JBenchVelocity : IComponent { public float Vx, Vy, Vz; }

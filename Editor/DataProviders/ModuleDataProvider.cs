@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Strada.Core.Bootstrap;
-using Strada.Core.Modules;
 using Strada.Core.Editor.DataProviders.Models;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -126,17 +125,15 @@ namespace Strada.Core.Editor.DataProviders
                     Name = module.Name,
                     Priority = module.Priority,
                     Dependencies = module.Dependencies?.ToList() ?? new List<Type>(),
-                    IsInitialized = true // If we can see it, it's initialized
+                    IsInitialized = true
                 });
             }
 
-            // Check for circular dependencies
             if (!registry.Validate(out var errorMessage))
             {
                 snapshot.HasCircularDependency = errorMessage?.Contains("Circular") ?? false;
                 if (snapshot.HasCircularDependency)
                 {
-                    // Parse cycle path from error message if possible
                     snapshot.CircularDependencyPath = ParseCyclePath(errorMessage);
                 }
             }
@@ -146,7 +143,6 @@ namespace Strada.Core.Editor.DataProviders
 
         private List<string> ParseCyclePath(string errorMessage)
         {
-            // Error format: "Circular module dependency detected: A -> B -> C -> A"
             if (string.IsNullOrEmpty(errorMessage)) return null;
 
             var colonIndex = errorMessage.IndexOf(':');
@@ -161,20 +157,18 @@ namespace Strada.Core.Editor.DataProviders
             var graph = new DependencyGraph();
             var typeToNode = new Dictionary<Type, DependencyNode>();
 
-            // Create nodes for each module
             foreach (var module in modules)
             {
                 var node = new DependencyNode
                 {
                     ServiceType = module.ModuleType,
                     ImplementationType = module.ModuleType,
-                    Lifetime = DI.Lifetime.Singleton // Modules are effectively singletons
+                    Lifetime = DI.Lifetime.Singleton
                 };
                 graph.Nodes.Add(node);
                 typeToNode[module.ModuleType] = node;
             }
 
-            // Create edges for dependencies
             foreach (var module in modules)
             {
                 foreach (var depType in module.Dependencies)
@@ -191,7 +185,6 @@ namespace Strada.Core.Editor.DataProviders
                 }
             }
 
-            // Detect cycles
             DetectCycles(graph);
 
             return graph;
@@ -212,7 +205,6 @@ namespace Strada.Core.Editor.DataProviders
                         graph.HasCycle = true;
                         graph.CyclePath = new List<Type>(path);
 
-                        // Mark circular edges
                         for (int i = 0; i < path.Count - 1; i++)
                         {
                             var edge = graph.Edges.FirstOrDefault(e =>

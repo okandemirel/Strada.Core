@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Strada.Core.DI;
 using Strada.Core.ECS;
+using Strada.Core.ECS.Core;
 
 namespace Strada.Core.Bridge
 {

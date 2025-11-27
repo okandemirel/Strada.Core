@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using FsCheck;
 using NUnit.Framework;
 using Strada.Core.DI;
-using Strada.Core.Tests.Runtime.Generators;
+using Strada.Core.Tests.Tests.Runtime.Generators;
 
-namespace Strada.Core.Tests.Runtime.DI
+namespace Strada.Core.Tests.Tests.Runtime.DI
 {
     /// <summary>
     /// Property-based tests for the DI container.
@@ -20,8 +20,6 @@ namespace Strada.Core.Tests.Runtime.DI
             StradaArbitraries.RegisterAll();
         }
 
-        #region Property 1: Singleton Identity
-
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 1: Singleton Identity**
         /// For any registered singleton service and any number of resolution calls,
@@ -32,24 +30,21 @@ namespace Strada.Core.Tests.Runtime.DI
         public void SingletonIdentity_AllResolutionsReturnSameInstance()
         {
             var config = PropertyTestConfig.CreateConfig();
-            
+
             var property = Prop.ForAll(
                 RegistrationGenerator.ResolutionCountGen.ToArbitrary(),
                 (resolutionCount) =>
                 {
-                    // Arrange
                     var builder = new ContainerBuilder();
                     builder.Register<ITestServiceA, TestServiceA>(Lifetime.Singleton);
                     using var container = builder.Build();
-                    
-                    // Act - resolve multiple times
+
                     var instances = new List<ITestServiceA>();
                     for (int i = 0; i < resolutionCount; i++)
                     {
                         instances.Add(container.Resolve<ITestServiceA>());
                     }
-                    
-                    // Assert - all instances should be the same reference
+
                     var first = instances[0];
                     for (int i = 1; i < instances.Count; i++)
                     {
@@ -71,24 +66,21 @@ namespace Strada.Core.Tests.Runtime.DI
         public void SingletonIdentity_FactoryRegisteredSingleton_ReturnsSameInstance()
         {
             var config = PropertyTestConfig.CreateConfig();
-            
+
             var property = Prop.ForAll(
                 RegistrationGenerator.ResolutionCountGen.ToArbitrary(),
                 (resolutionCount) =>
                 {
-                    // Arrange
                     var builder = new ContainerBuilder();
                     builder.RegisterFactory<ITestServiceA>(c => new TestServiceA(), Lifetime.Singleton);
                     using var container = builder.Build();
-                    
-                    // Act
+
                     var instances = new List<ITestServiceA>();
                     for (int i = 0; i < resolutionCount; i++)
                     {
                         instances.Add(container.Resolve<ITestServiceA>());
                     }
-                    
-                    // Assert
+
                     var first = instances[0];
                     for (int i = 1; i < instances.Count; i++)
                     {
@@ -101,10 +93,6 @@ namespace Strada.Core.Tests.Runtime.DI
             property.Check(config);
         }
 
-        #endregion
-
-        #region Property 2: Transient Uniqueness
-
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 2: Transient Uniqueness**
         /// For any registered transient service and any two resolution calls,
@@ -115,24 +103,21 @@ namespace Strada.Core.Tests.Runtime.DI
         public void TransientUniqueness_EachResolutionReturnsNewInstance()
         {
             var config = PropertyTestConfig.CreateConfig();
-            
+
             var property = Prop.ForAll(
                 RegistrationGenerator.ResolutionCountGen.ToArbitrary(),
                 (resolutionCount) =>
                 {
-                    // Arrange
                     var builder = new ContainerBuilder();
                     builder.Register<ITestServiceA, TestServiceA>(Lifetime.Transient);
                     using var container = builder.Build();
-                    
-                    // Act
+
                     var instances = new List<ITestServiceA>();
                     for (int i = 0; i < resolutionCount; i++)
                     {
                         instances.Add(container.Resolve<ITestServiceA>());
                     }
-                    
-                    // Assert - all instances should be unique
+
                     var seen = new HashSet<ITestServiceA>(ReferenceEqualityComparer.Instance);
                     foreach (var instance in instances)
                     {
@@ -154,24 +139,21 @@ namespace Strada.Core.Tests.Runtime.DI
         public void TransientUniqueness_FactoryRegisteredTransient_ReturnsNewInstances()
         {
             var config = PropertyTestConfig.CreateConfig();
-            
+
             var property = Prop.ForAll(
                 RegistrationGenerator.ResolutionCountGen.ToArbitrary(),
                 (resolutionCount) =>
                 {
-                    // Arrange
                     var builder = new ContainerBuilder();
                     builder.RegisterFactory<ITestServiceA>(c => new TestServiceA(), Lifetime.Transient);
                     using var container = builder.Build();
-                    
-                    // Act
+
                     var instances = new List<ITestServiceA>();
                     for (int i = 0; i < resolutionCount; i++)
                     {
                         instances.Add(container.Resolve<ITestServiceA>());
                     }
-                    
-                    // Assert
+
                     var seen = new HashSet<ITestServiceA>(ReferenceEqualityComparer.Instance);
                     foreach (var instance in instances)
                     {
@@ -184,10 +166,6 @@ namespace Strada.Core.Tests.Runtime.DI
             property.Check(config);
         }
 
-        #endregion
-
-        #region Property 3: Dependency Injection Completeness
-
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 3: Dependency Injection Completeness**
         /// For any service with N constructor dependencies, after resolution
@@ -198,23 +176,20 @@ namespace Strada.Core.Tests.Runtime.DI
         public void DependencyInjectionCompleteness_SingleDependency_IsInjected()
         {
             var config = PropertyTestConfig.CreateConfig();
-            
+
             var property = Prop.ForAll(
                 RegistrationGenerator.LifetimeGen.ToArbitrary(),
                 (lifetime) =>
                 {
-                    // Arrange
                     var builder = new ContainerBuilder();
                     builder.Register<ITestServiceA, TestServiceA>(lifetime);
                     builder.Register<ITestServiceB, ServiceWithDependency>(lifetime);
                     using var container = builder.Build();
-                    
-                    // Act
+
                     var service = container.Resolve<ITestServiceB>() as ServiceWithDependency;
-                    
-                    // Assert
-                    return service != null && 
-                           service.Dependency != null && 
+
+                    return service != null &&
+                           service.Dependency != null &&
                            service.Dependency is ITestServiceA;
                 });
 
@@ -230,22 +205,19 @@ namespace Strada.Core.Tests.Runtime.DI
         public void DependencyInjectionCompleteness_MultipleDependencies_AllInjected()
         {
             var config = PropertyTestConfig.CreateConfig();
-            
+
             var property = Prop.ForAll(
                 RegistrationGenerator.LifetimeGen.ToArbitrary(),
                 (lifetime) =>
                 {
-                    // Arrange
                     var builder = new ContainerBuilder();
                     builder.Register<ITestServiceA, TestServiceA>(lifetime);
                     builder.Register<ITestServiceB, ServiceWithDependency>(lifetime);
                     builder.Register<ITestServiceC, ServiceWithMultipleDependencies>(lifetime);
                     using var container = builder.Build();
-                    
-                    // Act
+
                     var service = container.Resolve<ITestServiceC>() as ServiceWithMultipleDependencies;
-                    
-                    // Assert - all dependencies must be non-null and correct type
+
                     return service != null &&
                            service.ServiceA != null &&
                            service.ServiceA is ITestServiceA &&
@@ -265,25 +237,22 @@ namespace Strada.Core.Tests.Runtime.DI
         public void DependencyInjectionCompleteness_SingletonDependency_IsShared()
         {
             var config = PropertyTestConfig.CreateConfig();
-            
+
             var property = Prop.ForAll(
                 RegistrationGenerator.ResolutionCountGen.ToArbitrary(),
                 (resolutionCount) =>
                 {
-                    // Arrange
                     var builder = new ContainerBuilder();
                     builder.Register<ITestServiceA, TestServiceA>(Lifetime.Singleton);
                     builder.Register<ITestServiceB, ServiceWithDependency>(Lifetime.Transient);
                     using var container = builder.Build();
-                    
-                    // Act - resolve multiple transient services
+
                     var services = new List<ServiceWithDependency>();
                     for (int i = 0; i < resolutionCount; i++)
                     {
                         services.Add(container.Resolve<ITestServiceB>() as ServiceWithDependency);
                     }
-                    
-                    // Assert - all should share the same singleton dependency
+
                     var firstDep = services[0].Dependency;
                     for (int i = 1; i < services.Count; i++)
                     {
@@ -296,10 +265,6 @@ namespace Strada.Core.Tests.Runtime.DI
             property.Check(config);
         }
 
-        #endregion
-
-        #region Property 4: Disposable Singleton Cleanup
-
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 4: Disposable Singleton Cleanup**
         /// For any set of singleton services implementing IDisposable,
@@ -310,27 +275,23 @@ namespace Strada.Core.Tests.Runtime.DI
         public void DisposableSingletonCleanup_SingleDisposable_IsDisposed()
         {
             var config = PropertyTestConfig.CreateConfig();
-            
+
             var property = Prop.ForAll(
                 RegistrationGenerator.ResolutionCountGen.ToArbitrary(),
                 (resolutionCount) =>
                 {
-                    // Arrange
                     var builder = new ContainerBuilder();
                     builder.Register<ITestServiceA, DisposableTestService>(Lifetime.Singleton);
                     var container = builder.Build();
-                    
-                    // Act - resolve to ensure instance is created
+
                     DisposableTestService instance = null;
                     for (int i = 0; i < resolutionCount; i++)
                     {
                         instance = container.Resolve<ITestServiceA>() as DisposableTestService;
                     }
-                    
-                    // Dispose container
+
                     container.Dispose();
-                    
-                    // Assert
+
                     return instance != null && instance.IsDisposed;
                 });
 
@@ -346,26 +307,21 @@ namespace Strada.Core.Tests.Runtime.DI
         public void DisposableSingletonCleanup_MultipleDisposables_AllDisposed()
         {
             var config = PropertyTestConfig.CreateConfig();
-            
-            // Create multiple disposable service types for testing
+
             var property = Prop.ForAll(
                 Arb.From(Gen.Constant(true)), // Just need to run the test
                 (_) =>
                 {
-                    // Arrange
                     var builder = new ContainerBuilder();
                     builder.RegisterFactory<ITestServiceA>(c => new DisposableTestService(), Lifetime.Singleton);
                     builder.RegisterFactory<ITestServiceB>(c => new DisposableServiceB(), Lifetime.Singleton);
                     var container = builder.Build();
-                    
-                    // Act - resolve to ensure instances are created
+
                     var serviceA = container.Resolve<ITestServiceA>() as DisposableTestService;
                     var serviceB = container.Resolve<ITestServiceB>() as DisposableServiceB;
-                    
-                    // Dispose container
+
                     container.Dispose();
-                    
-                    // Assert - both should be disposed
+
                     return serviceA != null && serviceA.IsDisposed &&
                            serviceB != null && serviceB.IsDisposed;
                 });
@@ -382,34 +338,26 @@ namespace Strada.Core.Tests.Runtime.DI
         public void DisposableSingletonCleanup_MixedDisposableAndNonDisposable_OnlyDisposablesDisposed()
         {
             var config = PropertyTestConfig.CreateConfig();
-            
+
             var property = Prop.ForAll(
                 Arb.From(Gen.Constant(true)),
                 (_) =>
                 {
-                    // Arrange
                     var builder = new ContainerBuilder();
                     builder.Register<ITestServiceA, DisposableTestService>(Lifetime.Singleton);
                     builder.Register<ITestServiceB, TestServiceB>(Lifetime.Singleton); // Non-disposable
                     var container = builder.Build();
-                    
-                    // Act
+
                     var disposable = container.Resolve<ITestServiceA>() as DisposableTestService;
                     var nonDisposable = container.Resolve<ITestServiceB>();
-                    
-                    // Dispose container - should not throw
+
                     container.Dispose();
-                    
-                    // Assert
+
                     return disposable != null && disposable.IsDisposed && nonDisposable != null;
                 });
 
             property.Check(config);
         }
-
-        #endregion
-
-        #region Helper Classes
 
         /// <summary>
         /// Reference equality comparer for HashSet.
@@ -430,7 +378,5 @@ namespace Strada.Core.Tests.Runtime.DI
             public bool IsDisposed { get; private set; }
             public void Dispose() => IsDisposed = true;
         }
-
-        #endregion
     }
 }

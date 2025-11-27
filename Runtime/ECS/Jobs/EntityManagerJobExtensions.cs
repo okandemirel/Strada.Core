@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using Strada.Core.ECS.Core;
 using Strada.Core.ECS.Storage;
 using Unity.Jobs;
 

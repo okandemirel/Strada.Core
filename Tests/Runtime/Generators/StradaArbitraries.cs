@@ -2,7 +2,7 @@ using FsCheck;
 using Strada.Core.DI;
 using Strada.Core.ECS;
 
-namespace Strada.Core.Tests.Runtime.Generators
+namespace Strada.Core.Tests.Tests.Runtime.Generators
 {
     /// <summary>
     /// Registers all Strada-specific arbitraries with FsCheck.
@@ -19,7 +19,7 @@ namespace Strada.Core.Tests.Runtime.Generators
         public static void RegisterAll()
         {
             if (_registered) return;
-            
+
             Arb.Register<StradaArbitraryProvider>();
             _registered = true;
         }
@@ -54,7 +54,7 @@ namespace Strada.Core.Tests.Runtime.Generators
         public static Configuration CreateConfig(int maxTest = DefaultMaxTest)
         {
             StradaArbitraries.RegisterAll();
-            
+
             return new Configuration { MaxNbOfTest = maxTest };
         }
     }

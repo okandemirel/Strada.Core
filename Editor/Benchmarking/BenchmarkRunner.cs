@@ -6,8 +6,7 @@ using Strada.Core.Communication;
 using Strada.Core.DI;
 using Strada.Core.ECS;
 using Strada.Core.ECS.Query;
-using UnityEngine;
-using Debug = UnityEngine.Debug;
+using Strada.Core.ECS.World;
 
 namespace Strada.Core.Editor.Benchmarking
 {
@@ -32,7 +31,6 @@ namespace Strada.Core.Editor.Benchmarking
         
         private void RegisterDefaultBenchmarks()
         {
-            // DI Container Benchmarks
             _benchmarks.Add(new BenchmarkDefinition
             {
                 Name = "DI_TransientResolve",
@@ -50,8 +48,7 @@ namespace Strada.Core.Editor.Benchmarking
                 DefaultIterations = 10000,
                 Execute = RunDISingletonBenchmark
             });
-            
-            // ECS Benchmarks
+
             _benchmarks.Add(new BenchmarkDefinition
             {
                 Name = "ECS_EntityCreation",
@@ -78,8 +75,7 @@ namespace Strada.Core.Editor.Benchmarking
                 DefaultIterations = 1000,
                 Execute = RunECSQueryBenchmark
             });
-            
-            // Message Bus Benchmarks
+
             _benchmarks.Add(new BenchmarkDefinition
             {
                 Name = "Bus_EventPublish",
@@ -101,7 +97,6 @@ namespace Strada.Core.Editor.Benchmarking
         
         private void RegisterDefaultThresholds()
         {
-            // Set reasonable performance thresholds
             _thresholds["DI_TransientResolve"] = new BenchmarkThreshold
             {
                 BenchmarkName = "DI_TransientResolve",
@@ -179,8 +174,7 @@ namespace Strada.Core.Editor.Benchmarking
             try
             {
                 var result = benchmark.Execute(iterations);
-                
-                // Check threshold if configured
+
                 if (_thresholds.TryGetValue(benchmark.Name, out var threshold))
                 {
                     if (!threshold.CheckPassed(result))
@@ -242,16 +236,13 @@ namespace Strada.Core.Editor.Benchmarking
         {
             return _benchmarks.Select(b => b.Category).Distinct();
         }
-        
-        #region DI Benchmarks
-        
+
         private BenchmarkResult RunDITransientBenchmark(int iterations)
         {
             var timings = new double[iterations];
             var sw = new Stopwatch();
             long memoryBefore = GC.GetTotalMemory(true);
 
-            // Create a test container using ContainerBuilder
             var container = new ContainerBuilder()
                 .Register<ITestService, TestServiceImpl>(Lifetime.Transient)
                 .Build();
@@ -303,11 +294,7 @@ namespace Strada.Core.Editor.Benchmarking
                 memoryAfter - memoryBefore,
                 iterations);
         }
-        
-        #endregion
-        
-        #region ECS Benchmarks
-        
+
         private BenchmarkResult RunECSEntityCreationBenchmark(int iterations)
         {
             var timings = new double[iterations];
@@ -344,7 +331,6 @@ namespace Strada.Core.Editor.Benchmarking
             var world = new WorldBuilder().Build();
             var entities = new Entity[iterations];
 
-            // Pre-create entities
             for (int i = 0; i < iterations; i++)
             {
                 entities[i] = world.CreateEntity();
@@ -377,7 +363,6 @@ namespace Strada.Core.Editor.Benchmarking
 
             var world = new WorldBuilder().Build();
 
-            // Create entities with components
             for (int i = 0; i < 1000; i++)
             {
                 var entity = world.CreateEntity();
@@ -403,11 +388,7 @@ namespace Strada.Core.Editor.Benchmarking
                 memoryAfter - memoryBefore,
                 iterations);
         }
-        
-        #endregion
-        
-        #region Bus Benchmarks
-        
+
         private BenchmarkResult RunBusEventBenchmark(int iterations)
         {
             var timings = new double[iterations];
@@ -468,11 +449,7 @@ namespace Strada.Core.Editor.Benchmarking
                 memoryAfter - memoryBefore,
                 iterations);
         }
-        
-        #endregion
-        
-        #region Test Types
-        
+
         private interface ITestService { }
         private class TestServiceImpl : ITestService { }
         
@@ -490,7 +467,5 @@ namespace Strada.Core.Editor.Benchmarking
         {
             public int Id;
         }
-        
-        #endregion
     }
 }

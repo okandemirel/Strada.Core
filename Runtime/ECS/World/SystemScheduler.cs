@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-namespace Strada.Core.ECS
+namespace Strada.Core.ECS.World
 {
     public sealed class SystemScheduler : IDisposable
     {

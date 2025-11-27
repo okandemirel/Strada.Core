@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using FsCheck;
 using NUnit.Framework;
 using Strada.Core.Communication;
-using Strada.Core.Tests.Runtime.Generators;
+using Strada.Core.Tests.Tests.Runtime.Generators;
 
-namespace Strada.Core.Tests.Runtime.Communication
+namespace Strada.Core.Tests.Tests.Runtime.Communication
 {
     /// <summary>
     /// Property-based tests for MessageBus messaging system.
@@ -19,8 +19,6 @@ namespace Strada.Core.Tests.Runtime.Communication
         {
             StradaArbitraries.RegisterAll();
         }
-
-        #region Generators
 
         /// <summary>
         /// Generator for subscriber count (1-20).
@@ -47,10 +45,6 @@ namespace Strada.Core.Tests.Runtime.Communication
         /// </summary>
         private static Gen<int> PublishCountGen => Gen.Choose(1, 10);
 
-        #endregion
-
-        #region Property 10: Event Delivery Completeness
-
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 10: Event Delivery Completeness**
         /// For any event published to MessageBus with N subscribers,
@@ -67,12 +61,10 @@ namespace Strada.Core.Tests.Runtime.Communication
                 EventValueGen.ToArbitrary(),
                 (subscriberCount, eventValue) =>
                 {
-                    // Arrange
                     using var bus = new MessageBus();
                     var receivedValues = new List<int>();
                     var receiveCounts = new int[subscriberCount];
 
-                    // Subscribe N handlers
                     for (int i = 0; i < subscriberCount; i++)
                     {
                         int index = i;
@@ -83,10 +75,8 @@ namespace Strada.Core.Tests.Runtime.Communication
                         });
                     }
 
-                    // Act - publish event
                     bus.Publish(new TestEvent { Value = eventValue });
 
-                    // Assert - all subscribers received exactly once with correct value
                     if (receivedValues.Count != subscriberCount)
                         return false;
 
@@ -123,7 +113,6 @@ namespace Strada.Core.Tests.Runtime.Communication
                 PublishCountGen.ToArbitrary(),
                 (subscriberCount, publishCount) =>
                 {
-                    // Arrange
                     using var bus = new MessageBus();
                     var totalReceived = new int[subscriberCount];
 
@@ -133,13 +122,11 @@ namespace Strada.Core.Tests.Runtime.Communication
                         bus.Subscribe<TestEvent>(_ => totalReceived[index]++);
                     }
 
-                    // Act - publish multiple events
                     for (int p = 0; p < publishCount; p++)
                     {
                         bus.Publish(new TestEvent { Value = p });
                     }
 
-                    // Assert - each subscriber received all events
                     foreach (var count in totalReceived)
                     {
                         if (count != publishCount)
@@ -151,10 +138,6 @@ namespace Strada.Core.Tests.Runtime.Communication
 
             property.Check(config);
         }
-
-        #endregion
-
-        #region Property 11: Command Handler Invocation
 
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 11: Command Handler Invocation**
@@ -171,7 +154,6 @@ namespace Strada.Core.Tests.Runtime.Communication
                 CommandValueGen.ToArbitrary(),
                 (commandValue) =>
                 {
-                    // Arrange
                     using var bus = new MessageBus();
                     int invokeCount = 0;
                     int receivedValue = 0;
@@ -182,10 +164,8 @@ namespace Strada.Core.Tests.Runtime.Communication
                         receivedValue = cmd.Value;
                     });
 
-                    // Act
                     bus.Send(new TestCommand { Value = commandValue });
 
-                    // Assert - handler invoked exactly once with correct data
                     return invokeCount == 1 && receivedValue == commandValue;
                 });
 
@@ -206,7 +186,6 @@ namespace Strada.Core.Tests.Runtime.Communication
                 PublishCountGen.ToArbitrary(),
                 (sendCount) =>
                 {
-                    // Arrange
                     using var bus = new MessageBus();
                     int invokeCount = 0;
                     var receivedValues = new List<int>();
@@ -217,17 +196,14 @@ namespace Strada.Core.Tests.Runtime.Communication
                         receivedValues.Add(cmd.Value);
                     });
 
-                    // Act - send multiple commands
                     for (int i = 0; i < sendCount; i++)
                     {
                         bus.Send(new TestCommand { Value = i + 1 });
                     }
 
-                    // Assert - handler invoked once per send
                     if (invokeCount != sendCount)
                         return false;
 
-                    // Verify all values received in order
                     for (int i = 0; i < sendCount; i++)
                     {
                         if (receivedValues[i] != i + 1)
@@ -239,10 +215,6 @@ namespace Strada.Core.Tests.Runtime.Communication
 
             property.Check(config);
         }
-
-        #endregion
-
-        #region Property 12: Query Result Correctness
 
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 12: Query Result Correctness**
@@ -259,17 +231,14 @@ namespace Strada.Core.Tests.Runtime.Communication
                 QueryMultiplierGen.ToArbitrary(),
                 (multiplier) =>
                 {
-                    // Arrange
                     using var bus = new MessageBus();
                     const int baseValue = 10;
                     int expectedResult = baseValue * multiplier;
 
                     bus.RegisterQueryHandler<TestQuery, int>(q => baseValue * q.Multiplier);
 
-                    // Act
                     var result = bus.Query<TestQuery, int>(new TestQuery { Multiplier = multiplier });
 
-                    // Assert
                     return result == expectedResult;
                 });
 
@@ -290,16 +259,13 @@ namespace Strada.Core.Tests.Runtime.Communication
                 Gen.Choose(1, 1000).ToArbitrary(),
                 (id) =>
                 {
-                    // Arrange
                     using var bus = new MessageBus();
                     string expectedResult = $"Result_{id}";
 
                     bus.RegisterQueryHandler<TestStringQuery, string>(q => $"Result_{q.Id}");
 
-                    // Act
                     var result = bus.Query<TestStringQuery, string>(new TestStringQuery { Id = id });
 
-                    // Assert
                     return result == expectedResult;
                 });
 
@@ -321,18 +287,15 @@ namespace Strada.Core.Tests.Runtime.Communication
                 PublishCountGen.ToArbitrary(),
                 (multiplier, queryCount) =>
                 {
-                    // Arrange
                     using var bus = new MessageBus();
                     bus.RegisterQueryHandler<TestQuery, int>(q => 10 * q.Multiplier);
 
-                    // Act - query multiple times
                     var results = new List<int>();
                     for (int i = 0; i < queryCount; i++)
                     {
                         results.Add(bus.Query<TestQuery, int>(new TestQuery { Multiplier = multiplier }));
                     }
 
-                    // Assert - all results should be the same
                     int expected = 10 * multiplier;
                     foreach (var result in results)
                     {
@@ -345,10 +308,6 @@ namespace Strada.Core.Tests.Runtime.Communication
 
             property.Check(config);
         }
-
-        #endregion
-
-        #region Property 13: Unsubscribe Effectiveness
 
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 13: Unsubscribe Effectiveness**
@@ -365,27 +324,22 @@ namespace Strada.Core.Tests.Runtime.Communication
                 PublishCountGen.ToArbitrary(),
                 (publishCount) =>
                 {
-                    // Arrange
                     using var bus = new MessageBus();
                     int invokeCount = 0;
                     Action<TestEvent> handler = _ => invokeCount++;
 
                     bus.Subscribe(handler);
 
-                    // Publish once before unsubscribe
                     bus.Publish(new TestEvent { Value = 1 });
                     int countBeforeUnsubscribe = invokeCount;
 
-                    // Unsubscribe
                     bus.Unsubscribe(handler);
 
-                    // Act - publish multiple times after unsubscribe
                     for (int i = 0; i < publishCount; i++)
                     {
                         bus.Publish(new TestEvent { Value = i + 2 });
                     }
 
-                    // Assert - count should not have changed after unsubscribe
                     return countBeforeUnsubscribe == 1 && invokeCount == 1;
                 });
 
@@ -407,9 +361,8 @@ namespace Strada.Core.Tests.Runtime.Communication
                 PublishCountGen.ToArbitrary(),
                 (subscriberCount, publishCount) =>
                 {
-                    if (subscriberCount < 2) subscriberCount = 2; // Need at least 2 subscribers
+                    if (subscriberCount < 2) subscriberCount = 2;
 
-                    // Arrange
                     using var bus = new MessageBus();
                     var invokeCounts = new int[subscriberCount];
                     var handlers = new Action<TestEvent>[subscriberCount];
@@ -421,20 +374,16 @@ namespace Strada.Core.Tests.Runtime.Communication
                         bus.Subscribe(handlers[i]);
                     }
 
-                    // Unsubscribe the first handler
                     bus.Unsubscribe(handlers[0]);
 
-                    // Act - publish events
                     for (int p = 0; p < publishCount; p++)
                     {
                         bus.Publish(new TestEvent { Value = p });
                     }
 
-                    // Assert - first handler should have 0 invocations
                     if (invokeCounts[0] != 0)
                         return false;
 
-                    // All other handlers should have received all events
                     for (int i = 1; i < subscriberCount; i++)
                     {
                         if (invokeCounts[i] != publishCount)
@@ -461,7 +410,6 @@ namespace Strada.Core.Tests.Runtime.Communication
                 SubscriberCountGen.ToArbitrary(),
                 (subscriberCount) =>
                 {
-                    // Arrange
                     using var bus = new MessageBus();
                     var handlers = new Action<TestEvent>[subscriberCount];
 
@@ -473,21 +421,15 @@ namespace Strada.Core.Tests.Runtime.Communication
 
                     int countBefore = bus.GetSubscriberCount<TestEvent>();
 
-                    // Act - unsubscribe first handler
                     bus.Unsubscribe(handlers[0]);
 
                     int countAfter = bus.GetSubscriberCount<TestEvent>();
 
-                    // Assert
                     return countBefore == subscriberCount && countAfter == subscriberCount - 1;
                 });
 
             property.Check(config);
         }
-
-        #endregion
-
-        #region Test Types
 
         private struct TestEvent
         {
@@ -508,7 +450,5 @@ namespace Strada.Core.Tests.Runtime.Communication
         {
             public int Id;
         }
-
-        #endregion
     }
 }

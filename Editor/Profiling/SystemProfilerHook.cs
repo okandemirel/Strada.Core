@@ -2,9 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using Strada.Core.ECS;
-using Strada.Core.Editor.DataProviders.Models;
+using Strada.Core.ECS.World;
 using UnityEditor;
-using UnityEngine;
 using UpdatePhase = Strada.Core.Editor.DataProviders.Models.UpdatePhase;
 
 namespace Strada.Core.Editor.Profiling
@@ -127,7 +126,7 @@ namespace Strada.Core.Editor.Profiling
                             var systems = systemsByPhase[phaseIndex];
                             if (systems == null) continue;
                             
-                            var phase = ConvertToEditorPhase((Strada.Core.ECS.UpdatePhase)phaseIndex);
+                            var phase = ConvertToEditorPhase((ECS.World.UpdatePhase)phaseIndex);
                             
                             foreach (var system in systems)
                             {
@@ -146,14 +145,14 @@ namespace Strada.Core.Editor.Profiling
             }
         }
         
-        private static UpdatePhase ConvertToEditorPhase(Strada.Core.ECS.UpdatePhase runtimePhase)
+        private static UpdatePhase ConvertToEditorPhase(ECS.World.UpdatePhase runtimePhase)
         {
             return runtimePhase switch
             {
-                Strada.Core.ECS.UpdatePhase.Initialization => UpdatePhase.PreUpdate,
-                Strada.Core.ECS.UpdatePhase.Update => UpdatePhase.Update,
-                Strada.Core.ECS.UpdatePhase.LateUpdate => UpdatePhase.LateUpdate,
-                Strada.Core.ECS.UpdatePhase.FixedUpdate => UpdatePhase.FixedUpdate,
+                ECS.World.UpdatePhase.Initialization => UpdatePhase.PreUpdate,
+                ECS.World.UpdatePhase.Update => UpdatePhase.Update,
+                ECS.World.UpdatePhase.LateUpdate => UpdatePhase.LateUpdate,
+                ECS.World.UpdatePhase.FixedUpdate => UpdatePhase.FixedUpdate,
                 _ => UpdatePhase.Update
             };
         }

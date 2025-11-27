@@ -2,10 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using Strada.Core.ECS;
 using Strada.Core.Editor.DataProviders.Models;
-using UnityEditor;
-using UnityEngine;
 using UpdatePhase = Strada.Core.Editor.DataProviders.Models.UpdatePhase;
 
 namespace Strada.Core.Editor.Profiling
@@ -81,7 +78,6 @@ namespace Strada.Core.Editor.Profiling
             }
         }
 
-        
         /// <summary>
         /// Begins timing a system execution.
         /// </summary>
@@ -188,7 +184,6 @@ namespace Strada.Core.Editor.Profiling
             return _systemPhases.GetValueOrDefault(systemType, UpdatePhase.Update);
         }
 
-        
         /// <summary>
         /// Calculates metrics for a specific system.
         /// </summary>
@@ -265,8 +260,7 @@ namespace Strada.Core.Editor.Profiling
             }
             
             double average = sum / samples.Count;
-            
-            // Calculate standard deviation
+
             double sumSquaredDiff = 0;
             foreach (var sample in samples)
             {
@@ -298,8 +292,7 @@ namespace Strada.Core.Editor.Profiling
                 Timestamp = DateTime.Now,
                 SessionId = Guid.NewGuid().ToString("N").Substring(0, 8)
             };
-            
-            // Export all samples
+
             foreach (var sample in GetAllSamples())
             {
                 snapshot.Samples.Add(new SystemTimingSampleData
@@ -310,8 +303,7 @@ namespace Strada.Core.Editor.Profiling
                     Timestamp = sample.Timestamp
                 });
             }
-            
-            // Export metrics
+
             foreach (var metrics in GetAllMetrics())
             {
                 snapshot.Metrics.Add(new SystemMetricsData
@@ -325,8 +317,7 @@ namespace Strada.Core.Editor.Profiling
                     SampleCount = metrics.SampleCount
                 });
             }
-            
-            // Add metadata
+
             snapshot.Metadata["BufferSize"] = _bufferSize;
             snapshot.Metadata["SystemCount"] = _sampleBuffers.Count;
             snapshot.Metadata["TotalSamples"] = snapshot.Samples.Count;

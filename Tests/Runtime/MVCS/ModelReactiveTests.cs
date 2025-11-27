@@ -2,7 +2,7 @@ using NUnit.Framework;
 using Strada.Core.Bridge;
 using Strada.Core.MVCS;
 
-namespace Strada.Core.Tests.Runtime.MVCS
+namespace Strada.Core.Tests.Tests.Runtime.MVCS
 {
     [TestFixture]
     public class ModelReactiveTests

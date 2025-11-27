@@ -3,21 +3,18 @@ using System.Diagnostics;
 using NUnit.Framework;
 using Strada.Core.DI;
 
-namespace Strada.Core.Tests.Runtime.Performance
+namespace Strada.Core.Tests.Tests.Runtime.Performance
 {
-    // Simple service - no dependencies
     public class SimpleService
     {
         public int Value = 42;
     }
 
-    // Complex dependency chain - 4 levels deep (realistic scenario)
     public class ServiceD { public int Value = 4; }
     public class ServiceC { public ServiceD D; public ServiceC(ServiceD d) => D = d; }
     public class ServiceB { public ServiceC C; public ServiceB(ServiceC c) => C = c; }
     public class ServiceA { public ServiceB B; public ServiceA(ServiceB b) => B = b; }
 
-    // Wide dependency - multiple dependencies at same level
     public class DepOne { }
     public class DepTwo { }
     public class DepThree { }
@@ -37,7 +34,6 @@ namespace Strada.Core.Tests.Runtime.Performance
         }
     }
 
-    // Interface-based registration
     public interface IRepository { }
     public class Repository : IRepository { }
     public interface IService { }
@@ -58,7 +54,6 @@ namespace Strada.Core.Tests.Runtime.Performance
         [SetUp]
         public void Setup()
         {
-            // CRITICAL: Clear any DirectFactory delegates to ensure pure expression tree resolution
             ClearAllDirectFactories();
         }
 
@@ -94,16 +89,13 @@ namespace Strada.Core.Tests.Runtime.Performance
             builder.Register<SimpleService>(Lifetime.Transient);
             using var container = builder.Build();
 
-            // Warmup
             for (int i = 0; i < WarmupIterations; i++)
                 container.Resolve<SimpleService>();
 
-            // Verify correctness
             var instance = container.Resolve<SimpleService>();
             Assert.NotNull(instance);
             Assert.AreEqual(42, instance.Value);
 
-            // Benchmark
             var sw = Stopwatch.StartNew();
             for (int i = 0; i < SmallIterations; i++)
                 container.Resolve<SimpleService>();
@@ -128,11 +120,9 @@ namespace Strada.Core.Tests.Runtime.Performance
             builder.Register<ServiceA>(Lifetime.Transient);
             using var container = builder.Build();
 
-            // Warmup
             for (int i = 0; i < WarmupIterations; i++)
                 container.Resolve<ServiceA>();
 
-            // Verify correctness - 4 levels deep
             var instance = container.Resolve<ServiceA>();
             Assert.NotNull(instance);
             Assert.NotNull(instance.B);
@@ -140,7 +130,6 @@ namespace Strada.Core.Tests.Runtime.Performance
             Assert.NotNull(instance.B.C.D);
             Assert.AreEqual(4, instance.B.C.D.Value);
 
-            // Benchmark
             var sw = Stopwatch.StartNew();
             for (int i = 0; i < SmallIterations; i++)
                 container.Resolve<ServiceA>();
@@ -168,11 +157,9 @@ namespace Strada.Core.Tests.Runtime.Performance
             builder.Register<WideService>(Lifetime.Transient);
             using var container = builder.Build();
 
-            // Warmup
             for (int i = 0; i < WarmupIterations; i++)
                 container.Resolve<WideService>();
 
-            // Verify correctness - 5 dependencies
             var instance = container.Resolve<WideService>();
             Assert.NotNull(instance);
             Assert.NotNull(instance.One);
@@ -181,7 +168,6 @@ namespace Strada.Core.Tests.Runtime.Performance
             Assert.NotNull(instance.Four);
             Assert.NotNull(instance.Five);
 
-            // Benchmark
             var sw = Stopwatch.StartNew();
             for (int i = 0; i < SmallIterations; i++)
                 container.Resolve<WideService>();
@@ -207,11 +193,9 @@ namespace Strada.Core.Tests.Runtime.Performance
             builder.Register<ServiceA>(Lifetime.Singleton);
             using var container = builder.Build();
 
-            // Warmup and trigger singleton creation
             for (int i = 0; i < WarmupIterations; i++)
                 container.Resolve<ServiceA>();
 
-            // Benchmark cached singleton lookup
             var sw = Stopwatch.StartNew();
             for (int i = 0; i < LargeIterations; i++)
                 container.Resolve<ServiceA>();
@@ -234,17 +218,14 @@ namespace Strada.Core.Tests.Runtime.Performance
             builder.Register<IService, Service>(Lifetime.Transient);
             using var container = builder.Build();
 
-            // Warmup
             for (int i = 0; i < WarmupIterations; i++)
                 container.Resolve<IService>();
 
-            // Verify correctness
             var instance = container.Resolve<IService>();
             Assert.NotNull(instance);
             Assert.IsInstanceOf<Service>(instance);
             Assert.NotNull(((Service)instance).Repo);
 
-            // Benchmark
             var sw = Stopwatch.StartNew();
             for (int i = 0; i < SmallIterations; i++)
                 container.Resolve<IService>();
@@ -267,7 +248,6 @@ namespace Strada.Core.Tests.Runtime.Performance
             var sw = Stopwatch.StartNew();
             var builder = new ContainerBuilder();
 
-            // Register 100 different factory registrations
             for (int i = 0; i < TypeCount; i++)
             {
                 builder.RegisterFactory<SimpleService>(_ => new SimpleService());
@@ -319,16 +299,13 @@ namespace Strada.Core.Tests.Runtime.Performance
             using var container = builder.Build();
             using var scope = container.CreateScope();
 
-            // Warmup
             for (int i = 0; i < WarmupIterations; i++)
                 scope.Resolve<ServiceA>();
 
-            // Verify scoped behavior - same instance within scope
             var first = scope.Resolve<ServiceA>();
             var second = scope.Resolve<ServiceA>();
             Assert.AreSame(first, second, "Scoped should return same instance");
 
-            // Benchmark
             var sw = Stopwatch.StartNew();
             for (int i = 0; i < SmallIterations; i++)
                 scope.Resolve<ServiceA>();
@@ -355,14 +332,12 @@ namespace Strada.Core.Tests.Runtime.Performance
 
             const int Iterations = 1000;
 
-            // Warmup
             for (int i = 0; i < 10; i++)
             {
                 using var scope = container.CreateScope();
                 scope.Resolve<ServiceA>();
             }
 
-            // Benchmark scope creation + first resolution
             var sw = Stopwatch.StartNew();
             for (int i = 0; i < Iterations; i++)
             {
@@ -384,23 +359,20 @@ namespace Strada.Core.Tests.Runtime.Performance
         public void Benchmark_MixedLifetimes_10k()
         {
             var builder = new ContainerBuilder();
-            builder.Register<ServiceD>(Lifetime.Singleton);   // Singleton at bottom
-            builder.Register<ServiceC>(Lifetime.Transient);   // Transient middle
-            builder.Register<ServiceB>(Lifetime.Transient);   // Transient middle
-            builder.Register<ServiceA>(Lifetime.Transient);   // Transient top
+            builder.Register<ServiceD>(Lifetime.Singleton);
+            builder.Register<ServiceC>(Lifetime.Transient);
+            builder.Register<ServiceB>(Lifetime.Transient);
+            builder.Register<ServiceA>(Lifetime.Transient);
             using var container = builder.Build();
 
-            // Warmup
             for (int i = 0; i < WarmupIterations; i++)
                 container.Resolve<ServiceA>();
 
-            // Verify mixed behavior
             var first = container.Resolve<ServiceA>();
             var second = container.Resolve<ServiceA>();
             Assert.AreNotSame(first, second, "Top should be transient");
             Assert.AreSame(first.B.C.D, second.B.C.D, "Bottom should be singleton");
 
-            // Benchmark
             var sw = Stopwatch.StartNew();
             for (int i = 0; i < SmallIterations; i++)
                 container.Resolve<ServiceA>();
@@ -426,11 +398,9 @@ namespace Strada.Core.Tests.Runtime.Performance
             builder.Register<ServiceA>(Lifetime.Transient);
             using var container = builder.Build();
 
-            // Warmup
             for (int i = 0; i < WarmupIterations; i++)
                 container.Resolve<ServiceA>();
 
-            // Force GC
             GC.Collect();
             GC.WaitForPendingFinalizers();
             GC.Collect();
@@ -449,8 +419,6 @@ namespace Strada.Core.Tests.Runtime.Performance
             UnityEngine.Debug.Log($"  Per-op: {bytesPerOp:F1} bytes");
             UnityEngine.Debug.Log($"  (Expected: ~96 bytes for 4 objects)");
 
-            // Each resolution creates 4 objects, minimum ~24 bytes each = 96 bytes
-            // Allow some overhead for object headers
             Assert.Less(bytesPerOp, 200, "Should allocate less than 200 bytes per resolution");
         }
 
@@ -464,10 +432,8 @@ namespace Strada.Core.Tests.Runtime.Performance
             builder.Register<ServiceA>(Lifetime.Singleton);
             using var container = builder.Build();
 
-            // Warmup - creates the singletons
             container.Resolve<ServiceA>();
 
-            // Force GC
             GC.Collect();
             GC.WaitForPendingFinalizers();
             GC.Collect();
@@ -486,7 +452,6 @@ namespace Strada.Core.Tests.Runtime.Performance
             UnityEngine.Debug.Log($"  Per-op: {bytesPerOp:F2} bytes");
             UnityEngine.Debug.Log($"  (Expected: ~0 bytes - cached lookup)");
 
-            // Singleton lookup should allocate nothing
             Assert.Less(bytesPerOp, 1, "Singleton should allocate near-zero per resolution");
         }
 
@@ -500,14 +465,12 @@ namespace Strada.Core.Tests.Runtime.Performance
             builder.Register<ServiceA>(Lifetime.Transient);
             using var container = builder.Build();
 
-            // Warmup both
             for (int i = 0; i < WarmupIterations; i++)
             {
                 container.Resolve<ServiceA>();
                 new ServiceA(new ServiceB(new ServiceC(new ServiceD())));
             }
 
-            // Benchmark manual construction
             var swManual = Stopwatch.StartNew();
             for (int i = 0; i < SmallIterations; i++)
             {
@@ -515,7 +478,6 @@ namespace Strada.Core.Tests.Runtime.Performance
             }
             swManual.Stop();
 
-            // Benchmark DI
             var swDI = Stopwatch.StartNew();
             for (int i = 0; i < SmallIterations; i++)
             {
@@ -533,7 +495,6 @@ namespace Strada.Core.Tests.Runtime.Performance
             UnityEngine.Debug.Log($"  DI Overhead: {overhead:F2}x slower than manual");
             UnityEngine.Debug.Log($"  (Typical DI overhead is 2-10x)");
 
-            // DI should be no more than 20x slower than manual construction
             Assert.Less(overhead, 20, "DI overhead should be less than 20x");
         }
     }

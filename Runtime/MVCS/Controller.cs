@@ -8,7 +8,6 @@ namespace Strada.Core.MVCS
     /// </summary>
     public abstract class Controller : StradaBase, IController
     {
-        // Tick removed to avoid double-ticking. Implement ITickable if needed.
     }
 
     /// <summary>

@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using UnityEngine;
 using Strada.Core.ECS;
-using Strada.Core.ECS.Storage;
+using Strada.Core.ECS.World;
+using UnityEngine;
 
 namespace Strada.Core.Editor.HotReload
 {
@@ -45,8 +45,7 @@ namespace Strada.Core.Editor.HotReload
                         EntityVersion = 0, // Version tracking handled by EntityManager internally
                         Components = new Dictionary<string, object>()
                     };
-                    
-                    // Capture component data for this entity
+
                     foreach (var componentType in componentTypes)
                     {
                         try
@@ -57,7 +56,6 @@ namespace Strada.Core.Editor.HotReload
                             var componentValue = store.GetComponentBoxed(entityIndex, componentType);
                             if (componentValue != null)
                             {
-                                // Store as JSON for serialization safety
                                 var json = JsonUtility.ToJson(componentValue);
                                 entitySnapshot.Components[componentType.FullName] = json;
                             }
@@ -89,7 +87,7 @@ namespace Strada.Core.Editor.HotReload
         {
             if (snapshot == null)
             {
-                return true; // Nothing to restore
+                return true;
             }
             
             var world = World.Current;
@@ -103,8 +101,7 @@ namespace Strada.Core.Editor.HotReload
             var store = entityManager.Store;
             var restoredCount = 0;
             var failedCount = 0;
-            
-            // Get current active entities for validation
+
             var activeEntities = new HashSet<int>(entityManager.GetAllEntities());
             
             foreach (var entitySnapshot in snapshot.Entities)
@@ -112,15 +109,12 @@ namespace Strada.Core.Editor.HotReload
                 try
                 {
                     var entityIndex = entitySnapshot.EntityIndex;
-                    
-                    // Verify entity still exists
+
                     if (!activeEntities.Contains(entityIndex))
                     {
-                        // Entity was destroyed, skip
                         continue;
                     }
-                    
-                    // Restore component values
+
                     foreach (var kvp in entitySnapshot.Components)
                     {
                         var componentTypeName = kvp.Key;
@@ -137,14 +131,12 @@ namespace Strada.Core.Editor.HotReload
                                 Debug.LogWarning($"[EntityStatePreserver] Component type not found: {componentTypeName}");
                                 continue;
                             }
-                            
-                            // Check if entity still has this component
+
                             if (!store.HasComponent(entityIndex, componentType))
                             {
                                 continue;
                             }
-                            
-                            // Deserialize and restore
+
                             var componentValue = JsonUtility.FromJson(componentJson, componentType);
                             if (componentValue != null)
                             {
@@ -197,7 +189,6 @@ namespace Strada.Core.Editor.HotReload
                 }
                 catch
                 {
-                    // Skip assemblies that can't be searched
                 }
             }
             

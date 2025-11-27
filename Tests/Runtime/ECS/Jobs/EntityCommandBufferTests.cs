@@ -1,9 +1,10 @@
 using NUnit.Framework;
 using Strada.Core.ECS;
+using Strada.Core.ECS.Core;
 using Strada.Core.ECS.Jobs;
 using Unity.Collections;
 
-namespace Strada.Core.Tests.ECS.Jobs
+namespace Strada.Core.Tests.Tests.Runtime.ECS.Jobs
 {
     [TestFixture]
     public class EntityCommandBufferTests

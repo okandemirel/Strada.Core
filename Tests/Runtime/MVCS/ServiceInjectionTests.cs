@@ -3,7 +3,7 @@ using Strada.Core.Communication;
 using Strada.Core.DI;
 using Strada.Core.MVCS;
 
-namespace Strada.Core.Tests.Runtime.MVCS
+namespace Strada.Core.Tests.Tests.Runtime.MVCS
 {
     [TestFixture]
     public class ServiceInjectionTests

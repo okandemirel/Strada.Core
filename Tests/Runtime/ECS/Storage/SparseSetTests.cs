@@ -3,7 +3,7 @@ using Strada.Core.ECS;
 using Strada.Core.ECS.Storage;
 using Unity.Collections;
 
-namespace Strada.Core.Tests.Runtime.ECS.Storage
+namespace Strada.Core.Tests.Tests.Runtime.ECS.Storage
 {
     [TestFixture]
     public class SparseSetTests

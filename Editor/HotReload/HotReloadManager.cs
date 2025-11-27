@@ -1,9 +1,8 @@
 using System;
 using System.Collections.Generic;
+using Strada.Core.Data;
 using UnityEditor;
 using UnityEngine;
-using Strada.Core.Data;
-using Strada.Core.Bootstrap;
 
 namespace Strada.Core.Editor.HotReload
 {
@@ -81,7 +80,6 @@ namespace Strada.Core.Editor.HotReload
                 case PlayModeStateChange.EnteredPlayMode:
                     CacheCurrentConfigs();
                     break;
-                    
                 case PlayModeStateChange.ExitingPlayMode:
                     ClearCaches();
                     break;
@@ -201,14 +199,11 @@ namespace Strada.Core.Editor.HotReload
             
             try
             {
-                // Capture entity state before reload
                 var entityState = EntityStatePreserver.CaptureState();
-                
-                // Store previous config state for potential rollback
+
                 var configGuid = change.Config?.Guid ?? change.AssetPath;
                 _previousConfigStates[configGuid] = CaptureConfigState(change.Config);
-                
-                // Notify dependent services
+
                 var dependentServices = GetDependentServices(change.ConfigType);
                 result.NotifiedServiceCount = dependentServices.Count;
                 
@@ -223,8 +218,7 @@ namespace Strada.Core.Editor.HotReload
                         result.Errors.Add($"Service {service.GetType().Name}: {ex.Message}");
                     }
                 }
-                
-                // Restore entity state after reload
+
                 EntityStatePreserver.RestoreState(entityState);
                 
                 result.Success = result.Errors.Count == 0;
@@ -253,8 +247,7 @@ namespace Strada.Core.Editor.HotReload
             {
                 result.Success = false;
                 result.Errors.Add(ex.Message);
-                
-                // Attempt rollback
+
                 TryRollback(change);
                 
                 _lastReloadState = new HotReloadState
@@ -296,8 +289,7 @@ namespace Strada.Core.Editor.HotReload
         private static object CaptureConfigState(ConfigData config)
         {
             if (config == null) return null;
-            
-            // Use JSON serialization to capture state
+
             return JsonUtility.ToJson(config);
         }
         

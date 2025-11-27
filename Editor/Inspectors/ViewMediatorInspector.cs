@@ -31,7 +31,6 @@ namespace Strada.Core.Editor.Inspectors
 
         public override void OnInspectorGUI()
         {
-            // Draw default inspector
             DrawDefaultInspector();
 
             if (!Application.isPlaying)
@@ -41,7 +40,6 @@ namespace Strada.Core.Editor.Inspectors
                 return;
             }
 
-            // Try to find the mediator
             RefreshMediatorReference();
 
             if (_mediator == null)
@@ -58,12 +56,10 @@ namespace Strada.Core.Editor.Inspectors
             var view = target as View;
             if (view == null) return;
 
-            // Look for a mediator field in the view or its parent classes
             _mediator = FindMediatorForView(view);
 
             if (_mediator != null)
             {
-                // Get bindings
                 var bindingsProperty = _mediator.GetType().GetProperty("Bindings", 
                     BindingFlags.Public | BindingFlags.Instance);
                 if (bindingsProperty != null)
@@ -71,7 +67,6 @@ namespace Strada.Core.Editor.Inspectors
                     _bindings = bindingsProperty.GetValue(_mediator) as IReadOnlyList<IComponentBinding>;
                 }
 
-                // Cache methods
                 _syncMethod = _mediator.GetType().GetMethod("SyncBindings", 
                     BindingFlags.Public | BindingFlags.Instance);
                 _pushMethod = _mediator.GetType().GetMethod("PushBindings", 
@@ -81,7 +76,6 @@ namespace Strada.Core.Editor.Inspectors
 
         private object FindMediatorForView(View view)
         {
-            // Check MediatorRegistry if available
             var registryType = Type.GetType("Strada.Core.Bridge.MediatorRegistry, Strada.Core");
             if (registryType != null)
             {
@@ -102,7 +96,6 @@ namespace Strada.Core.Editor.Inspectors
                 }
             }
 
-            // Fallback: Look for mediator field on the view itself
             var viewType = view.GetType();
             var fields = viewType.GetFields(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
             foreach (var field in fields)
@@ -121,7 +114,6 @@ namespace Strada.Core.Editor.Inspectors
         {
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            // Header with mediator info
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("ViewMediator", EditorStyles.boldLabel);
 
@@ -135,7 +127,6 @@ namespace Strada.Core.Editor.Inspectors
 
             EditorGUILayout.EndHorizontal();
 
-            // Action buttons
             EditorGUILayout.BeginHorizontal();
 
             GUI.enabled = isBound;
@@ -156,7 +147,6 @@ namespace Strada.Core.Editor.Inspectors
 
             EditorGUILayout.EndHorizontal();
 
-            // Bindings list
             if (_bindings != null && _bindings.Count > 0)
             {
                 EditorGUILayout.Space();
@@ -190,22 +180,18 @@ namespace Strada.Core.Editor.Inspectors
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
 
-            // Status indicator
             var statusRect = GUILayoutUtility.GetRect(12, 12, GUILayout.Width(12), GUILayout.Height(12));
             statusRect.y += 4;
             var statusColor = GetStatusColor(binding.SyncState);
             EditorGUI.DrawRect(statusRect, statusColor);
 
-            // Component type name
             var componentName = binding.ComponentType?.Name ?? "Unknown";
             EditorGUILayout.LabelField(componentName, GUILayout.MinWidth(100));
 
-            // Sync state
             var stateStyle = new GUIStyle(EditorStyles.miniLabel);
             stateStyle.normal.textColor = statusColor;
             EditorGUILayout.LabelField(binding.SyncState.ToString(), stateStyle, GUILayout.Width(80));
 
-            // Dirty indicator
             if (binding.IsDirty)
             {
                 var dirtyStyle = new GUIStyle(EditorStyles.miniLabel);
@@ -215,7 +201,6 @@ namespace Strada.Core.Editor.Inspectors
 
             EditorGUILayout.EndHorizontal();
 
-            // Show error message if any
             if (binding.SyncState == BindingSyncState.Error && !string.IsNullOrEmpty(binding.LastError))
             {
                 EditorGUI.indentLevel++;

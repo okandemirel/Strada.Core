@@ -1,11 +1,10 @@
-using System;
 using System.Collections.Generic;
 using FsCheck;
 using NUnit.Framework;
 using Strada.Core.Bridge;
-using Strada.Core.Tests.Runtime.Generators;
+using Strada.Core.Tests.Tests.Runtime.Generators;
 
-namespace Strada.Core.Tests.Runtime.Bridge
+namespace Strada.Core.Tests.Tests.Runtime.Bridge
 {
     /// <summary>
     /// Property-based tests for ReactiveProperty system.
@@ -19,8 +18,6 @@ namespace Strada.Core.Tests.Runtime.Bridge
         {
             StradaArbitraries.RegisterAll();
         }
-
-        #region Generators
 
         /// <summary>
         /// Generator for integer values.
@@ -57,10 +54,6 @@ namespace Strada.Core.Tests.Runtime.Bridge
             where s1 != s2
             select (s1, s2);
 
-        #endregion
-
-        #region Property 14: ReactiveProperty Notification
-
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 14: ReactiveProperty Notification**
         /// For any ReactiveProperty value change (old != new),
@@ -77,12 +70,10 @@ namespace Strada.Core.Tests.Runtime.Bridge
                 SubscriberCountGen.ToArbitrary(),
                 (valuePair, subscriberCount) =>
                 {
-                    // Arrange
                     var reactiveProp = new ReactiveProperty<int>(valuePair.oldValue);
                     var receivedValues = new List<int>();
                     var notifyCounts = new int[subscriberCount];
 
-                    // Subscribe N handlers
                     for (int i = 0; i < subscriberCount; i++)
                     {
                         int index = i;
@@ -93,10 +84,8 @@ namespace Strada.Core.Tests.Runtime.Bridge
                         });
                     }
 
-                    // Act - change value
                     reactiveProp.Value = valuePair.newValue;
 
-                    // Assert - all subscribers received exactly once with new value
                     if (receivedValues.Count != subscriberCount)
                         return false;
 
@@ -133,7 +122,6 @@ namespace Strada.Core.Tests.Runtime.Bridge
                 SubscriberCountGen.ToArbitrary(),
                 (valuePair, subscriberCount) =>
                 {
-                    // Arrange
                     var reactiveProp = new ReactiveProperty<string>(valuePair.oldValue);
                     var receivedValues = new List<string>();
 
@@ -142,10 +130,8 @@ namespace Strada.Core.Tests.Runtime.Bridge
                         reactiveProp.Subscribe(v => receivedValues.Add(v));
                     }
 
-                    // Act
                     reactiveProp.Value = valuePair.newValue;
 
-                    // Assert
                     if (receivedValues.Count != subscriberCount)
                         return false;
 
@@ -175,19 +161,16 @@ namespace Strada.Core.Tests.Runtime.Bridge
                 Gen.Choose(2, 10).ToArbitrary(),
                 (changeCount) =>
                 {
-                    // Arrange
                     var reactiveProp = new ReactiveProperty<int>(0);
                     var receivedValues = new List<int>();
 
                     reactiveProp.Subscribe(v => receivedValues.Add(v));
 
-                    // Act - make multiple distinct changes
                     for (int i = 1; i <= changeCount; i++)
                     {
-                        reactiveProp.Value = i * 100; // Ensure distinct values
+                        reactiveProp.Value = i * 100;
                     }
 
-                    // Assert - received notification for each change
                     if (receivedValues.Count != changeCount)
                         return false;
 
@@ -202,10 +185,6 @@ namespace Strada.Core.Tests.Runtime.Bridge
 
             property.Check(config);
         }
-
-        #endregion
-
-        #region Property 15: ReactiveProperty Idempotence
 
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 15: ReactiveProperty Idempotence**
@@ -223,21 +202,17 @@ namespace Strada.Core.Tests.Runtime.Bridge
                 IntValueGen.ToArbitrary(),
                 (initialValue, newValue) =>
                 {
-                    // Skip if initial == new (no notification expected at all)
                     if (initialValue == newValue)
                         return true;
 
-                    // Arrange
                     var reactiveProp = new ReactiveProperty<int>(initialValue);
                     int notifyCount = 0;
 
                     reactiveProp.Subscribe(_ => notifyCount++);
 
-                    // Act - set new value twice
                     reactiveProp.Value = newValue;
                     reactiveProp.Value = newValue;
 
-                    // Assert - only one notification
                     return notifyCount == 1;
                 });
 
@@ -258,16 +233,13 @@ namespace Strada.Core.Tests.Runtime.Bridge
                 IntValueGen.ToArbitrary(),
                 (value) =>
                 {
-                    // Arrange
                     var reactiveProp = new ReactiveProperty<int>(value);
                     int notifyCount = 0;
 
                     reactiveProp.Subscribe(_ => notifyCount++);
 
-                    // Act - set same value as initial
                     reactiveProp.Value = value;
 
-                    // Assert - no notification
                     return notifyCount == 0;
                 });
 
@@ -289,19 +261,16 @@ namespace Strada.Core.Tests.Runtime.Bridge
                 Gen.Choose(2, 10).ToArbitrary(),
                 (valuePair, repeatCount) =>
                 {
-                    // Arrange
                     var reactiveProp = new ReactiveProperty<int>(valuePair.oldValue);
                     int notifyCount = 0;
 
                     reactiveProp.Subscribe(_ => notifyCount++);
 
-                    // Act - set new value multiple times
                     for (int i = 0; i < repeatCount; i++)
                     {
                         reactiveProp.Value = valuePair.newValue;
                     }
 
-                    // Assert - only one notification
                     return notifyCount == 1;
                 });
 
@@ -322,26 +291,19 @@ namespace Strada.Core.Tests.Runtime.Bridge
                 DistinctStringPairGen.ToArbitrary(),
                 (valuePair) =>
                 {
-                    // Arrange
                     var reactiveProp = new ReactiveProperty<string>(valuePair.oldValue);
                     int notifyCount = 0;
 
                     reactiveProp.Subscribe(_ => notifyCount++);
 
-                    // Act - set new value twice
                     reactiveProp.Value = valuePair.newValue;
                     reactiveProp.Value = valuePair.newValue;
 
-                    // Assert - only one notification
                     return notifyCount == 1;
                 });
 
             property.Check(config);
         }
-
-        #endregion
-
-        #region Property 16: SetWithoutNotify Silence
 
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 16: SetWithoutNotify Silence**
@@ -360,7 +322,6 @@ namespace Strada.Core.Tests.Runtime.Bridge
                 SubscriberCountGen.ToArbitrary(),
                 (initialValue, newValue, subscriberCount) =>
                 {
-                    // Arrange
                     var reactiveProp = new ReactiveProperty<int>(initialValue);
                     int totalNotifyCount = 0;
 
@@ -369,10 +330,8 @@ namespace Strada.Core.Tests.Runtime.Bridge
                         reactiveProp.Subscribe(_ => totalNotifyCount++);
                     }
 
-                    // Act
                     reactiveProp.SetWithoutNotify(newValue);
 
-                    // Assert - no notifications and value updated
                     return totalNotifyCount == 0 && reactiveProp.Value == newValue;
                 });
 
@@ -394,13 +353,10 @@ namespace Strada.Core.Tests.Runtime.Bridge
                 IntValueGen.ToArbitrary(),
                 (initialValue, newValue) =>
                 {
-                    // Arrange
                     var reactiveProp = new ReactiveProperty<int>(initialValue);
 
-                    // Act
                     reactiveProp.SetWithoutNotify(newValue);
 
-                    // Assert - value is updated
                     return reactiveProp.Value == newValue;
                 });
 
@@ -421,19 +377,16 @@ namespace Strada.Core.Tests.Runtime.Bridge
                 Gen.Choose(2, 10).ToArbitrary(),
                 (callCount) =>
                 {
-                    // Arrange
                     var reactiveProp = new ReactiveProperty<int>(0);
                     int notifyCount = 0;
 
                     reactiveProp.Subscribe(_ => notifyCount++);
 
-                    // Act - multiple SetWithoutNotify calls
                     for (int i = 1; i <= callCount; i++)
                     {
                         reactiveProp.SetWithoutNotify(i * 100);
                     }
 
-                    // Assert - no notifications, final value correct
                     return notifyCount == 0 && reactiveProp.Value == callCount * 100;
                 });
 
@@ -456,11 +409,9 @@ namespace Strada.Core.Tests.Runtime.Bridge
                 IntValueGen.ToArbitrary(),
                 (initial, silentValue, notifyValue) =>
                 {
-                    // Skip if silentValue == notifyValue (no notification expected)
                     if (silentValue == notifyValue)
                         return true;
 
-                    // Arrange
                     var reactiveProp = new ReactiveProperty<int>(initial);
                     int notifyCount = 0;
                     int lastNotifiedValue = 0;
@@ -471,11 +422,9 @@ namespace Strada.Core.Tests.Runtime.Bridge
                         lastNotifiedValue = v;
                     });
 
-                    // Act
                     reactiveProp.SetWithoutNotify(silentValue);
                     reactiveProp.Value = notifyValue;
 
-                    // Assert - only one notification with notifyValue
                     return notifyCount == 1 && lastNotifiedValue == notifyValue;
                 });
 
@@ -497,22 +446,17 @@ namespace Strada.Core.Tests.Runtime.Bridge
                 StringValueGen.ToArbitrary(),
                 (initialValue, newValue) =>
                 {
-                    // Arrange
                     var reactiveProp = new ReactiveProperty<string>(initialValue);
                     int notifyCount = 0;
 
                     reactiveProp.Subscribe(_ => notifyCount++);
 
-                    // Act
                     reactiveProp.SetWithoutNotify(newValue);
 
-                    // Assert
                     return notifyCount == 0 && reactiveProp.Value == newValue;
                 });
 
             property.Check(config);
         }
-
-        #endregion
     }
 }

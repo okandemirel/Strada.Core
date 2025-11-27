@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using Strada.Core.ECS.Core;
 using Strada.Core.ECS.Storage;
 
 namespace Strada.Core.ECS.Query
@@ -9,7 +10,6 @@ namespace Strada.Core.ECS.Query
 
         internal QueryBuilder(EntityManager manager) => _manager = manager;
 
-        // Internal accessor for source-generated query extensions
         internal EntityManager Manager => _manager;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

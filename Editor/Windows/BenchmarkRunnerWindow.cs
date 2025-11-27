@@ -15,13 +15,11 @@ namespace Strada.Core.Editor.Windows
     /// </summary>
     public class BenchmarkRunnerWindow : EditorWindow
     {
-        // Runner and state
         private BenchmarkRunner _runner;
         private BenchmarkSession _currentSession;
         private BenchmarkSession _baselineSession;
         private List<BenchmarkComparison> _comparisons = new List<BenchmarkComparison>();
-        
-        // UI state
+
         private Vector2 _scrollPosition;
         private Vector2 _historyScrollPosition;
         private Dictionary<string, bool> _categoryFoldouts = new Dictionary<string, bool>();
@@ -32,12 +30,10 @@ namespace Strada.Core.Editor.Windows
         private string _currentBenchmark = "";
         private int _completedCount;
         private int _totalCount;
-        
-        // Comparison settings
+
         private double _regressionThreshold = 10.0;
         private bool _showOnlyRegressions;
-        
-        // Styles
+
         private GUIStyle _headerStyle;
         private GUIStyle _categoryStyle;
         private GUIStyle _resultStyle;
@@ -45,14 +41,12 @@ namespace Strada.Core.Editor.Windows
         private GUIStyle _failedStyle;
         private GUIStyle _regressionStyle;
         private bool _stylesInitialized;
-        
-        // Colors
+
         private readonly Color _passedColor = new Color(0.4f, 0.8f, 0.4f);
         private readonly Color _failedColor = new Color(0.9f, 0.4f, 0.4f);
         private readonly Color _regressionColor = new Color(1.0f, 0.6f, 0.2f);
         private readonly Color _improvementColor = new Color(0.4f, 0.7f, 1.0f);
-        
-        // Tab names
+
         private readonly string[] _tabNames = { "Benchmarks", "Results", "History", "Settings" };
         
         public static void ShowWindow()
@@ -66,8 +60,7 @@ namespace Strada.Core.Editor.Windows
             _runner = new BenchmarkRunner();
             _runner.OnBenchmarkStarted += OnBenchmarkStarted;
             _runner.OnBenchmarkCompleted += OnBenchmarkCompleted;
-            
-            // Initialize category foldouts and selection
+
             foreach (var category in _runner.GetCategories())
             {
                 _categoryFoldouts[category] = true;
@@ -77,8 +70,7 @@ namespace Strada.Core.Editor.Windows
             {
                 _benchmarkSelection[benchmark.Name] = true;
             }
-            
-            // Try to load baseline
+
             _baselineSession = BenchmarkPersistence.LoadLatestSession();
         }
         
@@ -120,7 +112,6 @@ namespace Strada.Core.Editor.Windows
             _stylesInitialized = true;
         }
 
-        
         private void OnGUI()
         {
             InitStyles();
@@ -167,8 +158,7 @@ namespace Strada.Core.Editor.Windows
             EditorGUI.EndDisabledGroup();
             
             GUILayout.Space(10);
-            
-            // Progress indicator
+
             if (_isRunning)
             {
                 var progress = _totalCount > 0 ? (float)_completedCount / _totalCount : 0;
@@ -177,12 +167,10 @@ namespace Strada.Core.Editor.Windows
             }
             
             GUILayout.FlexibleSpace();
-            
-            // Search
+
             GUILayout.Label("Search:", GUILayout.Width(45));
             _searchFilter = EditorGUILayout.TextField(_searchFilter, EditorStyles.toolbarSearchField, GUILayout.Width(150));
-            
-            // Save/Load
+
             if (GUILayout.Button("Save Results", EditorStyles.toolbarButton, GUILayout.Width(80)))
             {
                 SaveCurrentSession();
@@ -199,8 +187,7 @@ namespace Strada.Core.Editor.Windows
         private void DrawBenchmarksTab()
         {
             _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
-            
-            // Selection controls
+
             EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button("Select All", GUILayout.Width(80)))
             {
@@ -218,10 +205,9 @@ namespace Strada.Core.Editor.Windows
             }
             GUILayout.FlexibleSpace();
             EditorGUILayout.EndHorizontal();
-            
+
             EditorGUILayout.Space(5);
-            
-            // Draw benchmarks by category
+
             foreach (var category in _runner.GetCategories())
             {
                 var benchmarksInCategory = _runner.Benchmarks
@@ -264,10 +250,9 @@ namespace Strada.Core.Editor.Windows
             EditorGUILayout.LabelField(benchmark.Name, EditorStyles.boldLabel, GUILayout.Width(200));
             
             GUILayout.FlexibleSpace();
-            
+
             EditorGUILayout.LabelField($"Iterations: {benchmark.DefaultIterations}", GUILayout.Width(120));
-            
-            // Show threshold if configured
+
             var threshold = _runner.GetThreshold(benchmark.Name);
             if (threshold != null)
             {
@@ -285,8 +270,7 @@ namespace Strada.Core.Editor.Windows
             EditorGUI.EndDisabledGroup();
             
             EditorGUILayout.EndHorizontal();
-            
-            // Description
+
             if (!string.IsNullOrEmpty(benchmark.Description))
             {
                 EditorGUI.indentLevel++;
@@ -303,8 +287,7 @@ namespace Strada.Core.Editor.Windows
                 EditorGUILayout.HelpBox("No benchmark results available. Run benchmarks to see results.", MessageType.Info);
                 return;
             }
-            
-            // Summary header
+
             EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
             EditorGUILayout.LabelField($"Session: {_currentSession.SessionId}", EditorStyles.boldLabel);
             EditorGUILayout.LabelField($"Time: {_currentSession.Timestamp:g}");
@@ -321,8 +304,7 @@ namespace Strada.Core.Editor.Windows
             GUI.contentColor = prevColor;
             
             EditorGUILayout.EndHorizontal();
-            
-            // Comparison toggle
+
             if (_baselineSession != null)
             {
                 EditorGUILayout.BeginHorizontal();
@@ -332,8 +314,7 @@ namespace Strada.Core.Editor.Windows
             }
             
             _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
-            
-            // Draw results by category
+
             var resultsByCategory = _currentSession.Results.GroupBy(r => r.Category);
             
             foreach (var group in resultsByCategory)
@@ -368,11 +349,9 @@ namespace Strada.Core.Editor.Windows
             GUI.backgroundColor = bgColor;
             
             EditorGUILayout.BeginVertical(_resultStyle);
-            
-            // Header row
+
             EditorGUILayout.BeginHorizontal();
-            
-            // Status icon
+
             var statusIcon = result.Passed ? "✓" : "✗";
             var statusColor = result.Passed ? _passedColor : _failedColor;
             var prevContent = GUI.contentColor;
@@ -381,13 +360,11 @@ namespace Strada.Core.Editor.Windows
             GUI.contentColor = prevContent;
             
             EditorGUILayout.LabelField(result.Name, EditorStyles.boldLabel, GUILayout.Width(180));
-            
-            // Metrics
+
             EditorGUILayout.LabelField($"{result.OperationsPerSecond:N0} ops/s", GUILayout.Width(120));
             EditorGUILayout.LabelField($"Avg: {result.AverageTimeMs:F4} ms", GUILayout.Width(120));
             EditorGUILayout.LabelField($"Memory: {FormatBytes(result.MemoryAllocatedBytes)}", GUILayout.Width(100));
-            
-            // Comparison indicator
+
             if (comparison != null)
             {
                 DrawComparisonIndicator(comparison);
@@ -395,8 +372,7 @@ namespace Strada.Core.Editor.Windows
             
             GUILayout.FlexibleSpace();
             EditorGUILayout.EndHorizontal();
-            
-            // Detail row
+
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField($"Min: {result.MinTimeMs:F4} ms", EditorStyles.miniLabel, GUILayout.Width(100));
             EditorGUILayout.LabelField($"Max: {result.MaxTimeMs:F4} ms", EditorStyles.miniLabel, GUILayout.Width(100));
@@ -417,7 +393,6 @@ namespace Strada.Core.Editor.Windows
             GUI.backgroundColor = prevBg;
         }
 
-        
         private void DrawComparisonIndicator(BenchmarkComparison comparison)
         {
             var changeText = comparison.PercentageChange >= 0 
@@ -559,9 +534,6 @@ namespace Strada.Core.Editor.Windows
             EditorGUILayout.EndVertical();
         }
 
-        
-        #region Benchmark Execution
-        
         private void RunSelectedBenchmarks()
         {
             var selected = _runner.Benchmarks
@@ -616,8 +588,7 @@ namespace Strada.Core.Editor.Windows
             
             _completedCount++;
             Repaint();
-            
-            // Schedule next benchmark
+
             EditorApplication.delayCall += () => RunBenchmarksSequentially(benchmarks, index + 1);
         }
         
@@ -626,10 +597,9 @@ namespace Strada.Core.Editor.Windows
             _isRunning = false;
             _currentBenchmark = "";
             UpdateComparisons();
-            _selectedTab = 1; // Switch to results tab
+            _selectedTab = 1;
             Repaint();
-            
-            // Show summary
+
             int passed = _currentSession.Results.Count(r => r.Passed);
             int failed = _currentSession.Results.Count - passed;
             int regressions = _comparisons.Count(c => c.IsRegression);
@@ -655,11 +625,7 @@ namespace Strada.Core.Editor.Windows
         {
             Repaint();
         }
-        
-        #endregion
-        
-        #region Persistence
-        
+
         private void SaveCurrentSession()
         {
             if (_currentSession == null || _currentSession.Results.Count == 0)
@@ -711,18 +677,12 @@ namespace Strada.Core.Editor.Windows
                 }
             }
         }
-        
-        #endregion
-        
-        #region Utilities
-        
+
         private string FormatBytes(long bytes)
         {
             if (bytes < 1024) return $"{bytes} B";
             if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
             return $"{bytes / (1024.0 * 1024.0):F1} MB";
         }
-        
-        #endregion
     }
 }

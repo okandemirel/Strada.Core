@@ -16,38 +16,30 @@ namespace Strada.Core.Editor.Windows
     /// </summary>
     public class BusDebuggerWindow : EditorWindow
     {
-        // Constants
         private const int MaxLogEntries = 1000;
         private const float MinMessageListWidth = 300f;
         private const float MaxMessageListWidth = 600f;
         private const float DefaultMessageListWidth = 450f;
 
-        // Layout
         private float _messageListWidth = DefaultMessageListWidth;
         private bool _isResizing;
 
-        // Scroll positions
         private Vector2 _messageListScrollPosition;
         private Vector2 _detailScrollPosition;
 
-        // Selection state
         private int _selectedMessageIndex = -1;
 
-        // Filter state
         private string _typeFilterPattern = "";
         private MessageKind? _kindFilter;
         private bool _showFilterOptions;
 
-        // Logging state
         private bool _isPaused;
         private bool _autoScroll = true;
 
-        // Cached data
         private List<MessageLogEntry> _displayedEntries = new List<MessageLogEntry>();
         private double _lastRefreshTime;
         private float _refreshInterval = 0.1f;
 
-        // Styles
         private GUIStyle _headerStyle;
         private GUIStyle _messageItemStyle;
         private GUIStyle _selectedMessageStyle;
@@ -57,14 +49,12 @@ namespace Strada.Core.Editor.Windows
         private GUIStyle _warningIconStyle;
         private bool _stylesInitialized;
 
-        // Colors
         private readonly Color _eventColor = new Color(0.4f, 0.7f, 0.4f);
         private readonly Color _commandColor = new Color(0.5f, 0.6f, 0.9f);
         private readonly Color _queryColor = new Color(0.9f, 0.7f, 0.4f);
         private readonly Color _warningColor = new Color(1.0f, 0.6f, 0.2f);
         private readonly Color _selectedColor = new Color(0.24f, 0.49f, 0.91f, 0.4f);
 
-        // Data provider
         private BusDataProvider _busDataProvider;
 
 
@@ -261,7 +251,6 @@ namespace Strada.Core.Editor.Windows
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
 
-            // Logging toggle
             var isLogging = _busDataProvider.IsLogging;
             var logIcon = isLogging ? "●" : "○";
             var logColor = isLogging ? Color.green : Color.gray;
@@ -278,7 +267,6 @@ namespace Strada.Core.Editor.Windows
 
             GUI.contentColor = prevColor;
 
-            // Pause/Resume button
             var pauseIcon = _isPaused ? "▶" : "❚❚";
             var pauseTooltip = _isPaused ? "Resume" : "Pause";
             if (GUILayout.Button(new GUIContent(pauseIcon, pauseTooltip), EditorStyles.toolbarButton, GUILayout.Width(30)))
@@ -286,7 +274,6 @@ namespace Strada.Core.Editor.Windows
                 _isPaused = !_isPaused;
             }
 
-            // Clear button
             if (GUILayout.Button("Clear", EditorStyles.toolbarButton, GUILayout.Width(45)))
             {
                 ClearLog();
@@ -294,17 +281,14 @@ namespace Strada.Core.Editor.Windows
 
             GUILayout.Space(10);
 
-            // Auto-scroll toggle
             _autoScroll = GUILayout.Toggle(_autoScroll, "Auto-scroll", EditorStyles.toolbarButton, GUILayout.Width(80));
 
             GUILayout.FlexibleSpace();
 
-            // Stats
             var totalCount = _busDataProvider.GetLogEntries().Count;
             var filteredCount = _displayedEntries.Count;
             GUILayout.Label($"Messages: {filteredCount}/{totalCount}", EditorStyles.toolbarButton);
 
-            // Buffer indicator
             if (totalCount >= MaxLogEntries)
             {
                 var prevBg = GUI.backgroundColor;
@@ -320,14 +304,12 @@ namespace Strada.Core.Editor.Windows
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
 
-            // Filter toggle
             _showFilterOptions = GUILayout.Toggle(_showFilterOptions, "Filters", EditorStyles.toolbarButton, GUILayout.Width(55));
 
             if (_showFilterOptions)
             {
                 GUILayout.Space(10);
 
-                // Type pattern filter
                 GUILayout.Label("Type:", GUILayout.Width(35));
                 var newPattern = EditorGUILayout.TextField(_typeFilterPattern, EditorStyles.toolbarSearchField, GUILayout.Width(200));
                 if (newPattern != _typeFilterPattern)
@@ -336,7 +318,6 @@ namespace Strada.Core.Editor.Windows
                     RefreshDisplayedEntries();
                 }
 
-                // Wildcard hint
                 if (!string.IsNullOrEmpty(_typeFilterPattern))
                 {
                     GUILayout.Label("(* = wildcard)", EditorStyles.miniLabel, GUILayout.Width(80));
@@ -344,7 +325,6 @@ namespace Strada.Core.Editor.Windows
 
                 GUILayout.Space(10);
 
-                // Kind filter
                 GUILayout.Label("Kind:", GUILayout.Width(35));
                 var kindOptions = new[] { "All", "Event", "Command", "Query" };
                 var currentKindIndex = _kindFilter.HasValue ? (int)_kindFilter.Value + 1 : 0;
@@ -359,7 +339,6 @@ namespace Strada.Core.Editor.Windows
 
                 GUILayout.Space(10);
 
-                // Clear filters button
                 if (GUILayout.Button("Clear Filters", EditorStyles.toolbarButton, GUILayout.Width(80)))
                 {
                     _typeFilterPattern = "";
@@ -370,7 +349,6 @@ namespace Strada.Core.Editor.Windows
 
             GUILayout.FlexibleSpace();
 
-            // Legend
             DrawLegend();
 
             EditorGUILayout.EndHorizontal();
@@ -400,13 +378,10 @@ namespace Strada.Core.Editor.Windows
         {
             EditorGUILayout.BeginHorizontal();
 
-            // Left panel - Message list
             DrawMessageListPanel();
 
-            // Resize handle
             DrawResizeHandle();
 
-            // Right panel - Message details
             DrawMessageDetailsPanel();
 
             EditorGUILayout.EndHorizontal();
@@ -438,7 +413,6 @@ namespace Strada.Core.Editor.Windows
                     DrawMessageListItem(i, _displayedEntries[i]);
                 }
 
-                // Auto-scroll to bottom
                 if (_autoScroll && !_isPaused && Event.current.type == EventType.Repaint)
                 {
                     _messageListScrollPosition.y = float.MaxValue;
@@ -457,7 +431,6 @@ namespace Strada.Core.Editor.Windows
 
             EditorGUILayout.BeginHorizontal(style);
 
-            // Warning icon for unhandled commands
             if (entry.Kind == MessageKind.Command && !entry.HasHandler)
             {
                 GUILayout.Label("⚠", _warningIconStyle, GUILayout.Width(18));
@@ -467,23 +440,19 @@ namespace Strada.Core.Editor.Windows
                 GUILayout.Space(18);
             }
 
-            // Timestamp
             var timeStr = entry.Timestamp.ToString("HH:mm:ss.fff");
             GUILayout.Label(timeStr, EditorStyles.miniLabel, GUILayout.Width(75));
 
-            // Message kind badge
             var kindStyle = GetKindStyle(entry.Kind);
             var kindLabel = GetKindLabel(entry.Kind);
             GUILayout.Label(kindLabel, kindStyle, GUILayout.Width(45));
 
-            // Message type name
             var typeName = entry.MessageType?.Name ?? "Unknown";
             if (GUILayout.Button(typeName, EditorStyles.label, GUILayout.ExpandWidth(true)))
             {
                 _selectedMessageIndex = index;
             }
 
-            // Subscriber count
             if (entry.Kind == MessageKind.Event)
             {
                 GUILayout.Label($"[{entry.SubscriberCount}]", EditorStyles.miniLabel, GUILayout.Width(30));
@@ -572,7 +541,6 @@ namespace Strada.Core.Editor.Windows
         {
             _detailScrollPosition = EditorGUILayout.BeginScrollView(_detailScrollPosition);
 
-            // Header info
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
             EditorGUILayout.BeginHorizontal();
@@ -629,7 +597,6 @@ namespace Strada.Core.Editor.Windows
 
             GUILayout.Space(10);
 
-            // Payload section
             EditorGUILayout.LabelField("Payload", EditorStyles.boldLabel);
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
@@ -692,9 +659,6 @@ namespace Strada.Core.Editor.Windows
             return value.ToString();
         }
 
-
-        #region Filtering
-
         /// <summary>
         /// Refreshes the displayed entries based on current filter settings.
         /// </summary>
@@ -729,7 +693,6 @@ namespace Strada.Core.Editor.Windows
             if (string.IsNullOrEmpty(pattern)) return true;
             if (string.IsNullOrEmpty(typeName)) return false;
 
-            // Convert wildcard pattern to regex
             var regexPattern = "^" + Regex.Escape(pattern)
                 .Replace("\\*", ".*")
                 .Replace("\\?", ".") + "$";
@@ -740,14 +703,9 @@ namespace Strada.Core.Editor.Windows
             }
             catch
             {
-                // Fallback to simple contains if regex fails
                 return typeName.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0;
             }
         }
-
-        #endregion
-
-        #region Log Management
 
         /// <summary>
         /// Clears all logged messages.
@@ -759,10 +717,6 @@ namespace Strada.Core.Editor.Windows
             _selectedMessageIndex = -1;
             Repaint();
         }
-
-        #endregion
-
-        #region Public API for Testing
 
         /// <summary>
         /// Gets the current displayed entries count.
@@ -807,7 +761,5 @@ namespace Strada.Core.Editor.Windows
         /// Gets the displayed entries for testing.
         /// </summary>
         internal IReadOnlyList<MessageLogEntry> GetDisplayedEntries() => _displayedEntries;
-
-        #endregion
     }
 }

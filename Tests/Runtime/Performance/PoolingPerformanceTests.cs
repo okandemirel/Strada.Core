@@ -2,7 +2,7 @@ using NUnit.Framework;
 using Strada.Core.Pooling;
 using Unity.PerformanceTesting;
 
-namespace Strada.Core.Tests.Runtime.Performance
+namespace Strada.Core.Tests.Tests.Runtime.Performance
 {
     [TestFixture]
     [Category("Performance")]

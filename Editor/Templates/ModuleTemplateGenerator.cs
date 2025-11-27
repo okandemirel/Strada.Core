@@ -1,5 +1,4 @@
 using System.IO;
-using System.Text;
 using UnityEditor;
 using UnityEngine;
 
@@ -84,18 +83,14 @@ namespace {prefix}
     {{
         public void Install(IContainerBuilder builder)
         {{
-            // Register services
-            // builder.Register<{prefix}Service>(Lifetime.Singleton);
         }}
 
         public void Initialize(IContainer container)
         {{
-            // Initialize module after container is built
         }}
 
         public void Shutdown()
         {{
-            // Cleanup module
         }}
     }}
 }}
@@ -141,7 +136,6 @@ namespace {prefix}.Systems
     {{
         protected override void OnUpdate(float deltaTime)
         {{
-            // Process entities here
         }}
     }}
 }}

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using Strada.Core.MVCS;
 
@@ -16,7 +15,6 @@ namespace Strada.Core.Editor.Validation
         public string RuleName => "View Business Logic";
         public string Description => "Views should not contain business logic; move complex logic to Controllers";
 
-        // Method name patterns that suggest business logic
         private static readonly string[] BusinessLogicMethodPatterns = new[]
         {
             "Calculate",
@@ -39,7 +37,6 @@ namespace Strada.Core.Editor.Validation
             "Receive"
         };
 
-        // Allowed method prefixes for Views (UI-related)
         private static readonly string[] AllowedMethodPrefixes = new[]
         {
             "On",      // Event handlers
@@ -64,7 +61,6 @@ namespace Strada.Core.Editor.Validation
             "Unbind"   // Data binding
         };
 
-        // Maximum allowed method complexity (number of statements/branches)
         private const int MaxMethodComplexity = 10;
 
         public bool AppliesTo(Type type)
@@ -84,11 +80,9 @@ namespace Strada.Core.Editor.Validation
 
             foreach (var method in methods)
             {
-                // Skip property accessors and special methods
                 if (method.IsSpecialName)
                     continue;
 
-                // Check for business logic method names
                 if (HasBusinessLogicMethodName(method.Name))
                 {
                     yield return new ValidationIssue(
@@ -97,7 +91,6 @@ namespace Strada.Core.Editor.Validation
                         $"Consider moving '{method.Name}' to a Controller and having the View call it through events");
                 }
 
-                // Check for complex method signatures (many parameters)
                 if (method.GetParameters().Length > 5)
                 {
                     yield return new ValidationIssue(
@@ -106,7 +99,6 @@ namespace Strada.Core.Editor.Validation
                         "Consider simplifying or moving this logic to a Controller");
                 }
 
-                // Check for service/repository dependencies
                 foreach (var param in method.GetParameters())
                 {
                     if (IsServiceType(param.ParameterType))
@@ -119,7 +111,6 @@ namespace Strada.Core.Editor.Validation
                 }
             }
 
-            // Check for service fields
             var fields = type.GetFields(BindingFlags.Instance | BindingFlags.Static | 
                                         BindingFlags.Public | BindingFlags.NonPublic);
             foreach (var field in fields)
@@ -142,14 +133,12 @@ namespace Strada.Core.Editor.Validation
             if (string.IsNullOrEmpty(methodName))
                 return false;
 
-            // Check if it starts with an allowed prefix
             foreach (var prefix in AllowedMethodPrefixes)
             {
                 if (methodName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                     return false;
             }
 
-            // Check if it contains business logic patterns
             foreach (var pattern in BusinessLogicMethodPatterns)
             {
                 if (methodName.Contains(pattern, StringComparison.OrdinalIgnoreCase))
@@ -167,11 +156,9 @@ namespace Strada.Core.Editor.Validation
             if (type == null)
                 return false;
 
-            // Check if it's a StradaService
             if (typeof(StradaService).IsAssignableFrom(type))
                 return true;
 
-            // Check naming conventions
             var typeName = type.Name;
             if (typeName.EndsWith("Service") || 
                 typeName.EndsWith("Repository") || 

@@ -2,7 +2,7 @@ using NUnit.Framework;
 using Strada.Core.DI;
 using Unity.PerformanceTesting;
 
-namespace Strada.Core.Tests.Runtime.DI
+namespace Strada.Core.Tests.Tests.Runtime.DI
 {
     [TestFixture]
     public class FastContainerPerformanceTests

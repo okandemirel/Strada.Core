@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Strada.Core.ECS.Storage;
 
-namespace Strada.Core.ECS
+namespace Strada.Core.ECS.Core
 {
     public sealed class EntityManager : IDisposable
     {

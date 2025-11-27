@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -33,7 +32,6 @@ namespace Strada.Core.Editor.Validation
             "StateMachines"
         };
 
-        // PascalCase pattern for module names
         private static readonly Regex PascalCasePattern = new Regex(@"^[A-Z][a-zA-Z0-9]*$", RegexOptions.Compiled);
 
         [MenuItem("Strada/Validate Module Structure")]
@@ -94,7 +92,6 @@ namespace Strada.Core.Editor.Validation
             var issues = new List<ValidationIssue>();
             var moduleName = Path.GetFileName(modulePath);
 
-            // Validate module naming convention
             if (!moduleName.EndsWith("Module"))
             {
                 issues.Add(new ValidationIssue(
@@ -104,7 +101,6 @@ namespace Strada.Core.Editor.Validation
                     .WithFile(modulePath));
             }
 
-            // Validate PascalCase naming
             var baseName = moduleName.Replace("Module", "");
             if (!string.IsNullOrEmpty(baseName) && !IsPascalCase(baseName))
             {
@@ -115,7 +111,6 @@ namespace Strada.Core.Editor.Validation
                     .WithFile(modulePath));
             }
 
-            // Check for Scripts folder
             var scriptsPath = Path.Combine(modulePath, "Scripts");
             if (!Directory.Exists(scriptsPath))
             {
@@ -127,7 +122,6 @@ namespace Strada.Core.Editor.Validation
                 return issues;
             }
 
-            // Validate required folders
             foreach (var required in RequiredFolders)
             {
                 var folderPath = Path.Combine(scriptsPath, required);
@@ -141,7 +135,6 @@ namespace Strada.Core.Editor.Validation
                 }
             }
 
-            // Check for assembly definition
             var assemblyDefPath = Path.Combine(scriptsPath, $"{baseName}.asmdef");
             if (!File.Exists(assemblyDefPath))
             {
@@ -156,7 +149,6 @@ namespace Strada.Core.Editor.Validation
                 }
             }
 
-            // Validate file naming conventions
             issues.AddRange(ValidateFileNaming(scriptsPath, moduleName));
 
             return issues;
@@ -175,7 +167,6 @@ namespace Strada.Core.Editor.Validation
             {
                 var fileName = Path.GetFileNameWithoutExtension(file);
 
-                // Check PascalCase for all C# files
                 if (!IsPascalCase(fileName))
                 {
                     issues.Add(new ValidationIssue(
@@ -185,7 +176,6 @@ namespace Strada.Core.Editor.Validation
                         .WithFile(file));
                 }
 
-                // Check MonoBehaviour naming
                 if (fileName.Contains("MonoBehaviour") && !fileName.StartsWith(modulePrefix))
                 {
                     issues.Add(new ValidationIssue(
@@ -207,15 +197,12 @@ namespace Strada.Core.Editor.Validation
             if (string.IsNullOrEmpty(name))
                 return false;
 
-            // Must start with uppercase letter
             if (!char.IsUpper(name[0]))
                 return false;
 
-            // Should not have consecutive underscores or start/end with underscore
             if (name.Contains("__") || name.StartsWith("_") || name.EndsWith("_"))
                 return false;
 
-            // Allow alphanumeric characters only (and single underscores between words)
             return PascalCasePattern.IsMatch(name.Replace("_", ""));
         }
 

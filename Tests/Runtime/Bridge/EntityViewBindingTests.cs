@@ -2,9 +2,10 @@ using NUnit.Framework;
 using Strada.Core.Bridge;
 using Strada.Core.DI;
 using Strada.Core.ECS;
+using Strada.Core.ECS.Core;
 using UnityEngine;
 
-namespace Strada.Core.Tests.Runtime.Bridge
+namespace Strada.Core.Tests.Tests.Runtime.Bridge
 {
     [TestFixture]
     public class EntityViewBindingTests

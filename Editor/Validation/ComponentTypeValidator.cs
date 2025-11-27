@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using Strada.Core.ECS;
 
 namespace Strada.Core.Editor.Validation
@@ -26,7 +25,6 @@ namespace Strada.Core.Editor.Validation
 
         public IEnumerable<ValidationIssue> Validate(Type type)
         {
-            // Check if it's a struct
             if (!type.IsValueType)
             {
                 yield return new ValidationIssue(
@@ -36,7 +34,6 @@ namespace Strada.Core.Editor.Validation
                 yield break;
             }
 
-            // Check if it's unmanaged
             if (!IsUnmanagedType(type))
             {
                 yield return new ValidationIssue(
@@ -45,7 +42,6 @@ namespace Strada.Core.Editor.Validation
                     "Remove all reference type fields and ensure all nested types are unmanaged");
             }
 
-            // Check for reference type fields
             foreach (var field in GetReferenceTypeFields(type))
             {
                 yield return new ValidationIssue(
@@ -64,19 +60,15 @@ namespace Strada.Core.Editor.Validation
             if (type == null)
                 return false;
 
-            // Primitive types are unmanaged
             if (type.IsPrimitive || type.IsEnum || type.IsPointer)
                 return true;
 
-            // Reference types are not unmanaged
             if (!type.IsValueType)
                 return false;
 
-            // Check if it's a generic type definition
             if (type.IsGenericType && !type.IsConstructedGenericType)
                 return false;
 
-            // Check all fields recursively
             var fields = type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             foreach (var field in fields)
             {
@@ -104,7 +96,6 @@ namespace Strada.Core.Editor.Validation
                 }
                 else if (!field.FieldType.IsPrimitive && !field.FieldType.IsEnum)
                 {
-                    // Check nested struct fields
                     foreach (var nestedField in GetReferenceTypeFields(field.FieldType))
                     {
                         yield return nestedField;

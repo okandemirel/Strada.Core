@@ -143,7 +143,6 @@ namespace Strada.Core.Editor.Graph
             _hasCycle = graph?.HasCycle ?? false;
             _cyclePath = graph?.CyclePath;
 
-            // Create nodes
             foreach (var moduleInfo in modules)
             {
                 var node = CreateModuleNode(moduleInfo);
@@ -152,7 +151,6 @@ namespace Strada.Core.Editor.Graph
                 AddElement(node);
             }
 
-            // Create edges from graph
             if (graph != null)
             {
                 foreach (var edgeData in graph.Edges)
@@ -167,10 +165,8 @@ namespace Strada.Core.Editor.Graph
                 }
             }
 
-            // Compute initialization order
             ComputeInitializationOrder(modules);
 
-            // Layout nodes by initialization order
             LayoutNodesByInitOrder();
 
             OnGraphRefreshed?.Invoke();
@@ -213,12 +209,10 @@ namespace Strada.Core.Editor.Graph
             var visited = new HashSet<Type>();
             var sorted = new List<ModuleInfoData>();
 
-            // Topological sort by dependencies and priority
             var remaining = new List<ModuleInfoData>(modules);
-            
+
             while (remaining.Count > 0)
             {
-                // Find modules with all dependencies satisfied
                 var ready = remaining
                     .Where(m => m.Dependencies.All(d => visited.Contains(d) || !_nodeMap.ContainsKey(d)))
                     .OrderBy(m => m.Priority)
@@ -226,7 +220,6 @@ namespace Strada.Core.Editor.Graph
 
                 if (ready.Count == 0)
                 {
-                    // Circular dependency - just add remaining in priority order
                     ready = remaining.OrderBy(m => m.Priority).ToList();
                 }
 
@@ -244,7 +237,6 @@ namespace Strada.Core.Editor.Graph
         {
             if (_initializationOrder == null || _initializationOrder.Count == 0) return;
 
-            // Layout in columns by initialization order
             var nodesPerColumn = Math.Max(1, (int)Math.Ceiling(Math.Sqrt(_allNodes.Count)));
             
             for (int i = 0; i < _initializationOrder.Count; i++)
@@ -259,7 +251,6 @@ namespace Strada.Core.Editor.Graph
                     var y = row * VERTICAL_SPACING + 50;
                     node.SetPosition(new Rect(x, y, NODE_WIDTH, NODE_HEIGHT));
 
-                    // Add initialization order label
                     var orderLabel = new Label($"#{i + 1}")
                     {
                         style =
@@ -299,7 +290,6 @@ namespace Strada.Core.Editor.Graph
 
             node.AddToClassList("highlighted");
 
-            // Highlight dependencies
             foreach (var edge in node.OutputPort.connections)
             {
                 if (edge.input?.node is ModuleNode depNode)
@@ -309,7 +299,6 @@ namespace Strada.Core.Editor.Graph
                 }
             }
 
-            // Highlight dependents
             foreach (var edge in node.InputPort.connections)
             {
                 if (edge.output?.node is ModuleNode depNode)

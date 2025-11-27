@@ -1,11 +1,10 @@
 using System;
-using System.Collections.Generic;
 using NUnit.Framework;
 using Strada.Core.DI;
 using Strada.Core.DI.Attributes;
 using Strada.Core.DI.AutoBinding;
 
-namespace Strada.Core.Tests.Runtime.DI
+namespace Strada.Core.Tests.Tests.Runtime.DI
 {
     [TestFixture]
     public class AutoBindingTests
@@ -155,20 +154,16 @@ namespace Strada.Core.Tests.Runtime.DI
         [Test]
         public void RuntimeScanner_ManualEntry_RegistersCorrectly()
         {
-            // Create a manual entry and verify it registers correctly
             var builder = new ContainerBuilder();
 
-            // Manually register using the same pattern the scanner would use
             builder.Register<ITestService, TestServiceImpl>(Lifetime.Singleton);
 
             var container = builder.Build();
 
-            // Verify it resolves correctly
             var service = container.Resolve<ITestService>();
             Assert.IsNotNull(service);
             Assert.IsInstanceOf<TestServiceImpl>(service);
 
-            // Verify singleton behavior
             var service2 = container.Resolve<ITestService>();
             Assert.AreSame(service, service2);
 
@@ -178,7 +173,6 @@ namespace Strada.Core.Tests.Runtime.DI
         [Test]
         public void RuntimeScanner_PatternMatching_MatchesCorrectly()
         {
-            // Test the pattern matching logic used by scanner
             Assert.IsTrue(MatchesPattern("Strada.Core.Tests", "Strada.*"));
             Assert.IsTrue(MatchesPattern("Strada.Core.Tests", "Strada.Core.*"));
             Assert.IsFalse(MatchesPattern("Strada.Core.Tests", "Unity.*"));
@@ -203,12 +197,10 @@ namespace Strada.Core.Tests.Runtime.DI
         {
             RuntimeAutoBindingScanner.ClearCache();
 
-            // Scan including the test assembly
             var entries = RuntimeAutoBindingScanner.ScanAssemblies(
                 new[] { "Strada.*" },
                 new[] { "Unity.*", "System.*" });
 
-            // Find our test service
             var testEntry = entries.Find(e => e.ImplementationType == typeof(TestAutoRegisteredService));
 
             Assert.IsNotNull(testEntry, "Should find TestAutoRegisteredService");
@@ -224,31 +216,26 @@ namespace Strada.Core.Tests.Runtime.DI
 
             var builder = new ContainerBuilder();
 
-            // Use runtime scanner (not source gen) for test
             builder.RegisterAutoBindingsRuntime(
                 new[] { "Strada.*" },
                 new[] { "Unity.*", "System.*" });
 
             var container = builder.Build();
 
-            // Should be able to resolve by interface
             var service = container.Resolve<ITestAutoRegistered>();
             Assert.IsNotNull(service, "Should resolve ITestAutoRegistered");
             Assert.IsInstanceOf<TestAutoRegisteredService>(service);
 
-            // Should be singleton
             var service2 = container.Resolve<ITestAutoRegistered>();
             Assert.AreSame(service, service2, "Should return same singleton instance");
 
             container.Dispose();
         }
 
-        // Test interfaces and implementations
         private interface ITestService { }
         private class TestServiceImpl : ITestService { }
     }
 
-    // Test class with AutoRegister attribute - MUST be public for reflection
     public interface ITestAutoRegistered
     {
         int GetValue();
@@ -273,7 +260,6 @@ namespace Strada.Core.Tests.Runtime.DI
         [Test]
         public void Benchmark_RuntimeScanning_1000Iterations()
         {
-            // Warmup
             for (int i = 0; i < 10; i++)
             {
                 RuntimeAutoBindingScanner.ClearCache();
@@ -286,7 +272,6 @@ namespace Strada.Core.Tests.Runtime.DI
 
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
-            // First scan (uncached)
             var entries = RuntimeAutoBindingScanner.ScanAssemblies(
                 new[] { "Strada.*" },
                 new[] { "Unity.*" });
@@ -294,7 +279,6 @@ namespace Strada.Core.Tests.Runtime.DI
             var firstScanMs = sw.ElapsedMilliseconds;
             sw.Restart();
 
-            // Cached scans
             for (int i = 0; i < 999; i++)
             {
                 RuntimeAutoBindingScanner.ScanAssemblies(
@@ -309,7 +293,6 @@ namespace Strada.Core.Tests.Runtime.DI
 
             UnityEngine.Debug.Log($"[AutoBinding] First scan: {firstScanMs}ms, 999 cached lookups: {cachedMs}ms ({avgCachedNs:F0}ns avg)");
 
-            // Competitive thresholds - VContainer/Reflex-level performance
             Assert.Less(firstScanMs, 50, "First scan should complete in < 50ms (competitive with VContainer)");
             Assert.Less(cachedMs, 1, "999 cached lookups should complete in < 1ms (O(1) cache access)");
         }
@@ -317,7 +300,6 @@ namespace Strada.Core.Tests.Runtime.DI
         [Test]
         public void Benchmark_ContainerBuild_WithAutoBinding()
         {
-            // Warmup
             for (int i = 0; i < 5; i++)
             {
                 var warmupBuilder = new ContainerBuilder();
@@ -340,7 +322,6 @@ namespace Strada.Core.Tests.Runtime.DI
 
             UnityEngine.Debug.Log($"[AutoBinding] Container build with {count} auto-bindings: {sw.ElapsedMilliseconds}ms");
 
-            // Competitive threshold - container build should be fast
             Assert.Less(sw.ElapsedMilliseconds, 100, "Container build with auto-bindings should complete in < 100ms");
 
             container.Dispose();
@@ -355,7 +336,6 @@ namespace Strada.Core.Tests.Runtime.DI
             builder.RegisterAutoBindingsRuntime(new[] { "Strada.*" }, new[] { "Unity.*" });
             var container = builder.Build();
 
-            // Warmup
             for (int i = 0; i < 100; i++)
             {
                 container.Resolve<ITestAutoRegistered>();
@@ -374,7 +354,6 @@ namespace Strada.Core.Tests.Runtime.DI
 
             UnityEngine.Debug.Log($"[AutoBinding] 10k singleton resolutions: {sw.ElapsedMilliseconds}ms ({avgNs:F0}ns avg)");
 
-            // Singleton resolution should be < 100ns avg (just a dictionary lookup)
             Assert.Less(sw.ElapsedMilliseconds, 10, "10k singleton resolutions should complete in < 10ms");
             Assert.Less(avgNs, 1000, "Avg singleton resolution should be < 1μs");
 

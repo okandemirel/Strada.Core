@@ -6,10 +6,9 @@ using NUnit.Framework;
 using Strada.Core.DI;
 using Strada.Core.DI.Attributes;
 using Strada.Core.DI.AutoBinding;
-using Strada.Core.Tests.Runtime.DI;
-using Strada.Core.Tests.Runtime.Generators;
+using Strada.Core.Tests.Tests.Runtime.Generators;
 
-namespace Strada.Core.Tests.Runtime.DI
+namespace Strada.Core.Tests.Tests.Runtime.DI
 {
     /// <summary>
     /// Property-based tests for the auto-binding scanner system.
@@ -31,7 +30,6 @@ namespace Strada.Core.Tests.Runtime.DI
             StradaArbitraries.RegisterAll();
         }
 
-        #region Property 22: Auto-Binding Discovery
 
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 22: Auto-Binding Discovery**
@@ -50,7 +48,6 @@ namespace Strada.Core.Tests.Runtime.DI
                 {
                     RuntimeAutoBindingScanner.ClearCache();
 
-                    // Arrange - scan assemblies and register auto-bindings
                     var builder = new ContainerBuilder();
                     builder.RegisterAutoBindingsRuntime(
                         new[] { "Strada.*" },
@@ -58,7 +55,6 @@ namespace Strada.Core.Tests.Runtime.DI
 
                     using var container = builder.Build();
 
-                    // Act - resolve the auto-registered singleton service
                     var instances = new List<ITestAutoRegistered>();
                     for (int i = 0; i < resolutionCount; i++)
                     {
@@ -68,7 +64,6 @@ namespace Strada.Core.Tests.Runtime.DI
                         instances.Add(instance);
                     }
 
-                    // Assert - service is resolvable and is singleton (same instance)
                     var first = instances[0];
                     for (int i = 1; i < instances.Count; i++)
                     {
@@ -99,7 +94,6 @@ namespace Strada.Core.Tests.Runtime.DI
                 {
                     RuntimeAutoBindingScanner.ClearCache();
 
-                    // Arrange
                     var builder = new ContainerBuilder();
                     builder.RegisterAutoBindingsRuntime(
                         new[] { "Strada.*" },
@@ -107,7 +101,6 @@ namespace Strada.Core.Tests.Runtime.DI
 
                     using var container = builder.Build();
 
-                    // Act - resolve the auto-registered transient service
                     var instances = new List<ITestAutoTransient>();
                     for (int i = 0; i < resolutionCount; i++)
                     {
@@ -117,12 +110,11 @@ namespace Strada.Core.Tests.Runtime.DI
                         instances.Add(instance);
                     }
 
-                    // Assert - all instances should be unique (transient behavior)
                     var seen = new HashSet<ITestAutoTransient>(ReferenceEqualityComparer.Instance);
                     foreach (var instance in instances)
                     {
                         if (!seen.Add(instance))
-                            return false; // Found duplicate reference
+                            return false;
                     }
 
                     return true;
@@ -148,18 +140,15 @@ namespace Strada.Core.Tests.Runtime.DI
                 {
                     RuntimeAutoBindingScanner.ClearCache();
 
-                    // Act - scan assemblies
                     var entries = RuntimeAutoBindingScanner.ScanAssemblies(
                         new[] { "Strada.*" },
                         new[] { "Unity.*", "System.*" });
 
-                    // Find our test services
-                    var singletonEntry = entries.Find(e => 
+                    var singletonEntry = entries.Find(e =>
                         e.ImplementationType == typeof(TestAutoRegisteredService));
-                    var transientEntry = entries.Find(e => 
+                    var transientEntry = entries.Find(e =>
                         e.ImplementationType == typeof(TestAutoTransientService));
 
-                    // Assert - singleton entry has correct configuration
                     if (singletonEntry == null)
                         return false;
                     if (singletonEntry.ServiceType != typeof(ITestAutoRegistered))
@@ -167,7 +156,6 @@ namespace Strada.Core.Tests.Runtime.DI
                     if (singletonEntry.Lifetime != Lifetime.Singleton)
                         return false;
 
-                    // Assert - transient entry has correct configuration
                     if (transientEntry == null)
                         return false;
                     if (transientEntry.ServiceType != typeof(ITestAutoTransient))
@@ -198,7 +186,6 @@ namespace Strada.Core.Tests.Runtime.DI
                 {
                     RuntimeAutoBindingScanner.ClearCache();
 
-                    // Arrange
                     var builder = new ContainerBuilder();
                     builder.RegisterAutoBindingsRuntime(
                         new[] { "Strada.*" },
@@ -206,12 +193,10 @@ namespace Strada.Core.Tests.Runtime.DI
 
                     using var container = builder.Build();
 
-                    // Act - resolve by interface (As property)
                     for (int i = 0; i < resolutionCount; i++)
                     {
                         var service = container.Resolve<ITestAutoRegistered>();
-                        
-                        // Assert - resolved instance is correct implementation type
+
                         if (service == null)
                             return false;
                         if (!(service is TestAutoRegisteredService))
@@ -241,15 +226,12 @@ namespace Strada.Core.Tests.Runtime.DI
                 {
                     RuntimeAutoBindingScanner.ClearCache();
 
-                    // Act - scan assemblies
                     var entries = RuntimeAutoBindingScanner.ScanAssemblies(
                         new[] { "Strada.*" },
                         new[] { "Unity.*", "System.*" });
 
-                    // Get entries sorted by priority (as they would be registered)
                     var sortedEntries = entries.OrderBy(e => e.Priority).ToList();
 
-                    // Verify ordering is maintained
                     for (int i = 1; i < sortedEntries.Count; i++)
                     {
                         if (sortedEntries[i].Priority < sortedEntries[i - 1].Priority)
@@ -262,10 +244,6 @@ namespace Strada.Core.Tests.Runtime.DI
             property.Check(config);
         }
 
-        #endregion
-
-        #region Helper Classes
-
         /// <summary>
         /// Reference equality comparer for HashSet.
         /// </summary>
@@ -274,14 +252,10 @@ namespace Strada.Core.Tests.Runtime.DI
             public static readonly ReferenceEqualityComparer Instance = new();
 
             public new bool Equals(object x, object y) => ReferenceEquals(x, y);
-            public int GetHashCode(object obj) => 
+            public int GetHashCode(object obj) =>
                 System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(obj);
         }
-
-        #endregion
     }
-
-    #region Test Types for Auto-Binding Property Tests
 
     /// <summary>
     /// Test interface for transient auto-registration.
@@ -300,6 +274,4 @@ namespace Strada.Core.Tests.Runtime.DI
         private readonly string _id = Guid.NewGuid().ToString();
         public string GetId() => _id;
     }
-
-    #endregion
 }

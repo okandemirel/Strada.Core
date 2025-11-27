@@ -2,9 +2,10 @@ using System;
 using System.Diagnostics;
 using NUnit.Framework;
 using Strada.Core.ECS;
+using Strada.Core.ECS.Core;
 using Strada.Core.ECS.Query;
 
-namespace Strada.Core.Tests.Runtime.Performance
+namespace Strada.Core.Tests.Tests.Runtime.Performance
 {
     public struct Position : IComponent
     {
@@ -66,7 +67,6 @@ namespace Strada.Core.Tests.Runtime.Performance
         {
             const int Count = 100_000;
 
-            // Warmup
             for (int i = 0; i < WarmupIterations; i++)
             {
                 var e = _entityManager.CreateEntity();
@@ -142,14 +142,12 @@ namespace Strada.Core.Tests.Runtime.Performance
         {
             const int Count = 100_000;
 
-            // Setup entities
             for (int i = 0; i < Count; i++)
             {
                 var entity = _entityManager.CreateEntity();
                 _entityManager.AddComponent(entity, new Position { X = i, Y = i, Z = i });
             }
 
-            // Warmup query
             int warmupCount = 0;
             _entityManager.ForEach<Position>((int idx, ref Position p) => warmupCount++);
 
@@ -251,7 +249,6 @@ namespace Strada.Core.Tests.Runtime.Performance
             const int EntityCount = 100_000;
             const int FrameCount = 10;
 
-            // Create simulation entities
             for (int i = 0; i < EntityCount; i++)
             {
                 var entity = _entityManager.CreateEntity();
@@ -259,7 +256,6 @@ namespace Strada.Core.Tests.Runtime.Performance
                 _entityManager.AddComponent(entity, new Velocity { X = 1, Y = 0.5f, Z = 0.1f });
             }
 
-            // Warmup
             _entityManager.ForEach<Position, Velocity>((int idx, ref Position p, ref Velocity v) =>
             {
                 p.X += v.X;
@@ -357,14 +353,12 @@ namespace Strada.Core.Tests.Runtime.Performance
         {
             const int Count = 100_000;
 
-            // Create entities without component
             var entities = new Entity[Count];
             for (int i = 0; i < Count; i++)
             {
                 entities[i] = _entityManager.CreateEntity();
             }
 
-            // Benchmark adding components
             var addSw = Stopwatch.StartNew();
             for (int i = 0; i < Count; i++)
             {
@@ -372,7 +366,6 @@ namespace Strada.Core.Tests.Runtime.Performance
             }
             addSw.Stop();
 
-            // Benchmark removing components
             var removeSw = Stopwatch.StartNew();
             for (int i = 0; i < Count; i++)
             {
@@ -505,8 +498,6 @@ namespace Strada.Core.Tests.Runtime.Performance
             long usedBytes = memAfter - memBefore;
             double bytesPerEntity = usedBytes / (double)Count;
 
-            // Calculate theoretical minimum
-            // Position: 12 bytes (3 floats), Velocity: 12 bytes, Entity index: 4 bytes = 28 bytes minimum
             double theoreticalMin = 28;
 
             UnityEngine.Debug.Log($"=== STRADA ECS: Memory Usage ({Count:N0} entities, 2 components each) ===");
@@ -523,7 +514,6 @@ namespace Strada.Core.Tests.Runtime.Performance
         {
             const int Count = 100_000;
 
-            // Create entities with different component combinations
             for (int i = 0; i < Count; i++)
             {
                 var entity = _entityManager.CreateEntity();
@@ -542,14 +532,12 @@ namespace Strada.Core.Tests.Runtime.Performance
 
             var sw = Stopwatch.StartNew();
 
-            // Query Position + Velocity (50% of entities)
             _entityManager.ForEach<Position, Velocity>((int idx, ref Position p, ref Velocity v) =>
             {
                 posVelCount++;
                 p.X += v.X;
             });
 
-            // Query Position + Health (33% of entities)
             _entityManager.ForEach<Position, Health>((int idx, ref Position p, ref Health h) =>
             {
                 posHealthCount++;
@@ -564,7 +552,7 @@ namespace Strada.Core.Tests.Runtime.Performance
             UnityEngine.Debug.Log($"  Total query time: {sw.Elapsed.TotalMilliseconds:F2}ms");
 
             Assert.AreEqual(Count / 2, posVelCount);
-            Assert.AreEqual(Count / 3 + 1, posHealthCount); // +1 for entity 0
+            Assert.AreEqual(Count / 3 + 1, posHealthCount);
         }
 
         [Test]
@@ -573,7 +561,6 @@ namespace Strada.Core.Tests.Runtime.Performance
             const int Count = 100_000;
             const int Frames = 10;
 
-            // Manual arrays approach
             var manualPositions = new Position[Count];
             var manualVelocities = new Velocity[Count];
             for (int i = 0; i < Count; i++)
@@ -582,7 +569,6 @@ namespace Strada.Core.Tests.Runtime.Performance
                 manualVelocities[i] = new Velocity { X = 1, Y = 0.5f, Z = 0.1f };
             }
 
-            // ECS approach
             for (int i = 0; i < Count; i++)
             {
                 var entity = _entityManager.CreateEntity();
@@ -590,14 +576,12 @@ namespace Strada.Core.Tests.Runtime.Performance
                 _entityManager.AddComponent(entity, new Velocity { X = 1, Y = 0.5f, Z = 0.1f });
             }
 
-            // Warmup both
             for (int i = 0; i < Count; i++)
             {
                 manualPositions[i].X += manualVelocities[i].X;
             }
             _entityManager.ForEach<Position, Velocity>((int idx, ref Position p, ref Velocity v) => p.X += v.X);
 
-            // Benchmark manual
             var swManual = Stopwatch.StartNew();
             for (int f = 0; f < Frames; f++)
             {
@@ -610,7 +594,6 @@ namespace Strada.Core.Tests.Runtime.Performance
             }
             swManual.Stop();
 
-            // Benchmark ECS
             var swECS = Stopwatch.StartNew();
             for (int f = 0; f < Frames; f++)
             {
@@ -632,7 +615,6 @@ namespace Strada.Core.Tests.Runtime.Performance
             UnityEngine.Debug.Log($"  ECS ForEach:   {ecsMs:F2}ms");
             UnityEngine.Debug.Log($"  ECS Overhead:  {overhead:F2}x");
 
-            // ECS should be within 10x of manual array iteration (realistic for managed ECS)
             Assert.Less(overhead, 10.0, "ECS overhead should be less than 10x manual arrays");
         }
     }

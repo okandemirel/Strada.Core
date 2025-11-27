@@ -54,8 +54,7 @@ namespace Strada.Core.Editor.Benchmarking
             
             double average = sum / timingsMs.Length;
             double totalTime = sum;
-            
-            // Calculate standard deviation
+
             double sumSquaredDiff = 0;
             foreach (var t in timingsMs)
             {
@@ -63,12 +62,11 @@ namespace Strada.Core.Editor.Benchmarking
                 sumSquaredDiff += diff * diff;
             }
             double stdDev = Math.Sqrt(sumSquaredDiff / timingsMs.Length);
-            
-            // Calculate operations per second
+
             double opsPerSecond = iterations > 0 && totalTime > 0 
-                ? (iterations / (totalTime / 1000.0)) 
+                ? (iterations / (totalTime / 1000.0))
                 : 0;
-            
+
             return new BenchmarkResult
             {
                 Name = name,
@@ -116,8 +114,7 @@ namespace Strada.Core.Editor.Benchmarking
                     IsRegression = false
                 };
             }
-            
-            // Calculate percentage change (positive = slower = regression)
+
             double percentageChange = 0;
             if (baseline.AverageTimeMs > 0)
             {

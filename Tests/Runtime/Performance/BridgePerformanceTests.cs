@@ -3,9 +3,10 @@ using NUnit.Framework;
 using Strada.Core.Bridge;
 using Strada.Core.DI;
 using Strada.Core.ECS;
+using Strada.Core.ECS.Core;
 using UnityEngine;
 
-namespace Strada.Core.Tests.Runtime.Performance
+namespace Strada.Core.Tests.Tests.Runtime.Performance
 {
     [TestFixture]
     [Category("Performance")]

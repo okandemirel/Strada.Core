@@ -2,6 +2,7 @@ using System;
 using System.Runtime.CompilerServices;
 using Strada.Core.Communication;
 using Strada.Core.DI.Attributes;
+using Strada.Core.ECS.Core;
 using Strada.Core.ECS.Query;
 using Strada.Core.ECS.Storage;
 

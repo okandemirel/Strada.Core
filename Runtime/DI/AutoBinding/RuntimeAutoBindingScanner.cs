@@ -64,7 +64,6 @@ namespace Strada.Core.DI.AutoBinding
                 }
                 catch (ReflectionTypeLoadException)
                 {
-                    // Assembly has unloadable types, skip
                 }
             }
 
@@ -91,7 +90,6 @@ namespace Strada.Core.DI.AutoBinding
 
         private static AutoBindingEntry TryCreateEntry(Type type)
         {
-            // Check [AutoRegister]
             var autoReg = type.GetCustomAttribute<AutoRegisterAttribute>();
             if (autoReg != null)
             {
@@ -105,7 +103,6 @@ namespace Strada.Core.DI.AutoBinding
                 };
             }
 
-            // Check [AutoRegisterSingleton]
             var singleton = type.GetCustomAttribute<AutoRegisterSingletonAttribute>();
             if (singleton != null)
             {
@@ -119,7 +116,6 @@ namespace Strada.Core.DI.AutoBinding
                 };
             }
 
-            // Check [AutoRegisterTransient]
             var transient = type.GetCustomAttribute<AutoRegisterTransientAttribute>();
             if (transient != null)
             {
@@ -133,7 +129,6 @@ namespace Strada.Core.DI.AutoBinding
                 };
             }
 
-            // Check [AutoRegisterScoped]
             var scoped = type.GetCustomAttribute<AutoRegisterScopedAttribute>();
             if (scoped != null)
             {
@@ -147,7 +142,6 @@ namespace Strada.Core.DI.AutoBinding
                 };
             }
 
-            // Check legacy [StradaService]
             var stradaService = type.GetCustomAttribute<StradaServiceAttribute>();
             if (stradaService != null)
             {

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Strada.Core.ECS;
+using Strada.Core.ECS.World;
 using Strada.Core.Editor.DataProviders.Models;
 using Strada.Core.Editor.Profiling;
 using UnityEditor;
@@ -18,23 +19,19 @@ namespace Strada.Core.Editor.Windows
     /// </summary>
     public class SystemProfilerWindow : EditorWindow
     {
-        // Threshold settings
         private float _warningThresholdMs = 1.0f;
         private float _criticalThresholdMs = 5.0f;
-        
-        // Recording state
+
         private SystemProfiler _profiler;
         private bool _isRecording;
         private double _lastUpdateTime;
         private float _updateInterval = 0.1f;
-        
-        // UI state
+
         private Vector2 _scrollPosition;
         private Dictionary<UpdatePhase, bool> _phaseFoldouts;
         private Dictionary<Type, bool> _systemDetailFoldouts;
         private string _searchFilter = "";
-        
-        // Styles
+
         private GUIStyle _headerStyle;
         private GUIStyle _phaseHeaderStyle;
         private GUIStyle _systemRowStyle;
@@ -42,8 +39,7 @@ namespace Strada.Core.Editor.Windows
         private GUIStyle _warningStyle;
         private GUIStyle _criticalStyle;
         private bool _stylesInitialized;
-        
-        // Colors
+
         private readonly Color _normalColor = new Color(0.7f, 0.9f, 0.7f);
         private readonly Color _warningColor = new Color(1.0f, 0.85f, 0.4f);
         private readonly Color _criticalColor = new Color(1.0f, 0.4f, 0.4f);
@@ -69,7 +65,6 @@ namespace Strada.Core.Editor.Windows
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
         }
 
-        
         private void OnDisable()
         {
             EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
@@ -145,8 +140,7 @@ namespace Strada.Core.Editor.Windows
         private void DrawToolbar()
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
-            
-            // Record button
+
             var recordIcon = _isRecording ? "●" : "○";
             var recordColor = _isRecording ? Color.red : Color.gray;
             var prevColor = GUI.contentColor;
@@ -158,34 +152,29 @@ namespace Strada.Core.Editor.Windows
             }
             
             GUI.contentColor = prevColor;
-            
-            // Stop button
+
             EditorGUI.BeginDisabledGroup(!_isRecording);
             if (GUILayout.Button("Stop", EditorStyles.toolbarButton, GUILayout.Width(45)))
             {
                 StopRecording();
             }
             EditorGUI.EndDisabledGroup();
-            
-            // Clear button
+
             if (GUILayout.Button("Clear", EditorStyles.toolbarButton, GUILayout.Width(45)))
             {
                 ClearSamples();
             }
             
             GUILayout.Space(10);
-            
-            // Refresh interval
+
             GUILayout.Label("Interval:", GUILayout.Width(50));
             _updateInterval = EditorGUILayout.Slider(_updateInterval, 0.05f, 1.0f, GUILayout.Width(100));
             
             GUILayout.FlexibleSpace();
-            
-            // Search filter
+
             GUILayout.Label("Filter:", GUILayout.Width(40));
             _searchFilter = EditorGUILayout.TextField(_searchFilter, EditorStyles.toolbarSearchField, GUILayout.Width(150));
-            
-            // Export button
+
             if (GUILayout.Button("Export JSON", EditorStyles.toolbarButton, GUILayout.Width(80)))
             {
                 ExportToJson();
@@ -194,7 +183,6 @@ namespace Strada.Core.Editor.Windows
             EditorGUILayout.EndHorizontal();
         }
 
-        
         private void DrawPlayModeMessage()
         {
             GUILayout.Space(50);
@@ -250,10 +238,9 @@ namespace Strada.Core.Editor.Windows
             GUILayout.Label("ms", GUILayout.Width(25));
             
             GUI.backgroundColor = prevColor;
-            
+
             GUILayout.FlexibleSpace();
-            
-            // Legend
+
             DrawColorLegend();
             
             EditorGUILayout.EndHorizontal();
@@ -283,25 +270,22 @@ namespace Strada.Core.Editor.Windows
             foreach (UpdatePhase phase in Enum.GetValues(typeof(UpdatePhase)))
             {
                 var phaseMetrics = metricsByPhase[phase];
-                
-                // Apply search filter
+
                 if (!string.IsNullOrEmpty(_searchFilter))
                 {
                     phaseMetrics = phaseMetrics
                         .Where(m => m.SystemType.Name.IndexOf(_searchFilter, StringComparison.OrdinalIgnoreCase) >= 0)
                         .ToList();
                 }
-                
+
                 if (phaseMetrics.Count == 0 && string.IsNullOrEmpty(_searchFilter))
                 {
-                    // Show empty phase with placeholder
                     DrawPhaseHeader(phase, 0, 0);
                     continue;
                 }
                 
                 if (phaseMetrics.Count == 0) continue;
-                
-                // Calculate phase total
+
                 double phaseTotal = phaseMetrics.Sum(m => m.LastExecutionMs);
                 
                 DrawPhaseHeader(phase, phaseMetrics.Count, phaseTotal);
@@ -316,7 +300,6 @@ namespace Strada.Core.Editor.Windows
             }
         }
 
-        
         private void DrawPhaseHeader(UpdatePhase phase, int systemCount, double totalMs)
         {
             EditorGUILayout.BeginHorizontal();
@@ -339,8 +322,7 @@ namespace Strada.Core.Editor.Windows
             GUI.contentColor = prevContentColor;
             
             EditorGUILayout.EndHorizontal();
-            
-            // Draw separator line
+
             var rect = GUILayoutUtility.GetRect(1, 1);
             EditorGUI.DrawRect(rect, new Color(0.5f, 0.5f, 0.5f, 0.5f));
         }
@@ -352,10 +334,9 @@ namespace Strada.Core.Editor.Windows
             GUI.backgroundColor = new Color(thresholdColor.r, thresholdColor.g, thresholdColor.b, 0.3f);
             
             EditorGUILayout.BeginVertical(_systemRowStyle);
-            
+
             EditorGUILayout.BeginHorizontal();
-            
-            // System name with foldout for details
+
             if (!_systemDetailFoldouts.ContainsKey(metrics.SystemType))
             {
                 _systemDetailFoldouts[metrics.SystemType] = false;
@@ -367,22 +348,18 @@ namespace Strada.Core.Editor.Windows
                 true);
             
             GUILayout.FlexibleSpace();
-            
-            // Current execution time with color coding
+
             var prevContentColor = GUI.contentColor;
             GUI.contentColor = thresholdColor;
             GUILayout.Label($"{metrics.LastExecutionMs:F3} ms", EditorStyles.boldLabel, GUILayout.Width(80));
             GUI.contentColor = prevContentColor;
-            
-            // Sample count
+
             GUILayout.Label($"({metrics.SampleCount} samples)", EditorStyles.miniLabel, GUILayout.Width(80));
             
             EditorGUILayout.EndHorizontal();
-            
-            // Draw timing bar
+
             DrawTimingBar(metrics.LastExecutionMs);
-            
-            // Detailed metrics (expandable)
+
             if (_systemDetailFoldouts[metrics.SystemType])
             {
                 DrawDetailedMetrics(metrics);
@@ -398,18 +375,15 @@ namespace Strada.Core.Editor.Windows
             var rect = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.Height(4));
             rect.x += 5;
             rect.width -= 10;
-            
-            // Background
+
             EditorGUI.DrawRect(rect, new Color(0.2f, 0.2f, 0.2f));
-            
-            // Calculate bar width (max at critical threshold * 2)
+
             float maxMs = _criticalThresholdMs * 2;
             float ratio = Mathf.Clamp01((float)(executionTimeMs / maxMs));
             
             var barRect = new Rect(rect.x, rect.y, rect.width * ratio, rect.height);
             EditorGUI.DrawRect(barRect, GetThresholdColor(executionTimeMs));
-            
-            // Draw threshold markers
+
             float warningX = rect.x + rect.width * (_warningThresholdMs / maxMs);
             float criticalX = rect.x + rect.width * (_criticalThresholdMs / maxMs);
             
@@ -435,7 +409,6 @@ namespace Strada.Core.Editor.Windows
             EditorGUILayout.EndVertical();
         }
 
-        
         private Color GetThresholdColor(double executionTimeMs)
         {
             var level = ThresholdClassifier.Classify(executionTimeMs, _warningThresholdMs, _criticalThresholdMs);
@@ -518,9 +491,7 @@ namespace Strada.Core.Editor.Windows
         private void RefreshSystemList()
         {
             if (World.Current == null) return;
-            
-            // Get systems from the world's scheduler via reflection
-            // since SystemScheduler doesn't expose systems directly
+
             var scheduler = World.Current.SystemScheduler;
             if (scheduler == null) return;
             
@@ -539,8 +510,8 @@ namespace Strada.Core.Editor.Windows
                         {
                             var systems = systemsByPhase[phaseIndex];
                             if (systems == null) continue;
-                            
-                            var phase = ConvertToEditorPhase((Strada.Core.ECS.UpdatePhase)phaseIndex);
+
+                            var phase = ConvertToEditorPhase((ECS.World.UpdatePhase)phaseIndex);
                             
                             foreach (var system in systems)
                             {
@@ -559,14 +530,14 @@ namespace Strada.Core.Editor.Windows
             }
         }
         
-        private UpdatePhase ConvertToEditorPhase(Strada.Core.ECS.UpdatePhase runtimePhase)
+        private UpdatePhase ConvertToEditorPhase(ECS.World.UpdatePhase runtimePhase)
         {
             return runtimePhase switch
             {
-                Strada.Core.ECS.UpdatePhase.Initialization => UpdatePhase.PreUpdate,
-                Strada.Core.ECS.UpdatePhase.Update => UpdatePhase.Update,
-                Strada.Core.ECS.UpdatePhase.LateUpdate => UpdatePhase.LateUpdate,
-                Strada.Core.ECS.UpdatePhase.FixedUpdate => UpdatePhase.FixedUpdate,
+                ECS.World.UpdatePhase.Initialization => UpdatePhase.PreUpdate,
+                ECS.World.UpdatePhase.Update => UpdatePhase.Update,
+                ECS.World.UpdatePhase.LateUpdate => UpdatePhase.LateUpdate,
+                ECS.World.UpdatePhase.FixedUpdate => UpdatePhase.FixedUpdate,
                 _ => UpdatePhase.Update
             };
         }
@@ -595,14 +566,11 @@ namespace Strada.Core.Editor.Windows
                         {
                             var systems = systemsByPhase[phaseIndex];
                             if (systems == null) continue;
-                            
+
                             foreach (ISystem system in systems)
                             {
                                 if (system == null) continue;
-                                
-                                // Simulate timing capture (in real implementation, 
-                                // this would hook into actual system execution)
-                                // For now, we estimate based on entity count
+
                                 var entityCount = World.Current?.EntityManager?.EntityCount ?? 0;
                                 var baseTime = 0.01 + UnityEngine.Random.Range(0f, 0.1f);
                                 var scaledTime = baseTime + entityCount * 0.00001;
@@ -619,7 +587,6 @@ namespace Strada.Core.Editor.Windows
             }
         }
 
-        
         private void ExportToJson()
         {
             var path = EditorUtility.SaveFilePanel(

@@ -27,8 +27,7 @@ namespace Strada.Core.Editor.HotReload
                 MessageType.Info);
             
             EditorGUILayout.Space(10);
-            
-            // Enable/Disable toggle
+
             var enabled = EditorGUILayout.Toggle(
                 new GUIContent("Enable Hot Reload", "When enabled, config changes during Play Mode will be automatically applied."),
                 HotReloadManager.IsEnabled);
@@ -39,8 +38,7 @@ namespace Strada.Core.Editor.HotReload
             }
             
             EditorGUILayout.Space(5);
-            
-            // Notifications toggle
+
             var notifications = EditorGUILayout.Toggle(
                 new GUIContent("Show Notifications", "Display console messages when configs are reloaded."),
                 HotReloadManager.NotificationsEnabled);
@@ -51,8 +49,7 @@ namespace Strada.Core.Editor.HotReload
             }
             
             EditorGUILayout.Space(15);
-            
-            // Status section
+
             EditorGUILayout.LabelField("Status", EditorStyles.boldLabel);
             EditorGUILayout.Space(5);
             
@@ -62,8 +59,7 @@ namespace Strada.Core.Editor.HotReload
                 EditorGUILayout.Toggle("Processing", HotReloadManager.IsProcessing);
                 EditorGUILayout.IntField("Pending Changes", HotReloadManager.PendingChangeCount);
             }
-            
-            // Last reload info
+
             var lastState = HotReloadManager.LastReloadState;
             if (lastState.HasActivity)
             {
@@ -89,8 +85,7 @@ namespace Strada.Core.Editor.HotReload
             }
             
             EditorGUILayout.Space(15);
-            
-            // Dependency tracking section
+
             EditorGUILayout.LabelField("Dependency Tracking", EditorStyles.boldLabel);
             EditorGUILayout.Space(5);
             
@@ -111,8 +106,7 @@ namespace Strada.Core.Editor.HotReload
             }
             
             EditorGUILayout.Space(15);
-            
-            // Actions
+
             EditorGUILayout.LabelField("Actions", EditorStyles.boldLabel);
             EditorGUILayout.Space(5);
             

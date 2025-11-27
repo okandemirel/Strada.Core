@@ -4,7 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Strada.Core.Communication;
-using Strada.Core.ECS;
+using Strada.Core.ECS.World;
 using Strada.Core.Editor.DataProviders.Models;
 using UnityEngine;
 
@@ -53,8 +53,6 @@ namespace Strada.Core.Editor.DataProviders
         {
             if (_isLogging) return;
             _isLogging = true;
-            // Note: Actual interception would require modifying StradaBus
-            // or using a wrapper. For now, we provide the infrastructure.
         }
 
         /// <summary>
@@ -120,7 +118,6 @@ namespace Strada.Core.Editor.DataProviders
             if (string.IsNullOrEmpty(pattern)) return true;
             if (string.IsNullOrEmpty(typeName)) return false;
 
-            // If pattern contains wildcards, use regex matching
             if (pattern.Contains("*") || pattern.Contains("?"))
             {
                 try
@@ -132,12 +129,10 @@ namespace Strada.Core.Editor.DataProviders
                 }
                 catch
                 {
-                    // Fallback to simple contains if regex fails
                     return typeName.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0;
                 }
             }
 
-            // Simple partial match (case-insensitive)
             return typeName.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
@@ -151,8 +146,7 @@ namespace Strada.Core.Editor.DataProviders
             try
             {
                 var bus = World.Current.MessageBus;
-                
-                // Use reflection to call GetSubscriberCount<T>
+
                 var method = typeof(MessageBus).GetMethod("GetSubscriberCount");
                 if (method != null)
                 {
@@ -176,7 +170,6 @@ namespace Strada.Core.Editor.DataProviders
             {
                 _logEntries.Add(entry);
 
-                // Enforce max log size
                 while (_logEntries.Count > MaxLogEntries)
                 {
                     _logEntries.RemoveAt(0);
@@ -256,7 +249,6 @@ namespace Strada.Core.Editor.DataProviders
                 var handlers = (object[])handlersField.GetValue(bus);
                 var maxId = (int)maxIdField.GetValue(bus);
 
-                // Get the command type ID
                 var typeIdType = busType.GetNestedType("CommandTypeId`1", BindingFlags.NonPublic)
                     ?.MakeGenericType(commandType);
                 
@@ -298,7 +290,6 @@ namespace Strada.Core.Editor.DataProviders
 
             if (state == UnityEditor.PlayModeStateChange.ExitingPlayMode)
             {
-                // Clear log when exiting play mode
                 lock (_logLock)
                 {
                     _logEntries.Clear();

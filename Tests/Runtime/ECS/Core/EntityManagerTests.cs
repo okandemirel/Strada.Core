@@ -1,7 +1,8 @@
 using NUnit.Framework;
 using Strada.Core.ECS;
+using Strada.Core.ECS.Core;
 
-namespace Strada.Core.Tests.Runtime.ECS.Core
+namespace Strada.Core.Tests.Tests.Runtime.ECS.Core
 {
     [TestFixture]
     public class EntityManagerTests

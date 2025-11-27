@@ -7,7 +7,7 @@ using Strada.Core.DI;
 using Strada.Core.Modules;
 using Strada.Core.MVCS;
 
-namespace Strada.Core.Tests.Runtime.Performance
+namespace Strada.Core.Tests.Tests.Runtime.Performance
 {
     [TestFixture]
     [Category("Performance")]

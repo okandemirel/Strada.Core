@@ -3,7 +3,7 @@ using NUnit.Framework;
 using Strada.Core.Commands;
 using Strada.Core.Communication;
 
-namespace Strada.Core.Tests.Runtime.Commands
+namespace Strada.Core.Tests.Tests.Runtime.Commands
 {
     [TestFixture]
     public class CommandBusTests

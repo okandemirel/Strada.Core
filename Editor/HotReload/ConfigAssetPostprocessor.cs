@@ -1,6 +1,6 @@
+using Strada.Core.Data;
 using UnityEditor;
 using UnityEngine;
-using Strada.Core.Data;
 
 namespace Strada.Core.Editor.HotReload
 {
@@ -19,17 +19,14 @@ namespace Strada.Core.Editor.HotReload
             string[] movedAssets,
             string[] movedFromAssetPaths)
         {
-            // Only process during Play Mode when hot reload is enabled
             if (!Application.isPlaying || !HotReloadManager.IsEnabled)
                 return;
-            
-            // Process imported/modified assets
+
             foreach (var assetPath in importedAssets)
             {
                 ProcessAssetChange(assetPath);
             }
-            
-            // Process moved assets (they might have been renamed)
+
             foreach (var assetPath in movedAssets)
             {
                 ProcessAssetChange(assetPath);
@@ -38,17 +35,14 @@ namespace Strada.Core.Editor.HotReload
         
         private static void ProcessAssetChange(string assetPath)
         {
-            // Only process ScriptableObject assets
             if (!assetPath.EndsWith(".asset"))
                 return;
-            
+
             var asset = AssetDatabase.LoadAssetAtPath<ScriptableObject>(assetPath);
-            
-            // Check if it's a CD_ prefixed config
+
             if (asset == null || !asset.name.StartsWith("CD_"))
                 return;
-            
-            // Check if it's a ConfigData type
+
             if (asset is ConfigData config)
             {
                 HotReloadManager.QueueConfigChange(assetPath, config);
@@ -67,20 +61,18 @@ namespace Strada.Core.Editor.HotReload
         /// </summary>
         private static string[] OnWillSaveAssets(string[] paths)
         {
-            // Only process during Play Mode when hot reload is enabled
             if (!Application.isPlaying || !HotReloadManager.IsEnabled)
                 return paths;
-            
+
             foreach (var path in paths)
             {
                 if (!path.EndsWith(".asset"))
                     continue;
-                
+
                 var asset = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
-                
+
                 if (asset != null && asset.name.StartsWith("CD_") && asset is ConfigData config)
                 {
-                    // Queue for processing after save completes
                     EditorApplication.delayCall += () =>
                     {
                         if (Application.isPlaying && HotReloadManager.IsEnabled)

@@ -2,7 +2,7 @@ using System;
 using FsCheck;
 using Strada.Core.ECS;
 
-namespace Strada.Core.Tests.Runtime.Generators
+namespace Strada.Core.Tests.Tests.Runtime.Generators
 {
     /// <summary>
     /// FsCheck generators for Entity type.
@@ -46,10 +46,9 @@ namespace Strada.Core.Tests.Runtime.Generators
         {
             var entities = new Entity[count];
             var usedIndices = new System.Collections.Generic.HashSet<int>();
-            
+
             for (int i = 0; i < count; i++)
             {
-                // Ensure unique indices by offsetting if collision
                 int index = indices[i];
                 while (usedIndices.Contains(index))
                 {
@@ -58,7 +57,7 @@ namespace Strada.Core.Tests.Runtime.Generators
                 usedIndices.Add(index);
                 entities[i] = new Entity(index, versions[i]);
             }
-            
+
             return entities;
         }
 
@@ -75,10 +74,10 @@ namespace Strada.Core.Tests.Runtime.Generators
         {
             if (entity.Index > 1)
                 yield return new Entity(entity.Index / 2, entity.Version);
-            
+
             if (entity.Version > 1)
                 yield return new Entity(entity.Index, entity.Version / 2);
-            
+
             if (entity.Index > 1 && entity.Version > 1)
                 yield return new Entity(entity.Index / 2, entity.Version / 2);
         }

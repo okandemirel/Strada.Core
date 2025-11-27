@@ -1,7 +1,7 @@
 using NUnit.Framework;
 using Strada.Core.Services;
 
-namespace Strada.Core.Tests.Runtime.Services
+namespace Strada.Core.Tests.Tests.Runtime.Services
 {
     [TestFixture]
     public sealed class TimerServiceTests

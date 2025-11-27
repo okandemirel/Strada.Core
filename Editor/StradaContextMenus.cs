@@ -1,9 +1,9 @@
 using System.IO;
 using System.Linq;
+using Strada.Core.Editor.Templates;
+using Strada.Core.Editor.Windows;
 using UnityEditor;
 using UnityEngine;
-using Strada.Core.Editor.Windows;
-using Strada.Core.Editor.Templates;
 
 namespace Strada.Core.Editor
 {
@@ -13,8 +13,6 @@ namespace Strada.Core.Editor
     /// </summary>
     public static class StradaContextMenus
     {
-        #region Hierarchy Context Menu (MonoBehaviour)
-
         /// <summary>
         /// Context menu item for inspecting a MonoBehaviour's Strada bindings.
         /// </summary>
@@ -24,7 +22,6 @@ namespace Strada.Core.Editor
             var target = command.context as MonoBehaviour;
             if (target == null) return;
 
-            // Check if this is a ViewMediator or has Strada components
             var type = target.GetType();
             
             if (type.Name.Contains("ViewMediator") || type.Name.Contains("Mediator"))
@@ -74,19 +71,16 @@ namespace Strada.Core.Editor
                 controllerName = viewName + "Controller";
             }
 
-            // Get the script's folder
             var script = MonoScript.FromMonoBehaviour(target);
             var scriptPath = AssetDatabase.GetAssetPath(script);
             var folderPath = Path.GetDirectoryName(scriptPath);
-            
-            // Navigate to Controllers folder if possible
+
             var controllersPath = folderPath?.Replace("Views", "Controllers");
             if (controllersPath != null && !Directory.Exists(controllersPath))
             {
                 controllersPath = folderPath;
             }
 
-            // Create the controller
             var namespaceName = target.GetType().Namespace ?? "Game";
             StradaTemplates.CreateFileFromTemplate(
                 TemplateContextDetector.TemplateType.Controller,
@@ -104,15 +98,10 @@ namespace Strada.Core.Editor
         {
             var target = command.context as MonoBehaviour;
             if (target == null) return false;
-            
-            // Only show for View-like components
+
             var typeName = target.GetType().Name;
             return typeName.Contains("View") || typeName.Contains("Mediator");
         }
-
-        #endregion
-
-        #region Project Window Context Menu (Folders)
 
         /// <summary>
         /// Context menu for creating a new Strada module in the selected folder.
@@ -126,12 +115,9 @@ namespace Strada.Core.Editor
                 folderPath = "Assets/Modules";
             }
 
-            // Open the module generator with the selected path
             var window = EditorWindow.GetWindow<StradaModuleGeneratorWindow>("Create Module");
             window.Show();
-            
-            // Note: The window would need to be modified to accept an initial path
-            // For now, we just open it and let the user configure
+
             Debug.Log($"[Strada] Creating module in: {folderPath}");
         }
 
@@ -151,7 +137,6 @@ namespace Strada.Core.Editor
             var moduleName = Path.GetFileName(folderPath);
             var issues = new System.Collections.Generic.List<string>();
 
-            // Check for required files
             var requiredFiles = new[]
             {
                 $"{moduleName}Module.cs",
@@ -163,7 +148,6 @@ namespace Strada.Core.Editor
                 var filePath = Path.Combine(folderPath, file);
                 if (!File.Exists(filePath))
                 {
-                    // Also check in Scripts folder
                     var scriptsPath = Path.Combine(folderPath, "Scripts", file);
                     if (!File.Exists(scriptsPath))
                     {
@@ -172,7 +156,6 @@ namespace Strada.Core.Editor
                 }
             }
 
-            // Check for recommended folders
             var recommendedFolders = new[]
             {
                 "Scripts/Controllers",
@@ -214,8 +197,7 @@ namespace Strada.Core.Editor
         {
             var folderPath = GetSelectedFolderPath();
             if (string.IsNullOrEmpty(folderPath)) return false;
-            
-            // Check if this looks like a module folder
+
             var folderName = Path.GetFileName(folderPath);
             return folderName.EndsWith("Module") || 
                    Directory.Exists(Path.Combine(folderPath, "Scripts"));
@@ -231,10 +213,6 @@ namespace Strada.Core.Editor
             StradaConfigDataManagerWindow.ShowWindow();
             Debug.Log($"[Strada] Opening Config Manager for: {folderPath}");
         }
-
-        #endregion
-
-        #region ScriptableObject Context Menu
 
         /// <summary>
         /// Context menu for validating a CD_ config asset.
@@ -304,10 +282,6 @@ namespace Strada.Core.Editor
             return selected != null && selected.name.StartsWith("CD_");
         }
 
-        #endregion
-
-        #region Helper Methods
-
         /// <summary>
         /// Gets the currently selected folder path in the Project window.
         /// </summary>
@@ -337,7 +311,5 @@ namespace Strada.Core.Editor
 
             return "Assets";
         }
-
-        #endregion
     }
 }

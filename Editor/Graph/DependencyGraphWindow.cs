@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Strada.Core.DI;
 using Strada.Core.Editor.DataProviders;
-using Strada.Core.Editor.DataProviders.Models;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -50,13 +49,10 @@ namespace Strada.Core.Editor.Graph
             var root = rootVisualElement;
             root.Clear();
 
-            // Create toolbar
             CreateToolbar(root);
 
-            // Create cycle warning banner (hidden by default)
             CreateCycleWarningBanner(root);
 
-            // Create graph view
             _graphView = new DependencyGraphView();
             _graphView.style.flexGrow = 1;
             _graphView.OnNodeSelected += OnNodeSelected;
@@ -64,10 +60,8 @@ namespace Strada.Core.Editor.Graph
             _graphView.OnGraphRefreshed += OnGraphRefreshed;
             root.Add(_graphView);
 
-            // Create status bar
             CreateStatusBar(root);
 
-            // Initial refresh
             RefreshGraph();
         }
 
@@ -85,12 +79,10 @@ namespace Strada.Core.Editor.Graph
             _toolbar.style.borderBottomWidth = 1;
             _toolbar.style.borderBottomColor = new Color(0.1f, 0.1f, 0.1f);
 
-            // Refresh button
             var refreshButton = new Button(RefreshGraph) { text = "Refresh" };
             refreshButton.style.marginRight = 8;
             _toolbar.Add(refreshButton);
 
-            // Lifetime filter dropdown
             var filterLabel = new Label("Filter:");
             filterLabel.style.marginRight = 4;
             _toolbar.Add(filterLabel);
@@ -107,22 +99,18 @@ namespace Strada.Core.Editor.Graph
             _lifetimeFilter.RegisterValueChangedCallback(OnLifetimeFilterChanged);
             _toolbar.Add(_lifetimeFilter);
 
-            // Frame All button
             var frameAllButton = new Button(() => _graphView?.FrameAll()) { text = "Frame All" };
             frameAllButton.style.marginRight = 8;
             _toolbar.Add(frameAllButton);
 
-            // Clear Highlights button
             var clearHighlightsButton = new Button(() => _graphView?.ClearHighlights()) { text = "Clear Highlights" };
             clearHighlightsButton.style.marginRight = 8;
             _toolbar.Add(clearHighlightsButton);
 
-            // Spacer
             var spacer = new VisualElement();
             spacer.style.flexGrow = 1;
             _toolbar.Add(spacer);
 
-            // Search field
             var searchContainer = new VisualElement();
             searchContainer.style.flexDirection = FlexDirection.Row;
             searchContainer.style.alignItems = Align.Center;
@@ -233,7 +221,6 @@ namespace Strada.Core.Editor.Graph
 
         private void OnGraphRefreshed()
         {
-            // Update cycle warning
             if (_graphView.HasCycle && _graphView.CyclePath != null)
             {
                 _cycleWarningBanner.style.display = DisplayStyle.Flex;
@@ -250,10 +237,8 @@ namespace Strada.Core.Editor.Graph
                 _cycleWarningBanner.style.display = DisplayStyle.None;
             }
 
-            // Update status
             _statusLabel.text = $"Last refresh: {DateTime.Now:HH:mm:ss}";
-            
-            // Update node count (we'd need to expose this from the graph view)
+
             var provider = ContainerDataProvider.Instance;
             if (provider.IsAvailable)
             {
@@ -286,7 +271,6 @@ namespace Strada.Core.Editor.Graph
             }
             else if (results.Count > 1)
             {
-                // Highlight all matching nodes
                 _graphView.ClearHighlights();
                 foreach (var node in results)
                 {
@@ -314,14 +298,12 @@ namespace Strada.Core.Editor.Graph
 
         private void OnNodeHovered(ServiceNode node)
         {
-            // Could show tooltip or update status
         }
 
         private void OnPlayModeStateChanged(PlayModeStateChange state)
         {
             if (state == PlayModeStateChange.EnteredPlayMode)
             {
-                // Delay refresh to allow container initialization
                 EditorApplication.delayCall += RefreshGraph;
             }
             else if (state == PlayModeStateChange.ExitingPlayMode)
@@ -332,8 +314,7 @@ namespace Strada.Core.Editor.Graph
 
         private void Update()
         {
-            // Auto-refresh during Play Mode
-            if (Application.isPlaying && 
+            if (Application.isPlaying &&
                 EditorApplication.timeSinceStartup - _lastRefreshTime > _refreshInterval)
             {
                 RefreshGraph();

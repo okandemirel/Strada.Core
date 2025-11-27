@@ -1,10 +1,10 @@
 using System;
 using System.Runtime.CompilerServices;
+using Strada.Core.ECS.Core;
 using Strada.Core.ECS.Storage;
 
 namespace Strada.Core.ECS.Query
 {
-    // Extended delegates for 4-8 component queries
     public delegate void QueryDelegate<T1, T2, T3, T4>(int entityIndex, ref T1 c1, ref T2 c2, ref T3 c3, ref T4 c4)
         where T1 : unmanaged where T2 : unmanaged where T3 : unmanaged where T4 : unmanaged;
 

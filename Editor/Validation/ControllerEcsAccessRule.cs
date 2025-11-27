@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Strada.Core.ECS;
+using Strada.Core.ECS.Core;
 using Strada.Core.MVCS;
 
 namespace Strada.Core.Editor.Validation
@@ -17,14 +18,12 @@ namespace Strada.Core.Editor.Validation
         public string RuleName => "Controller ECS Access";
         public string Description => "Controllers should not directly access EntityManager or World; use the Bridge layer instead";
 
-        // Types that Controllers should not directly reference
         private static readonly Type[] ForbiddenTypes = new[]
         {
             typeof(EntityManager),
             typeof(Entity),
         };
 
-        // Type names to check (for types that might not be directly accessible)
         private static readonly string[] ForbiddenTypeNames = new[]
         {
             "EntityManager",
@@ -44,7 +43,6 @@ namespace Strada.Core.Editor.Validation
 
         public IEnumerable<ValidationIssue> Validate(Type type)
         {
-            // Check fields
             var fields = type.GetFields(BindingFlags.Instance | BindingFlags.Static | 
                                         BindingFlags.Public | BindingFlags.NonPublic);
             foreach (var field in fields)
@@ -58,8 +56,6 @@ namespace Strada.Core.Editor.Validation
                 }
             }
 
-
-            // Check properties
             var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Static | 
                                                 BindingFlags.Public | BindingFlags.NonPublic);
             foreach (var prop in properties)
@@ -73,13 +69,11 @@ namespace Strada.Core.Editor.Validation
                 }
             }
 
-            // Check method parameters and return types
             var methods = type.GetMethods(BindingFlags.Instance | BindingFlags.Static | 
                                           BindingFlags.Public | BindingFlags.NonPublic | 
                                           BindingFlags.DeclaredOnly);
             foreach (var method in methods)
             {
-                // Check return type
                 if (IsEcsType(method.ReturnType))
                 {
                     yield return new ValidationIssue(
@@ -88,7 +82,6 @@ namespace Strada.Core.Editor.Validation
                         "Use ViewMediator or StradaBus to interact with ECS instead of direct access");
                 }
 
-                // Check parameters
                 foreach (var param in method.GetParameters())
                 {
                     if (IsEcsType(param.ParameterType))
@@ -110,28 +103,24 @@ namespace Strada.Core.Editor.Validation
             if (type == null)
                 return false;
 
-            // Check against known forbidden types
             foreach (var forbidden in ForbiddenTypes)
             {
                 if (type == forbidden || type.IsSubclassOf(forbidden))
                     return true;
             }
 
-            // Check type name
             var typeName = type.Name;
             if (ForbiddenTypeNames.Contains(typeName))
                 return true;
 
-            // Check if it's in the ECS namespace (but not IComponent which is allowed via Bridge)
-            if (type.Namespace != null && 
-                type.Namespace.Contains("Strada.Core.ECS") && 
+            if (type.Namespace != null &&
+                type.Namespace.Contains("Strada.Core.ECS") &&
                 !typeof(IComponent).IsAssignableFrom(type) &&
                 type != typeof(IComponent))
             {
                 return true;
             }
 
-            // Check generic type arguments
             if (type.IsGenericType)
             {
                 foreach (var arg in type.GetGenericArguments())

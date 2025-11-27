@@ -2,7 +2,7 @@ using System;
 using FsCheck;
 using Strada.Core.ECS;
 
-namespace Strada.Core.Tests.Runtime.Generators
+namespace Strada.Core.Tests.Tests.Runtime.Generators
 {
     /// <summary>
     /// Test component for property-based testing.
@@ -110,7 +110,7 @@ namespace Strada.Core.Tests.Runtime.Generators
         {
             if (c.Value != 0)
                 yield return new TestComponent(c.Value / 2, c.FloatValue, c.IsActive);
-            
+
             if (Math.Abs(c.FloatValue) > 0.01f)
                 yield return new TestComponent(c.Value, c.FloatValue / 2, c.IsActive);
         }
@@ -119,7 +119,7 @@ namespace Strada.Core.Tests.Runtime.Generators
         {
             if (c.Id > 1)
                 yield return new TestComponent2(c.Id / 2, c.Data);
-            
+
             if (c.Data != 0)
                 yield return new TestComponent2(c.Id, c.Data / 2);
         }
@@ -128,7 +128,7 @@ namespace Strada.Core.Tests.Runtime.Generators
         {
             if (Math.Abs(c.X) > 0.01f)
                 yield return new TestComponent3(c.X / 2, c.Y);
-            
+
             if (Math.Abs(c.Y) > 0.01f)
                 yield return new TestComponent3(c.X, c.Y / 2);
         }

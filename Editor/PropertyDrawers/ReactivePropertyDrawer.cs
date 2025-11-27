@@ -21,7 +21,6 @@ namespace Strada.Core.Editor.PropertyDrawers
         private const float ButtonWidth = 50f;
         private const float Spacing = 4f;
 
-        // Colors for live indicator
         private static readonly Color ActiveSubscribersColor = new Color(0.2f, 0.8f, 0.3f);
         private static readonly Color NoSubscribersColor = new Color(0.8f, 0.6f, 0.2f);
         private static readonly Color InactiveColor = new Color(0.5f, 0.5f, 0.5f);
@@ -42,25 +41,20 @@ namespace Strada.Core.Editor.PropertyDrawers
             int subscriberCount = 0;
             bool hasSubscribers = false;
 
-            // Get subscriber count during Play Mode
             if (isPlaying)
             {
                 subscriberCount = GetSubscriberCount(property);
                 hasSubscribers = subscriberCount > 0;
             }
 
-            // Calculate layout rects
             float currentX = position.x;
-            
-            // Label
+
             var labelRect = new Rect(currentX, position.y, EditorGUIUtility.labelWidth, position.height);
             currentX += EditorGUIUtility.labelWidth + Spacing;
 
-            // Live indicator (circle)
             var indicatorRect = new Rect(currentX, position.y + (position.height - LiveIndicatorWidth) / 2, LiveIndicatorWidth, LiveIndicatorWidth);
             currentX += LiveIndicatorWidth + Spacing;
 
-            // Subscriber count (only in Play Mode)
             Rect subscriberCountRect = default;
             if (isPlaying)
             {
@@ -68,19 +62,14 @@ namespace Strada.Core.Editor.PropertyDrawers
                 currentX += SubscriberCountWidth + Spacing;
             }
 
-            // Notify button
             var buttonRect = new Rect(position.xMax - ButtonWidth, position.y, ButtonWidth, position.height);
-            
-            // Value field (remaining space)
+
             var valueRect = new Rect(currentX, position.y, buttonRect.x - currentX - Spacing, position.height);
 
-            // Draw label
             EditorGUI.LabelField(labelRect, label);
 
-            // Draw live indicator
             DrawLiveIndicator(indicatorRect, isPlaying, hasSubscribers);
 
-            // Draw subscriber count during Play Mode
             if (isPlaying)
             {
                 var countStyle = new GUIStyle(EditorStyles.miniLabel)
@@ -92,7 +81,6 @@ namespace Strada.Core.Editor.PropertyDrawers
                 EditorGUI.LabelField(subscriberCountRect, subscriberCount.ToString(), countStyle);
             }
 
-            // Draw value field
             EditorGUI.BeginChangeCheck();
             EditorGUI.PropertyField(valueRect, valueProperty, GUIContent.none);
             bool changed = EditorGUI.EndChangeCheck();
@@ -103,7 +91,6 @@ namespace Strada.Core.Editor.PropertyDrawers
                 TryNotifyProperty(property);
             }
 
-            // Draw Notify button
             GUI.enabled = isPlaying;
             if (GUI.Button(buttonRect, new GUIContent("Notify", "Force notification to all subscribers with current value")))
             {
@@ -135,32 +122,24 @@ namespace Strada.Core.Editor.PropertyDrawers
                 tooltip = "No subscribers";
             }
 
-            // Draw circular indicator
             var oldColor = GUI.color;
             GUI.color = indicatorColor;
-            
-            // Draw filled circle using a texture or simple rect with rounded appearance
+
             EditorGUI.DrawRect(rect, indicatorColor);
-            
-            // Draw border
+
             var borderColor = new Color(indicatorColor.r * 0.7f, indicatorColor.g * 0.7f, indicatorColor.b * 0.7f);
             DrawRectBorder(rect, borderColor, 1);
             
             GUI.color = oldColor;
 
-            // Add tooltip
             EditorGUI.LabelField(rect, new GUIContent("", tooltip));
         }
 
         private void DrawRectBorder(Rect rect, Color color, float thickness)
         {
-            // Top
             EditorGUI.DrawRect(new Rect(rect.x, rect.y, rect.width, thickness), color);
-            // Bottom
             EditorGUI.DrawRect(new Rect(rect.x, rect.yMax - thickness, rect.width, thickness), color);
-            // Left
             EditorGUI.DrawRect(new Rect(rect.x, rect.y, thickness, rect.height), color);
-            // Right
             EditorGUI.DrawRect(new Rect(rect.xMax - thickness, rect.y, thickness, rect.height), color);
         }
 
@@ -243,7 +222,6 @@ namespace Strada.Core.Editor.PropertyDrawers
         private const float HeaderButtonWidth = 60f;
         private const float Spacing = 2f;
 
-        // Colors for count badge
         private static readonly Color BadgeBackgroundColor = new Color(0.3f, 0.3f, 0.3f);
         private static readonly Color BadgeTextColor = new Color(0.9f, 0.9f, 0.9f);
         private static readonly Color EmptyBadgeColor = new Color(0.6f, 0.6f, 0.6f);
@@ -263,20 +241,16 @@ namespace Strada.Core.Editor.PropertyDrawers
             int count = itemsProperty.arraySize;
             bool isEmpty = count == 0;
 
-            // Header row
             var headerRect = new Rect(position.x, position.y, position.width, EditorGUIUtility.singleLineHeight);
-            
-            // Foldout
+
             var foldoutRect = new Rect(headerRect.x, headerRect.y, EditorGUIUtility.labelWidth - 40, headerRect.height);
             _foldout = EditorGUI.Foldout(foldoutRect, _foldout, label, true);
 
-            // Count badge
             var badgeContent = new GUIContent(count.ToString());
             var badgeWidth = Mathf.Max(24, EditorStyles.miniLabel.CalcSize(badgeContent).x + 8);
             var badgeRect = new Rect(foldoutRect.xMax + 4, headerRect.y + 2, badgeWidth, headerRect.height - 4);
             DrawCountBadge(badgeRect, count, isEmpty);
 
-            // Header buttons (Add, Clear)
             var clearButtonRect = new Rect(headerRect.xMax - HeaderButtonWidth, headerRect.y, HeaderButtonWidth, headerRect.height);
             var addButtonRect = new Rect(clearButtonRect.x - HeaderButtonWidth - Spacing, headerRect.y, HeaderButtonWidth, headerRect.height);
 
@@ -295,7 +269,6 @@ namespace Strada.Core.Editor.PropertyDrawers
                 property.serializedObject.ApplyModifiedProperties();
             }
 
-            // Expanded content
             if (_foldout)
             {
                 EditorGUI.indentLevel++;
@@ -303,7 +276,6 @@ namespace Strada.Core.Editor.PropertyDrawers
 
                 if (isEmpty)
                 {
-                    // Show empty message
                     var emptyRect = new Rect(position.x + 16, position.y + yOffset, position.width - 16, EditorGUIUtility.singleLineHeight);
                     var emptyStyle = new GUIStyle(EditorStyles.centeredGreyMiniLabel);
                     EditorGUI.LabelField(emptyRect, "Collection is empty", emptyStyle);
@@ -311,26 +283,21 @@ namespace Strada.Core.Editor.PropertyDrawers
                 }
                 else
                 {
-                    // Draw elements
                     for (int i = 0; i < count; i++)
                     {
                         var element = itemsProperty.GetArrayElementAtIndex(i);
                         var elementHeight = EditorGUI.GetPropertyHeight(element);
-                        
-                        // Element row
+
                         var rowRect = new Rect(position.x, position.y + yOffset, position.width, elementHeight);
-                        
-                        // Index label
+
                         var indexRect = new Rect(rowRect.x + 16, rowRect.y, 30, EditorGUIUtility.singleLineHeight);
                         var indexStyle = new GUIStyle(EditorStyles.miniLabel) { alignment = TextAnchor.MiddleRight };
                         indexStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
                         EditorGUI.LabelField(indexRect, $"[{i}]", indexStyle);
 
-                        // Element field
                         var elementRect = new Rect(indexRect.xMax + 4, rowRect.y, rowRect.width - indexRect.width - ButtonWidth * 2 - 24, elementHeight);
                         EditorGUI.PropertyField(elementRect, element, GUIContent.none);
 
-                        // Move up button
                         var moveUpRect = new Rect(elementRect.xMax + Spacing, rowRect.y, ButtonWidth, EditorGUIUtility.singleLineHeight);
                         GUI.enabled = i > 0;
                         if (GUI.Button(moveUpRect, new GUIContent("▲", "Move up")))
@@ -340,7 +307,6 @@ namespace Strada.Core.Editor.PropertyDrawers
                         }
                         GUI.enabled = true;
 
-                        // Move down button
                         var moveDownRect = new Rect(moveUpRect.xMax + 1, rowRect.y, ButtonWidth, EditorGUIUtility.singleLineHeight);
                         GUI.enabled = i < count - 1;
                         if (GUI.Button(moveDownRect, new GUIContent("▼", "Move down")))
@@ -350,11 +316,9 @@ namespace Strada.Core.Editor.PropertyDrawers
                         }
                         GUI.enabled = true;
 
-                        // Remove button
                         var removeRect = new Rect(moveDownRect.xMax + Spacing, rowRect.y, ButtonWidth, EditorGUIUtility.singleLineHeight);
                         if (GUI.Button(removeRect, new GUIContent("×", "Remove element")))
                         {
-                            // Store the element before deletion for notification
                             itemsProperty.DeleteArrayElementAtIndex(i);
                             property.serializedObject.ApplyModifiedProperties();
                             break;
@@ -364,7 +328,6 @@ namespace Strada.Core.Editor.PropertyDrawers
                     }
                 }
 
-                // Bottom add button
                 var bottomAddRect = new Rect(position.x + 16, position.y + yOffset, position.width - 16, EditorGUIUtility.singleLineHeight);
                 if (GUI.Button(bottomAddRect, new GUIContent("+ Add Element", "Add new element to collection")))
                 {
@@ -405,9 +368,6 @@ namespace Strada.Core.Editor.PropertyDrawers
 
             var collection = field.GetValue(targetObject);
             if (collection == null) return;
-
-            // The Clear method on ReactiveCollection already notifies, but we call it through serialization
-            // so we need to manually trigger notification if needed
         }
 
         private FieldInfo GetFieldByPath(Type type, string path)
@@ -438,11 +398,11 @@ namespace Strada.Core.Editor.PropertyDrawers
             var itemsProperty = property.FindPropertyRelative("_items");
             if (itemsProperty == null) return EditorGUIUtility.singleLineHeight;
 
-            float height = EditorGUIUtility.singleLineHeight + Spacing; // Header
+            float height = EditorGUIUtility.singleLineHeight + Spacing;
 
             if (itemsProperty.arraySize == 0)
             {
-                height += EditorGUIUtility.singleLineHeight + Spacing; // Empty message
+                height += EditorGUIUtility.singleLineHeight + Spacing;
             }
             else
             {
@@ -452,7 +412,7 @@ namespace Strada.Core.Editor.PropertyDrawers
                 }
             }
 
-            height += EditorGUIUtility.singleLineHeight + Spacing; // Bottom add button
+            height += EditorGUIUtility.singleLineHeight + Spacing;
             return height;
         }
     }

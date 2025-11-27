@@ -1,8 +1,9 @@
 using NUnit.Framework;
 using Strada.Core.ECS;
 using Strada.Core.ECS.Archetypes;
+using Strada.Core.ECS.Core;
 
-namespace Strada.Core.Tests.Runtime.ECS
+namespace Strada.Core.Tests.Tests.Runtime.ECS
 {
     [TestFixture]
     public class ArchetypeTests

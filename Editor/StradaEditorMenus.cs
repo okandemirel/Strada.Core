@@ -1,9 +1,8 @@
-using UnityEditor;
-using UnityEngine;
-using Strada.Core.Editor.Benchmarking;
 using Strada.Core.Editor.Graph;
 using Strada.Core.Editor.HotReload;
 using Strada.Core.Editor.Windows;
+using UnityEditor;
+using UnityEngine;
 
 namespace Strada.Core.Editor
 {
@@ -15,27 +14,12 @@ namespace Strada.Core.Editor
     public static class StradaEditorMenus
     {
         private const string MenuRoot = "Strada/";
-        
-        // Priority ranges:
-        // 0-49: Dashboard and main windows
-        // 50-99: Tools (Module Generator, Config Manager, etc.)
-        // 100-149: Debugger windows
-        // 150-199: Diagnostics and validation
-        // 200-299: Documentation
-        // 300-399: Settings and configuration
-        // 1000+: About and help
-
-        #region Dashboard (Priority 0-49)
 
         [MenuItem(MenuRoot + "Dashboard %#&d", priority = 0)]
         private static void OpenDashboard()
         {
             StradaDashboardWindow.ShowWindow();
         }
-
-        #endregion
-
-        #region Tools (Priority 50-99)
 
         [MenuItem(MenuRoot + "Tools/Create Module... %#n", priority = 50)]
         private static void OpenModuleGenerator()
@@ -119,10 +103,6 @@ namespace Strada.Core.Editor
             }
         }
 
-        #endregion
-
-        #region Debugger (Priority 100-149)
-
         [MenuItem(MenuRoot + "Debugger/Dependency Graph %#d", priority = 100)]
         private static void OpenDependencyGraph()
         {
@@ -159,16 +139,11 @@ namespace Strada.Core.Editor
             BenchmarkRunnerWindow.ShowWindow();
         }
 
-        #endregion
-
-        #region Diagnostics (Priority 150-199)
-
         [MenuItem(MenuRoot + "Diagnostics/Validate Architecture", priority = 160)]
         private static void ValidateArchitecture()
         {
             Debug.Log("[Strada] Architecture validation started...");
-            
-            // Run architecture validation on all scripts
+
             var scripts = AssetDatabase.FindAssets("t:MonoScript");
             int issueCount = 0;
             
@@ -177,10 +152,8 @@ namespace Strada.Core.Editor
                 var path = AssetDatabase.GUIDToAssetPath(guid);
                 if (path.Contains("Strada") || path.Contains("Modules"))
                 {
-                    // Basic validation - check for common issues
                     var content = System.IO.File.ReadAllText(path);
-                    
-                    // Check for Controller accessing ECS directly
+
                     if (path.Contains("Controller") && 
                         (content.Contains("World.Current") || content.Contains("EntityManager")))
                     {
@@ -199,10 +172,6 @@ namespace Strada.Core.Editor
                 Debug.Log("[Strada] Architecture validation passed - no issues found");
             }
         }
-
-        #endregion
-
-        #region Hot Reload (Priority 300-349)
 
         [MenuItem(MenuRoot + "Settings/Hot Reload/Enable Hot Reload", priority = 310)]
         private static void ToggleHotReload()
@@ -237,10 +206,6 @@ namespace Strada.Core.Editor
             SettingsService.OpenProjectSettings("Project/Strada/Hot Reload");
         }
 
-        #endregion
-
-        #region Documentation (Priority 200-299)
-
         [MenuItem(MenuRoot + "Documentation/Open Local Docs", priority = 200)]
         private static void OpenLocalDocumentation()
         {
@@ -269,10 +234,6 @@ namespace Strada.Core.Editor
             }
         }
 
-        #endregion
-
-        #region About and Help (Priority 1000+)
-
         [MenuItem(MenuRoot + "About Strada", priority = 1000)]
         private static void ShowAbout()
         {
@@ -286,21 +247,5 @@ namespace Strada.Core.Editor
                 "© 2025 Strada Framework Team",
                 "OK");
         }
-
-        #endregion
-
-        #region Keyboard Shortcuts Reference
-
-        // Keyboard shortcuts summary:
-        // Ctrl+Shift+Alt+D - Dashboard
-        // Ctrl+Shift+N - Create Module
-        // Ctrl+Shift+C - Config Data Manager
-        // Ctrl+Shift+D - Dependency Graph
-        // Ctrl+Shift+M - Module Graph
-        // Ctrl+Shift+E - Entity Inspector
-        // Ctrl+Shift+P - System Profiler
-        // Ctrl+Shift+B - Bus Debugger
-
-        #endregion
     }
 }

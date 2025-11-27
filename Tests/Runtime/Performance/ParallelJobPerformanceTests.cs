@@ -1,13 +1,11 @@
 using System.Diagnostics;
 using NUnit.Framework;
-using Strada.Core.ECS;
+using Strada.Core.ECS.Core;
 using Strada.Core.ECS.Jobs;
 using Strada.Core.ECS.Query;
-using Strada.Core.ECS.Storage;
 using Unity.Burst;
-using Unity.Jobs;
 
-namespace Strada.Core.Tests.Runtime.Performance
+namespace Strada.Core.Tests.Tests.Runtime.Performance
 {
     [BurstCompile]
     public struct MoveJob : IJobComponent<Position, Velocity>

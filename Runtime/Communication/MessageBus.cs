@@ -46,7 +46,6 @@ namespace Strada.Core.Communication
         int GetSubscriberCount<TEvent>() where TEvent : struct;
         void Clear();
 
-        // Modern async/await support
         ValueTask SendAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default) where TCommand : struct;
         void RegisterAsyncCommandHandler<TCommand>(IAsyncAwaitCommandHandler<TCommand> handler) where TCommand : struct;
         void RegisterAsyncCommandHandler<TCommand>(Func<TCommand, CancellationToken, ValueTask> handler) where TCommand : struct;
@@ -220,8 +219,6 @@ namespace Strada.Core.Communication
             Clear();
         }
 
-        #region Modern Async/Await Support
-
         public async ValueTask SendAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default) where TCommand : struct
         {
             var id = AsyncCommandTypeId<TCommand>.Id;
@@ -287,8 +284,6 @@ namespace Strada.Core.Communication
         {
             public static readonly int Id = Interlocked.Increment(ref _nextTypeId);
         }
-
-        #endregion
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void EnsureCapacity(ref object[] array, int id)

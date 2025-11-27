@@ -4,7 +4,7 @@ using NUnit.Framework;
 using Strada.Core.Commands;
 using Strada.Core.Communication;
 
-namespace Strada.Core.Tests.Runtime.Performance
+namespace Strada.Core.Tests.Tests.Runtime.Performance
 {
     [TestFixture]
     [Category("Performance")]
@@ -33,7 +33,6 @@ namespace Strada.Core.Tests.Runtime.Performance
 
             _bus.RegisterCommandHandler<BenchmarkCommand>(cmd => counter += cmd.Value);
 
-            // Warmup
             for (int i = 0; i < Warmup; i++)
             {
                 _bus.Send(new BenchmarkCommand { Value = 1 });
@@ -66,7 +65,6 @@ namespace Strada.Core.Tests.Runtime.Performance
 
             _bus.RegisterQueryHandler<BenchmarkQuery, int>(q => q.Input * 2);
 
-            // Warmup
             for (int i = 0; i < Warmup; i++)
             {
                 _bus.Query<BenchmarkQuery, int>(new BenchmarkQuery { Input = i });
@@ -100,7 +98,6 @@ namespace Strada.Core.Tests.Runtime.Performance
 
             _bus.Subscribe<BenchmarkEvent>(evt => counter += evt.Value);
 
-            // Warmup
             for (int i = 0; i < Warmup; i++)
             {
                 _bus.Publish(new BenchmarkEvent { Value = 1 });
@@ -138,7 +135,6 @@ namespace Strada.Core.Tests.Runtime.Performance
                 _bus.Subscribe<BenchmarkEvent>(evt => counter += evt.Value);
             }
 
-            // Warmup
             for (int i = 0; i < Warmup; i++)
             {
                 _bus.Publish(new BenchmarkEvent { Value = 1 });
@@ -170,10 +166,8 @@ namespace Strada.Core.Tests.Runtime.Performance
             const int Warmup = 1000;
             int counter = 0;
 
-            // Prewarm pool
             CommandPool<BenchmarkPooledCommand>.Instance.Prewarm(100);
 
-            // Warmup
             for (int i = 0; i < Warmup; i++)
             {
                 var cmd = BenchmarkPooledCommand.Rent();
@@ -203,7 +197,6 @@ namespace Strada.Core.Tests.Runtime.Performance
             Assert.AreEqual(Iterations, counter);
             Assert.Less(sw.ElapsedMilliseconds, 50, "Pooled command execution too slow (Target: <50ms for 100k)");
 
-            // Cleanup
             CommandPool<BenchmarkPooledCommand>.Instance.Clear();
         }
 
@@ -215,7 +208,6 @@ namespace Strada.Core.Tests.Runtime.Performance
 
             Action<BenchmarkEvent> handler = _ => { };
 
-            // Warmup
             for (int i = 0; i < Warmup; i++)
             {
                 _bus.Subscribe(handler);
@@ -273,8 +265,6 @@ namespace Strada.Core.Tests.Runtime.Performance
             Assert.Less(sw.ElapsedMilliseconds, 50, "Mixed operations too slow (Target: <50ms for 10k)");
         }
 
-        #region Benchmark Types
-
         private struct BenchmarkCommand
         {
             public int Value;
@@ -306,7 +296,5 @@ namespace Strada.Core.Tests.Runtime.Performance
                 OnExecuteAction?.Invoke();
             }
         }
-
-        #endregion
     }
 }

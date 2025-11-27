@@ -1,4 +1,4 @@
-namespace Strada.Core
+namespace Strada.Core.Core
 {
     public interface ILoopRunner
     {

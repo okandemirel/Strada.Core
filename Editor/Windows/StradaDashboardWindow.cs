@@ -2,14 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Strada.Core.DI;
-using Strada.Core.ECS;
+using Strada.Core.ECS.World;
 using Strada.Core.Editor.DataProviders;
 using Strada.Core.Editor.DataProviders.Models;
 using Strada.Core.Editor.Graph;
 using Strada.Core.Editor.Profiling;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.UIElements;
 using EditorUpdatePhase = Strada.Core.Editor.DataProviders.Models.UpdatePhase;
 
 namespace Strada.Core.Editor.Windows
@@ -21,60 +20,49 @@ namespace Strada.Core.Editor.Windows
     /// </summary>
     public class StradaDashboardWindow : EditorWindow
     {
-        // Tab indices
         private const int TabDI = 0;
         private const int TabECS = 1;
         private const int TabModules = 2;
         private const int TabBus = 3;
         private const int TabPerformance = 4;
 
-        // Tab names
         private readonly string[] _tabNames = { "DI Container", "ECS World", "Modules", "Bus Activity", "Performance" };
 
-        // Current tab
         private int _selectedTab;
 
-        // Auto-refresh settings
         private bool _autoRefresh = true;
         private float _refreshInterval = 0.5f;
         private double _lastRefreshTime;
 
-        // Data providers
         private ContainerDataProvider _containerProvider;
         private WorldDataProvider _worldProvider;
         private ModuleDataProvider _moduleProvider;
         private BusDataProvider _busProvider;
 
-        // Graph views (embedded)
         private DependencyGraphView _dependencyGraphView;
         private ModuleGraphView _moduleGraphView;
 
-        // Scroll positions for each tab
         private Vector2 _diScrollPosition;
         private Vector2 _ecsScrollPosition;
         private Vector2 _modulesScrollPosition;
         private Vector2 _busScrollPosition;
         private Vector2 _perfScrollPosition;
 
-        // DI Tab state
         private string _diSearchFilter = "";
         private Lifetime? _lifetimeFilter;
         private List<ServiceRegistrationInfo> _filteredRegistrations = new List<ServiceRegistrationInfo>();
         private ServiceNode _hoveredNode;
 
-        // ECS Tab state
         private string _ecsSearchFilter = "";
         private List<int> _filteredEntityIds = new List<int>();
         private int _selectedEntityId = -1;
         private Vector2 _entityListScroll;
         private Vector2 _componentScroll;
 
-        // Modules Tab state
         private string _moduleSearchFilter = "";
         private List<ModuleInfoData> _filteredModules = new List<ModuleInfoData>();
         private ModuleNode _hoveredModuleNode;
 
-        // Bus Tab state
         private string _busTypeFilter = "";
         private MessageKind? _busKindFilter;
         private List<MessageLogEntry> _filteredMessages = new List<MessageLogEntry>();
@@ -82,19 +70,16 @@ namespace Strada.Core.Editor.Windows
         private Vector2 _messageListScroll;
         private Vector2 _messageDetailScroll;
 
-        // Performance Tab state
         private SystemProfiler _profiler;
         private bool _isRecording;
         private float _warningThresholdMs = 1.0f;
         private float _criticalThresholdMs = 5.0f;
 
-        // Styles
         private GUIStyle _headerStyle;
         private GUIStyle _statsBoxStyle;
         private GUIStyle _tabContentStyle;
         private bool _stylesInitialized;
 
-        // Colors
         private readonly Color _singletonColor = new Color(0.4f, 0.8f, 0.4f);
         private readonly Color _transientColor = new Color(1.0f, 0.6f, 0.2f);
         private readonly Color _scopedColor = new Color(0.4f, 0.6f, 0.9f);
@@ -118,7 +103,6 @@ namespace Strada.Core.Editor.Windows
 
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
 
-            // Subscribe to data changes
             _containerProvider.OnDataChanged += OnContainerDataChanged;
             _worldProvider.OnDataChanged += OnWorldDataChanged;
             _moduleProvider.OnDataChanged += OnModuleDataChanged;
@@ -197,7 +181,6 @@ namespace Strada.Core.Editor.Windows
             _stylesInitialized = true;
         }
 
-
         private void OnGUI()
         {
             InitStyles();
@@ -211,7 +194,6 @@ namespace Strada.Core.Editor.Windows
                 return;
             }
 
-            // Tab selection
             var newTab = GUILayout.Toolbar(_selectedTab, _tabNames);
             if (newTab != _selectedTab)
             {
@@ -221,7 +203,6 @@ namespace Strada.Core.Editor.Windows
 
             EditorGUILayout.Space(5);
 
-            // Tab content
             switch (_selectedTab)
             {
                 case TabDI:
@@ -242,13 +223,10 @@ namespace Strada.Core.Editor.Windows
             }
         }
 
-        #region Toolbar and Status Bar
-
         private void DrawToolbar()
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
 
-            // Refresh button
             if (GUILayout.Button("Refresh", EditorStyles.toolbarButton, GUILayout.Width(60)))
             {
                 RefreshAllData();
@@ -256,7 +234,6 @@ namespace Strada.Core.Editor.Windows
 
             GUILayout.Space(10);
 
-            // Auto-refresh toggle
             _autoRefresh = GUILayout.Toggle(_autoRefresh, "Auto Refresh", EditorStyles.toolbarButton, GUILayout.Width(85));
 
             if (_autoRefresh)
@@ -268,7 +245,6 @@ namespace Strada.Core.Editor.Windows
 
             GUILayout.FlexibleSpace();
 
-            // Settings button
             if (GUILayout.Button("Settings", EditorStyles.toolbarButton, GUILayout.Width(60)))
             {
                 ShowSettingsMenu();
@@ -281,7 +257,6 @@ namespace Strada.Core.Editor.Windows
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
 
-            // Play mode indicator
             var playModeIcon = Application.isPlaying ? "●" : "○";
             var playModeColor = Application.isPlaying ? Color.green : Color.gray;
             var prevColor = GUI.contentColor;
@@ -292,7 +267,6 @@ namespace Strada.Core.Editor.Windows
 
             GUILayout.Space(20);
 
-            // Quick stats
             if (Application.isPlaying)
             {
                 DrawQuickStats();
@@ -300,7 +274,6 @@ namespace Strada.Core.Editor.Windows
 
             GUILayout.FlexibleSpace();
 
-            // Last refresh time
             if (_lastRefreshTime > 0)
             {
                 var elapsed = EditorApplication.timeSinceStartup - _lastRefreshTime;
@@ -312,7 +285,6 @@ namespace Strada.Core.Editor.Windows
 
         private void DrawQuickStats()
         {
-            // Container stats
             if (_containerProvider.IsAvailable)
             {
                 var snapshot = _containerProvider.GetData();
@@ -323,7 +295,6 @@ namespace Strada.Core.Editor.Windows
                 }
             }
 
-            // World stats
             if (_worldProvider.IsAvailable)
             {
                 var snapshot = _worldProvider.GetData();
@@ -334,7 +305,6 @@ namespace Strada.Core.Editor.Windows
                 }
             }
 
-            // Module stats
             if (_moduleProvider.IsAvailable)
             {
                 var snapshot = _moduleProvider.GetData();
@@ -345,7 +315,6 @@ namespace Strada.Core.Editor.Windows
                 }
             }
 
-            // Bus stats
             if (_busProvider.IsAvailable)
             {
                 var entries = _busProvider.GetLogEntries();
@@ -413,11 +382,6 @@ namespace Strada.Core.Editor.Windows
             RefreshAllData();
         }
 
-        #endregion
-
-
-        #region DI Container Tab
-
         private void DrawDIContainerTab()
         {
             if (!_containerProvider.IsAvailable)
@@ -426,19 +390,14 @@ namespace Strada.Core.Editor.Windows
                 return;
             }
 
-            // Stats panel
             DrawDIStatsPanel();
 
-            // Filter bar
             DrawDIFilterBar();
 
-            // Split view: registration list and graph
             EditorGUILayout.BeginHorizontal();
 
-            // Left: Registration list
             DrawDIRegistrationList();
 
-            // Right: Quick info panel
             DrawDIQuickInfo();
 
             EditorGUILayout.EndHorizontal();
@@ -474,7 +433,6 @@ namespace Strada.Core.Editor.Windows
 
             GUILayout.FlexibleSpace();
 
-            // Circular dependency warning
             if (_containerProvider.HasCircularDependency(out var cycle))
             {
                 GUI.contentColor = _criticalColor;
@@ -551,21 +509,18 @@ namespace Strada.Core.Editor.Windows
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
 
-            // Lifetime badge
             var lifetimeColor = GetLifetimeColor(reg.Lifetime);
             var prevBg = GUI.backgroundColor;
             GUI.backgroundColor = lifetimeColor;
             GUILayout.Label(reg.Lifetime.ToString().Substring(0, 1), EditorStyles.miniButton, GUILayout.Width(20));
             GUI.backgroundColor = prevBg;
 
-            // Service type
             var typeName = reg.ServiceType.Name;
             if (GUILayout.Button(typeName, EditorStyles.label, GUILayout.Width(180)))
             {
                 NavigateToSource(reg.ServiceType);
             }
 
-            // Implementation type (if different)
             if (reg.ImplementationType != reg.ServiceType)
             {
                 GUILayout.Label("→", GUILayout.Width(20));
@@ -574,13 +529,11 @@ namespace Strada.Core.Editor.Windows
 
             GUILayout.FlexibleSpace();
 
-            // Instance indicator
             if (reg.HasInstance)
             {
                 GUILayout.Label("●", GUILayout.Width(15));
             }
 
-            // Dependencies count
             if (reg.Dependencies.Length > 0)
             {
                 GUILayout.Label($"[{reg.Dependencies.Length}]", EditorStyles.miniLabel, GUILayout.Width(25));
@@ -650,11 +603,6 @@ namespace Strada.Core.Editor.Windows
             }
         }
 
-        #endregion
-
-
-        #region ECS World Tab
-
         private void DrawECSWorldTab()
         {
             if (!_worldProvider.IsAvailable)
@@ -663,19 +611,14 @@ namespace Strada.Core.Editor.Windows
                 return;
             }
 
-            // Stats panel
             DrawECSStatsPanel();
 
-            // Filter bar
             DrawECSFilterBar();
 
-            // Split view: entity list and component inspector
             EditorGUILayout.BeginHorizontal();
 
-            // Left: Entity list
             DrawEntityList();
 
-            // Right: Component details
             DrawComponentDetails();
 
             EditorGUILayout.EndHorizontal();
@@ -744,7 +687,7 @@ namespace Strada.Core.Editor.Windows
             }
             else
             {
-                foreach (var entityId in _filteredEntityIds.Take(100)) // Limit display for performance
+                foreach (var entityId in _filteredEntityIds.Take(100))
                 {
                     var isSelected = entityId == _selectedEntityId;
                     var style = isSelected ? EditorStyles.selectionRect : EditorStyles.label;
@@ -854,7 +797,6 @@ namespace Strada.Core.Editor.Windows
                     }
                     else
                     {
-                        // Search by component type
                         var components = _worldProvider.GetEntityComponents(id);
                         if (components.Any(c => c.ComponentType.Name.IndexOf(_ecsSearchFilter, StringComparison.OrdinalIgnoreCase) >= 0))
                         {
@@ -864,7 +806,6 @@ namespace Strada.Core.Editor.Windows
                 }
             }
 
-            // Clear selection if entity no longer exists
             if (_selectedEntityId >= 0 && !_filteredEntityIds.Contains(_selectedEntityId))
             {
                 _selectedEntityId = -1;
@@ -877,11 +818,6 @@ namespace Strada.Core.Editor.Windows
             return World.Current?.EntityManager?.Store?.GetEntityComponentCount(entityId) ?? 0;
         }
 
-        #endregion
-
-
-        #region Modules Tab
-
         private void DrawModulesTab()
         {
             if (!_moduleProvider.IsAvailable)
@@ -890,19 +826,14 @@ namespace Strada.Core.Editor.Windows
                 return;
             }
 
-            // Stats panel
             DrawModulesStatsPanel();
 
-            // Filter bar
             DrawModulesFilterBar();
 
-            // Split view: module list and initialization order
             EditorGUILayout.BeginHorizontal();
 
-            // Left: Module list
             DrawModuleList();
 
-            // Right: Initialization order and validation
             DrawModuleDetails();
 
             EditorGUILayout.EndHorizontal();
@@ -920,7 +851,6 @@ namespace Strada.Core.Editor.Windows
 
             GUILayout.FlexibleSpace();
 
-            // Circular dependency warning
             if (snapshot.HasCircularDependency)
             {
                 var prevColor = GUI.contentColor;
@@ -989,13 +919,10 @@ namespace Strada.Core.Editor.Windows
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
 
-            // Priority badge
             GUILayout.Label($"[{module.Priority}]", EditorStyles.miniLabel, GUILayout.Width(35));
 
-            // Module name
             GUILayout.Label(module.Name, EditorStyles.boldLabel, GUILayout.Width(180));
 
-            // Dependencies count
             if (module.Dependencies.Count > 0)
             {
                 GUILayout.Label($"Deps: {module.Dependencies.Count}", EditorStyles.miniLabel, GUILayout.Width(60));
@@ -1003,7 +930,6 @@ namespace Strada.Core.Editor.Windows
 
             GUILayout.FlexibleSpace();
 
-            // Initialized indicator
             if (module.IsInitialized)
             {
                 var prevColor = GUI.contentColor;
@@ -1087,11 +1013,6 @@ namespace Strada.Core.Editor.Windows
             }
         }
 
-        #endregion
-
-
-        #region Bus Activity Tab
-
         private void DrawBusActivityTab()
         {
             if (!_busProvider.IsAvailable)
@@ -1100,19 +1021,14 @@ namespace Strada.Core.Editor.Windows
                 return;
             }
 
-            // Controls panel
             DrawBusControlsPanel();
 
-            // Filter bar
             DrawBusFilterBar();
 
-            // Split view: message list and details
             EditorGUILayout.BeginHorizontal();
 
-            // Left: Message list
             DrawMessageList();
 
-            // Right: Message details
             DrawMessageDetails();
 
             EditorGUILayout.EndHorizontal();
@@ -1122,7 +1038,6 @@ namespace Strada.Core.Editor.Windows
         {
             EditorGUILayout.BeginHorizontal(_statsBoxStyle);
 
-            // Logging toggle
             var isLogging = _busProvider.IsLogging;
             var logIcon = isLogging ? "●" : "○";
             var logColor = isLogging ? Color.green : Color.gray;
@@ -1245,7 +1160,6 @@ namespace Strada.Core.Editor.Windows
 
             EditorGUILayout.BeginHorizontal(style);
 
-            // Warning icon for unhandled commands
             if (entry.Kind == MessageKind.Command && !entry.HasHandler)
             {
                 var prevColor = GUI.contentColor;
@@ -1258,17 +1172,14 @@ namespace Strada.Core.Editor.Windows
                 GUILayout.Space(18);
             }
 
-            // Timestamp
             GUILayout.Label(entry.Timestamp.ToString("HH:mm:ss"), EditorStyles.miniLabel, GUILayout.Width(60));
 
-            // Kind badge
             var kindColor = GetMessageKindColor(entry.Kind);
             var prevBg = GUI.backgroundColor;
             GUI.backgroundColor = kindColor;
             GUILayout.Label(GetMessageKindLabel(entry.Kind), EditorStyles.miniButton, GUILayout.Width(35));
             GUI.backgroundColor = prevBg;
 
-            // Type name
             if (GUILayout.Button(entry.MessageType?.Name ?? "Unknown", EditorStyles.label))
             {
                 _selectedMessageIndex = index;
@@ -1390,23 +1301,14 @@ namespace Strada.Core.Editor.Windows
             }
         }
 
-        #endregion
-
-
-        #region Performance Tab
-
         private void DrawPerformanceTab()
         {
-            // Controls panel
             DrawPerformanceControlsPanel();
 
-            // Split view: system profiler and benchmarks
             EditorGUILayout.BeginHorizontal();
 
-            // Left: System profiler
             DrawSystemProfilerPanel();
 
-            // Right: Memory and benchmark stats
             DrawPerformanceStatsPanel();
 
             EditorGUILayout.EndHorizontal();
@@ -1416,7 +1318,6 @@ namespace Strada.Core.Editor.Windows
         {
             EditorGUILayout.BeginHorizontal(_statsBoxStyle);
 
-            // Recording toggle
             var recordIcon = _isRecording ? "●" : "○";
             var recordColor = _isRecording ? Color.red : Color.gray;
             var prevColor = GUI.contentColor;
@@ -1445,7 +1346,6 @@ namespace Strada.Core.Editor.Windows
 
             GUILayout.Space(20);
 
-            // Thresholds
             GUILayout.Label("Warning:", GUILayout.Width(55));
             _warningThresholdMs = EditorGUILayout.FloatField(_warningThresholdMs, GUILayout.Width(40));
             GUILayout.Label("ms", GUILayout.Width(20));
@@ -1521,20 +1421,16 @@ namespace Strada.Core.Editor.Windows
 
             EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
 
-            // System name
             GUILayout.Label(metrics.SystemType.Name, GUILayout.Width(180));
 
-            // Timing bar
             var barRect = GUILayoutUtility.GetRect(100, 16);
             DrawTimingBar(barRect, metrics.LastExecutionMs);
 
-            // Time value
             var prevColor = GUI.contentColor;
             GUI.contentColor = thresholdColor;
             GUILayout.Label($"{metrics.LastExecutionMs:F3} ms", GUILayout.Width(70));
             GUI.contentColor = prevColor;
 
-            // Sample count
             GUILayout.Label($"({metrics.SampleCount})", EditorStyles.miniLabel, GUILayout.Width(40));
 
             EditorGUILayout.EndHorizontal();
@@ -1542,17 +1438,14 @@ namespace Strada.Core.Editor.Windows
 
         private void DrawTimingBar(Rect rect, double executionTimeMs)
         {
-            // Background
             EditorGUI.DrawRect(rect, new Color(0.2f, 0.2f, 0.2f));
 
-            // Calculate bar width
             float maxMs = _criticalThresholdMs * 2;
             float ratio = Mathf.Clamp01((float)(executionTimeMs / maxMs));
 
             var barRect = new Rect(rect.x, rect.y, rect.width * ratio, rect.height);
             EditorGUI.DrawRect(barRect, GetThresholdColor(executionTimeMs));
 
-            // Threshold markers
             float warningX = rect.x + rect.width * (_warningThresholdMs / maxMs);
             float criticalX = rect.x + rect.width * (_criticalThresholdMs / maxMs);
 
@@ -1566,7 +1459,6 @@ namespace Strada.Core.Editor.Windows
 
             EditorGUILayout.LabelField("Memory Stats", _headerStyle);
 
-            // Memory info
             var totalMemory = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong();
             var reservedMemory = UnityEngine.Profiling.Profiler.GetTotalReservedMemoryLong();
             var unusedMemory = UnityEngine.Profiling.Profiler.GetTotalUnusedReservedMemoryLong();
@@ -1626,11 +1518,6 @@ namespace Strada.Core.Editor.Windows
             return $"{bytes / (1024.0 * 1024.0 * 1024.0):F2} GB";
         }
 
-        #endregion
-
-
-        #region Data Refresh
-
         private void RefreshAllData()
         {
             _containerProvider?.Refresh();
@@ -1667,7 +1554,6 @@ namespace Strada.Core.Editor.Windows
                     RefreshMessageList();
                     break;
                 case TabPerformance:
-                    // Profiler updates automatically
                     break;
             }
         }
@@ -1684,13 +1570,8 @@ namespace Strada.Core.Editor.Windows
             _hoveredModuleNode = null;
         }
 
-        #endregion
-
-        #region Navigation
-
         private void NavigateToSource(Type type)
         {
-            // Try to find and open the source file for the type
             var guids = AssetDatabase.FindAssets($"t:Script {type.Name}");
             foreach (var guid in guids)
             {
@@ -1703,7 +1584,6 @@ namespace Strada.Core.Editor.Windows
                 }
             }
 
-            // Fallback: try to find by name
             var searchGuids = AssetDatabase.FindAssets(type.Name);
             foreach (var guid in searchGuids)
             {
@@ -1717,10 +1597,6 @@ namespace Strada.Core.Editor.Windows
 
             Debug.LogWarning($"[StradaDashboard] Could not find source file for type: {type.FullName}");
         }
-
-        #endregion
-
-        #region Dependency Highlighting
 
         /// <summary>
         /// Highlights dependencies and dependents for a service node.
@@ -1763,7 +1639,5 @@ namespace Strada.Core.Editor.Windows
             _moduleGraphView?.ClearHighlights();
             Repaint();
         }
-
-        #endregion
     }
 }

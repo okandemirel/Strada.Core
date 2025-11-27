@@ -4,14 +4,12 @@ using NUnit.Framework;
 using Strada.Core.DI;
 using Strada.Core.Modules;
 
-namespace Strada.Core.Tests.Runtime.Modules
+namespace Strada.Core.Tests.Tests.Runtime.Modules
 {
     [TestFixture]
     public class ModuleRegistryTests
     {
         private ModuleRegistry _registry;
-
-        #region Test Module Installers
 
         public class TestModuleA : IModuleInstaller
         {
@@ -76,8 +74,6 @@ namespace Strada.Core.Tests.Runtime.Modules
             public void Install(IContainerBuilder builder) { }
         }
 
-        #endregion
-
         [SetUp]
         public void SetUp()
         {
@@ -89,8 +85,6 @@ namespace Strada.Core.Tests.Runtime.Modules
         {
             _registry.Clear();
         }
-
-        #region Registration Tests
 
         [Test]
         public void RegisterModule_WithValidInstaller_RegistersSuccessfully()
@@ -143,10 +137,6 @@ namespace Strada.Core.Tests.Runtime.Modules
             Assert.AreEqual(2, _registry.Modules.Count);
         }
 
-        #endregion
-
-        #region Discovery Tests
-
         [Test]
         public void DiscoverModules_FindsModulesInCurrentAssembly()
         {
@@ -179,10 +169,6 @@ namespace Strada.Core.Tests.Runtime.Modules
             Assert.IsNotNull(lowPriorityModule);
             Assert.AreEqual(-10, lowPriorityModule.Priority);
         }
-
-        #endregion
-
-        #region Dependency Tests
 
         [Test]
         public void RegisterModule_ExtractsDependenciesFromAttribute()
@@ -227,10 +213,6 @@ namespace Strada.Core.Tests.Runtime.Modules
             Assert.Less(indexDependent, indexChained);
         }
 
-        #endregion
-
-        #region Validation Tests
-
         [Test]
         public void Validate_WithValidModules_ReturnsTrue()
         {
@@ -266,10 +248,6 @@ namespace Strada.Core.Tests.Runtime.Modules
             Assert.IsTrue(isValid);
         }
 
-        #endregion
-
-        #region Clear Tests
-
         [Test]
         public void Clear_RemovesAllModules()
         {
@@ -293,10 +271,6 @@ namespace Strada.Core.Tests.Runtime.Modules
             Assert.AreEqual(1, _registry.Modules.Count);
         }
 
-        #endregion
-
-        #region ModuleInfo Tests
-
         [Test]
         public void ModuleInfo_ContainsCorrectData()
         {
@@ -311,7 +285,5 @@ namespace Strada.Core.Tests.Runtime.Modules
             Assert.AreEqual(5, moduleInfo.Priority);
             Assert.IsNotNull(moduleInfo.Dependencies);
         }
-
-        #endregion
     }
 }

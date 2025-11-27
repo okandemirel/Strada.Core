@@ -9,37 +9,26 @@ namespace Strada.Core.Editor.Utilities
     /// </summary>
     public static class StradaEditorStyles
     {
-        #region Colors
-
-        // Lifetime colors
         public static readonly Color SingletonColor = new Color(0.4f, 0.8f, 0.4f);
         public static readonly Color TransientColor = new Color(1.0f, 0.6f, 0.2f);
         public static readonly Color ScopedColor = new Color(0.4f, 0.6f, 0.9f);
 
-        // Status colors
         public static readonly Color SuccessColor = new Color(0.4f, 0.8f, 0.4f);
         public static readonly Color WarningColor = new Color(1.0f, 0.85f, 0.4f);
         public static readonly Color ErrorColor = new Color(1.0f, 0.4f, 0.4f);
         public static readonly Color InfoColor = new Color(0.4f, 0.7f, 1.0f);
 
-        // Threshold colors
         public static readonly Color NormalColor = new Color(0.7f, 0.9f, 0.7f);
         public static readonly Color CriticalColor = new Color(1.0f, 0.4f, 0.4f);
 
-        // UI colors
         public static readonly Color SelectionColor = new Color(0.24f, 0.49f, 0.91f, 0.4f);
         public static readonly Color HoverColor = new Color(0.3f, 0.5f, 0.7f, 0.3f);
         public static readonly Color SeparatorColor = new Color(0.15f, 0.15f, 0.15f);
         public static readonly Color HeaderBackgroundColor = new Color(0.2f, 0.2f, 0.2f);
 
-        // Message kind colors
         public static readonly Color EventColor = new Color(0.4f, 0.7f, 0.4f);
         public static readonly Color CommandColor = new Color(0.5f, 0.6f, 0.9f);
         public static readonly Color QueryColor = new Color(0.9f, 0.7f, 0.4f);
-
-        #endregion
-
-        #region Cached Styles
 
         private static GUIStyle _headerStyle;
         private static GUIStyle _subHeaderStyle;
@@ -54,10 +43,6 @@ namespace Strada.Core.Editor.Utilities
         private static GUIStyle _tooltipStyle;
 
         private static bool _stylesInitialized;
-
-        #endregion
-
-        #region Style Properties
 
         /// <summary>
         /// Large bold header style for section titles.
@@ -167,10 +152,6 @@ namespace Strada.Core.Editor.Utilities
             }
         }
 
-        #endregion
-
-        #region Initialization
-
         private static void EnsureStylesInitialized()
         {
             if (_stylesInitialized) return;
@@ -240,10 +221,6 @@ namespace Strada.Core.Editor.Utilities
         {
             _stylesInitialized = false;
         }
-
-        #endregion
-
-        #region Utility Methods
 
         /// <summary>
         /// Creates a 1x1 texture with the specified color.
@@ -338,10 +315,6 @@ namespace Strada.Core.Editor.Utilities
             return isExpanded;
         }
 
-        #endregion
-
-        #region Window Sizing Constants
-
         /// <summary>
         /// Standard minimum window size for Strada editor windows.
         /// </summary>
@@ -356,7 +329,5 @@ namespace Strada.Core.Editor.Utilities
         /// Small minimum window size for simple dialogs.
         /// </summary>
         public static readonly Vector2 SmallMinSize = new Vector2(400, 300);
-
-        #endregion
     }
 }

@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
 
-namespace Strada.Core
+namespace Strada.Core.Core
 {
     public static class StradaPlayerLoop
     {

@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Strada.Core.ECS;
+using Strada.Core.ECS.Core;
 using Strada.Core.ECS.Query;
-using Strada.Core.ECS.Storage;
 
-namespace Strada.Core.Tests.Runtime.ECS.Query
+namespace Strada.Core.Tests.Tests.Runtime.ECS.Query
 {
     public struct PositionComponent : IComponent
     {

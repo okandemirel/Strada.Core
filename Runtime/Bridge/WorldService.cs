@@ -1,6 +1,9 @@
 using System;
 using Strada.Core.Communication;
+using Strada.Core.Core;
 using Strada.Core.ECS;
+using Strada.Core.ECS.Core;
+using Strada.Core.ECS.World;
 using Strada.Core.MVCS.Interfaces;
 
 namespace Strada.Core.Bridge

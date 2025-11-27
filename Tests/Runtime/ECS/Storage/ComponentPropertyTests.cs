@@ -2,11 +2,12 @@ using System.Collections.Generic;
 using FsCheck;
 using NUnit.Framework;
 using Strada.Core.ECS;
+using Strada.Core.ECS.Core;
 using Strada.Core.ECS.Storage;
-using Strada.Core.Tests.Runtime.Generators;
+using Strada.Core.Tests.Tests.Runtime.Generators;
 using Unity.Collections;
 
-namespace Strada.Core.Tests.Runtime.ECS.Storage
+namespace Strada.Core.Tests.Tests.Runtime.ECS.Storage
 {
     /// <summary>
     /// Property-based tests for ECS component storage.
@@ -20,8 +21,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Storage
         {
             StradaArbitraries.RegisterAll();
         }
-
-        #region Property 7: Component Storage Integrity
 
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 7: Component Storage Integrity**
@@ -45,7 +44,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Storage
                     {
                         var entities = new List<Entity>();
 
-                        // Create entities and add component to each
                         for (int i = 0; i < entityCount; i++)
                         {
                             var entity = manager.CreateEntity();
@@ -53,7 +51,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Storage
                             manager.AddComponent(entity, component);
                         }
 
-                        // Verify all entities have the component with correct value
                         foreach (var entity in entities)
                         {
                             if (!manager.HasComponent<TestComponent>(entity))
@@ -97,7 +94,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Storage
                     {
                         var entities = new List<Entity>();
 
-                        // Create entities with unique component values
                         for (int i = 0; i < entityCount; i++)
                         {
                             var entity = manager.CreateEntity();
@@ -105,7 +101,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Storage
                             manager.AddComponent(entity, new TestComponent(i, i * 1.5f, i % 2 == 0));
                         }
 
-                        // Verify each entity has its unique value
                         for (int i = 0; i < entityCount; i++)
                         {
                             var retrieved = manager.GetComponent<TestComponent>(entities[i]);
@@ -146,10 +141,8 @@ namespace Strada.Core.Tests.Runtime.ECS.Storage
                         var entity = manager.CreateEntity();
                         manager.AddComponent(entity, initialComponent);
 
-                        // Update the component
                         manager.SetComponent(entity, updatedComponent);
 
-                        // Verify the updated value
                         var retrieved = manager.GetComponent<TestComponent>(entity);
                         return retrieved.Value == updatedComponent.Value &&
                                retrieved.FloatValue == updatedComponent.FloatValue &&
@@ -185,7 +178,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Storage
                     {
                         var entities = new List<Entity>();
 
-                        // Create entities and add components
                         for (int i = 0; i < entityCount; i++)
                         {
                             var entity = manager.CreateEntity();
@@ -193,13 +185,11 @@ namespace Strada.Core.Tests.Runtime.ECS.Storage
                             manager.AddComponent(entity, component);
                         }
 
-                        // Remove components from all entities
                         foreach (var entity in entities)
                         {
                             manager.RemoveComponent<TestComponent>(entity);
                         }
 
-                        // Verify no entity has the component
                         foreach (var entity in entities)
                         {
                             if (manager.HasComponent<TestComponent>(entity))
@@ -217,10 +207,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Storage
             property.Check(config);
         }
 
-        #endregion
-
-        #region Property 9: SparseSet Count Invariant
-
         /// <summary>
         /// **Feature: strada-codebase-audit, Property 9: SparseSet Count Invariant**
         /// For any sequence of Add and Remove operations on a SparseSet,
@@ -232,7 +218,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Storage
         {
             var config = PropertyTestConfig.CreateConfig();
 
-            // Generate operation count and entity indices
             var property = Prop.ForAll(
                 Gen.Choose(1, 50).ToArbitrary(),
                 Gen.Choose(1, 50).ToArbitrary(),
@@ -243,19 +228,16 @@ namespace Strada.Core.Tests.Runtime.ECS.Storage
 
                     try
                     {
-                        // Add entities
                         for (int i = 0; i < addCount; i++)
                         {
                             int entityIndex = i;
                             set.Add(entityIndex, new TestComponent(entityIndex, 0, true));
                             trackedEntities.Add(entityIndex);
 
-                            // Invariant check after each add
                             if (set.Count != trackedEntities.Count)
                                 return false;
                         }
 
-                        // Remove some entities
                         int actualRemoves = System.Math.Min(removeCount, addCount);
                         for (int i = 0; i < actualRemoves; i++)
                         {
@@ -264,7 +246,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Storage
                                 trackedEntities.Remove(i);
                             }
 
-                            // Invariant check after each remove
                             if (set.Count != trackedEntities.Count)
                                 return false;
                         }
@@ -298,16 +279,13 @@ namespace Strada.Core.Tests.Runtime.ECS.Storage
 
                     try
                     {
-                        // Add entities
                         for (int i = 0; i < entityCount; i++)
                         {
                             set.Add(i, new TestComponent(i, 0, true));
                         }
 
-                        // Clear
                         set.Clear();
 
-                        // Count should be zero
                         return set.Count == 0;
                     }
                     finally
@@ -338,7 +316,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Storage
 
                     try
                     {
-                        // Add unique entities
                         for (int i = 0; i < entityCount; i++)
                         {
                             set.Add(i, new TestComponent(i, 0, true));
@@ -346,7 +323,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Storage
 
                         int countAfterInitialAdd = set.Count;
 
-                        // Add duplicates (same entity indices)
                         for (int d = 0; d < duplicateCount; d++)
                         {
                             for (int i = 0; i < entityCount; i++)
@@ -355,7 +331,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Storage
                             }
                         }
 
-                        // Count should remain the same
                         return set.Count == countAfterInitialAdd && set.Count == entityCount;
                     }
                     finally
@@ -386,7 +361,6 @@ namespace Strada.Core.Tests.Runtime.ECS.Storage
 
                     try
                     {
-                        // Add entities with indices 0 to entityCount-1
                         for (int i = 0; i < entityCount; i++)
                         {
                             set.Add(i, new TestComponent(i, 0, true));
@@ -394,10 +368,8 @@ namespace Strada.Core.Tests.Runtime.ECS.Storage
 
                         int countBefore = set.Count;
 
-                        // Try to remove non-existent entity (index >= 100)
                         set.Remove(nonExistentIndex);
 
-                        // Count should remain the same
                         return set.Count == countBefore;
                     }
                     finally
@@ -428,18 +400,15 @@ namespace Strada.Core.Tests.Runtime.ECS.Storage
 
                     try
                     {
-                        // Add entities (duplicates will be handled by SparseSet)
                         foreach (var index in indicesToAdd)
                         {
                             set.Add(index, new TestComponent(index, 0, true));
                             addedIndices.Add(index);
                         }
 
-                        // Count should match unique indices added
                         if (set.Count != addedIndices.Count)
                             return false;
 
-                        // Contains should return true for exactly those indices
                         int containsCount = 0;
                         for (int i = 0; i < 100; i++)
                         {
@@ -457,7 +426,5 @@ namespace Strada.Core.Tests.Runtime.ECS.Storage
 
             property.Check(config);
         }
-
-        #endregion
     }
 }

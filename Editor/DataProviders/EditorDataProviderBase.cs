@@ -108,7 +108,6 @@ namespace Strada.Core.Editor.DataProviders
             switch (state)
             {
                 case PlayModeStateChange.EnteredPlayMode:
-                    // Clear cache and refresh when entering play mode
                     _cachedData = null;
                     if (IsAvailable)
                     {
@@ -117,7 +116,6 @@ namespace Strada.Core.Editor.DataProviders
                     break;
 
                 case PlayModeStateChange.ExitingPlayMode:
-                    // Clear cache when exiting play mode
                     _cachedData = null;
                     RaiseDataChanged();
                     break;

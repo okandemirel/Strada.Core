@@ -80,7 +80,6 @@ namespace Strada.Core.Editor.Graph
 
         private void SetupPorts()
         {
-            // Input port - other modules depend on this
             _inputPort = InstantiatePort(
                 Orientation.Horizontal,
                 Direction.Input,
@@ -90,7 +89,6 @@ namespace Strada.Core.Editor.Graph
             _inputPort.portColor = ModuleColor;
             inputContainer.Add(_inputPort);
 
-            // Output port - this module depends on others
             _outputPort = InstantiatePort(
                 Orientation.Horizontal,
                 Direction.Output,
@@ -103,7 +101,6 @@ namespace Strada.Core.Editor.Graph
 
         private void SetupContent()
         {
-            // Priority badge
             _priorityBadge = new Label($"Priority: {Priority}")
             {
                 name = "priority-badge"
@@ -123,7 +120,6 @@ namespace Strada.Core.Editor.Graph
             _priorityBadge.style.marginBottom = 4;
             _priorityBadge.style.alignSelf = Align.FlexStart;
 
-            // Dependency count label
             _dependencyCountLabel = new Label($"Dependencies: {Dependencies.Count}")
             {
                 name = "dependency-count-label"
@@ -132,7 +128,6 @@ namespace Strada.Core.Editor.Graph
             _dependencyCountLabel.style.color = new Color(0.6f, 0.6f, 0.6f);
             _dependencyCountLabel.style.marginTop = 2;
 
-            // Initialization status
             var statusLabel = new Label(IsInitialized ? "✓ Initialized" : "○ Not Initialized")
             {
                 name = "status-label"
@@ -143,7 +138,6 @@ namespace Strada.Core.Editor.Graph
                 : new Color(0.8f, 0.8f, 0.4f);
             statusLabel.style.marginTop = 2;
 
-            // Full type name tooltip
             var fullNameLabel = new Label(ModuleType.FullName ?? ModuleType.Name)
             {
                 name = "fullname-label"
@@ -155,7 +149,6 @@ namespace Strada.Core.Editor.Graph
             fullNameLabel.style.textOverflow = TextOverflow.Ellipsis;
             fullNameLabel.style.maxWidth = 200;
 
-            // Add to extension container
             var contentContainer = new VisualElement();
             contentContainer.style.paddingLeft = 8;
             contentContainer.style.paddingRight = 8;
@@ -194,7 +187,6 @@ namespace Strada.Core.Editor.Graph
 
         private void ApplyStyle()
         {
-            // Apply border color
             style.borderTopColor = ModuleColor;
             style.borderBottomColor = ModuleColor;
             style.borderLeftColor = ModuleColor;
@@ -209,15 +201,12 @@ namespace Strada.Core.Editor.Graph
 
         private Color GetPriorityColor()
         {
-            // Higher priority = more red, lower priority = more green
             if (Priority > 100) return HighPriorityColor;
             if (Priority < 0) return LowPriorityColor;
             
             var t = Priority / 100f;
             return Color.Lerp(LowPriorityColor, HighPriorityColor, t);
         }
-
-        #region Context Menu Actions
 
         private bool CanNavigateToSource()
         {
@@ -259,7 +248,5 @@ namespace Strada.Core.Editor.Graph
         {
             EditorGUIUtility.systemCopyBuffer = ModuleType.FullName ?? ModuleType.Name;
         }
-
-        #endregion
     }
 }
