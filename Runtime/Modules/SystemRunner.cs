@@ -7,6 +7,7 @@ using Strada.Core.ECS;
 using Strada.Core.ECS.Core;
 using Strada.Core.ECS.Systems;
 using Strada.Core.ECS.World;
+using Strada.Core.Sync;
 using UnityEngine;
 
 namespace Strada.Core.Modules
@@ -22,6 +23,7 @@ namespace Strada.Core.Modules
         private readonly List<SystemInstance> _allSystems;
         private readonly EntityManager _entityManager;
         private readonly MessageBus _messageBus;
+        private readonly EntityHandleRegistry _handleRegistry;
         private readonly IContainer _container;
         private bool _initialized;
         private bool _disposed;
@@ -48,11 +50,13 @@ namespace Strada.Core.Modules
         /// </summary>
         /// <param name="entityManager">The entity manager for system injection.</param>
         /// <param name="messageBus">The message bus for system injection.</param>
+        /// <param name="handleRegistry">The entity handle registry for system injection.</param>
         /// <param name="container">The DI container for resolving system dependencies.</param>
-        public SystemRunner(EntityManager entityManager, MessageBus messageBus, IContainer container = null)
+        public SystemRunner(EntityManager entityManager, MessageBus messageBus, EntityHandleRegistry handleRegistry, IContainer container = null)
         {
             _entityManager = entityManager ?? throw new ArgumentNullException(nameof(entityManager));
             _messageBus = messageBus;
+            _handleRegistry = handleRegistry;
             _container = container;
 
             int phaseCount = Enum.GetValues(typeof(UpdatePhase)).Length;
@@ -265,12 +269,7 @@ namespace Strada.Core.Modules
         {
             if (system is SystemBase systemBase)
             {
-                systemBase.Inject(_entityManager, _messageBus);
-            }
-
-            if (_container != null)
-            {
-                InjectionProcessor.Inject(system, _container);
+                systemBase.Inject(_entityManager, _messageBus, _handleRegistry);
             }
         }
     }

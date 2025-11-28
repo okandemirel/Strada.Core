@@ -11,6 +11,7 @@ using Strada.Core.Core;
 using Strada.Core.Communication;
 using Strada.Core.ECS.Core;
 using Strada.Core.ECS.World;
+using Strada.Core.Sync;
 
 namespace Strada.Core.Bootstrap
 {
@@ -42,6 +43,7 @@ namespace Strada.Core.Bootstrap
         private SystemRunner _systemRunner;
         private ECS.World.World _world;
         private MessageBus _sharedMessageBus;
+        private EntityHandleRegistry _sharedHandleRegistry;
 
         // Shared
         private IContainer _container;
@@ -213,7 +215,9 @@ namespace Strada.Core.Bootstrap
             var moduleBuilder = new ModuleBuilder(builder);
 
             _sharedMessageBus = new MessageBus();
+            _sharedHandleRegistry = new EntityHandleRegistry();
             builder.RegisterInstance(_sharedMessageBus);
+            builder.RegisterInstance(_sharedHandleRegistry);
 
             foreach (var module in _gameConfig.GetEnabledModules())
             {
@@ -234,7 +238,7 @@ namespace Strada.Core.Bootstrap
                 .Build();
             ECS.World.World.Current = _world;
 
-            _systemRunner = new SystemRunner(_world.EntityManager, _world.MessageBus, _container);
+            _systemRunner = new SystemRunner(_world.EntityManager, _world.MessageBus, _sharedHandleRegistry, _container);
             _systemRunner.AddSystemsFromConfigs(_gameConfig.GetEnabledModules());
 
             Log($"World created with {_systemRunner.SystemCount} systems");

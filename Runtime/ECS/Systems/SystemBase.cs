@@ -1,10 +1,10 @@
 using System;
 using System.Runtime.CompilerServices;
 using Strada.Core.Communication;
-using Strada.Core.DI.Attributes;
 using Strada.Core.ECS.Core;
 using Strada.Core.ECS.Query;
 using Strada.Core.ECS.Storage;
+using Strada.Core.Sync;
 
 namespace Strada.Core.ECS.Systems
 {
@@ -15,11 +15,13 @@ namespace Strada.Core.ECS.Systems
 
         protected EntityManager EntityManager { get; private set; }
         protected MessageBus MessageBus { get; private set; }
+        protected EntityHandleRegistry HandleRegistry { get; private set; }
 
-        public void Inject(EntityManager entityManager, MessageBus bus = null)
+        public void Inject(EntityManager entityManager, MessageBus bus = null, EntityHandleRegistry handleRegistry = null)
         {
             EntityManager = entityManager;
             MessageBus = bus;
+            HandleRegistry = handleRegistry;
         }
 
         public void Initialize()
