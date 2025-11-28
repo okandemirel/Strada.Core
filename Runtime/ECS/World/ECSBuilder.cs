@@ -5,24 +5,31 @@ using Strada.Core.ECS.Core;
 
 namespace Strada.Core.ECS.World
 {
-    public sealed class WorldBuilder
+    public sealed class ECSBuilder
     {
         private readonly List<(Type systemType, UpdatePhase phase, Func<World, ISystem> factory)> _systemFactories = new();
         private int _initialEntityCapacity = 1024;
+        private MessageBus _messageBus;
 
-        public WorldBuilder WithInitialEntityCapacity(int capacity)
+        public ECSBuilder WithInitialEntityCapacity(int capacity)
         {
             _initialEntityCapacity = capacity;
             return this;
         }
 
-        public WorldBuilder WithSystem<T>(UpdatePhase phase = UpdatePhase.Update) where T : ISystem, new()
+        public ECSBuilder WithMessageBus(MessageBus messageBus)
+        {
+            _messageBus = messageBus;
+            return this;
+        }
+
+        public ECSBuilder WithSystem<T>(UpdatePhase phase = UpdatePhase.Update) where T : ISystem, new()
         {
             _systemFactories.Add((typeof(T), phase, _ => new T()));
             return this;
         }
 
-        public WorldBuilder WithSystem<T>(Func<World, T> factory, UpdatePhase phase = UpdatePhase.Update) where T : ISystem
+        public ECSBuilder WithSystem<T>(Func<World, T> factory, UpdatePhase phase = UpdatePhase.Update) where T : ISystem
         {
             _systemFactories.Add((typeof(T), phase, w => factory(w)));
             return this;
@@ -32,7 +39,7 @@ namespace Strada.Core.ECS.World
         {
             var entities = new EntityManager();
             var scheduler = new SystemScheduler();
-            var bus = new MessageBus();
+            var bus = _messageBus ?? new MessageBus();
 
             var world = new World(entities, scheduler, bus);
 

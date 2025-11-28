@@ -27,7 +27,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Sync
         [SetUp]
         public void SetUp()
         {
-            _world = new WorldBuilder()
+            _world = new ECSBuilder()
                 .WithInitialEntityCapacity(128)
                 .Build();
 

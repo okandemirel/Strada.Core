@@ -41,6 +41,7 @@ namespace Strada.Core.Bootstrap
         private readonly List<ModuleConfig> _initializedModuleConfigs = new List<ModuleConfig>();
         private SystemRunner _systemRunner;
         private ECS.World.World _world;
+        private MessageBus _sharedMessageBus;
 
         // Shared
         private IContainer _container;
@@ -211,7 +212,9 @@ namespace Strada.Core.Bootstrap
             var builder = new ContainerBuilder();
             var moduleBuilder = new ModuleBuilder(builder);
 
-            // Install services from each module
+            _sharedMessageBus = new MessageBus();
+            builder.RegisterInstance(_sharedMessageBus);
+
             foreach (var module in _gameConfig.GetEnabledModules())
             {
                 Log($"Installing module: {module.ModuleName}");
@@ -226,7 +229,9 @@ namespace Strada.Core.Bootstrap
 
         private void CreateWorld()
         {
-            _world = new WorldBuilder().Build();
+            _world = new ECSBuilder()
+                .WithMessageBus(_sharedMessageBus)
+                .Build();
             ECS.World.World.Current = _world;
 
             _systemRunner = new SystemRunner(_world.EntityManager, _world.MessageBus, _container);

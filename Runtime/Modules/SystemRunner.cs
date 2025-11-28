@@ -267,6 +267,11 @@ namespace Strada.Core.Modules
             {
                 systemBase.Inject(_entityManager, _messageBus);
             }
+
+            if (_container != null)
+            {
+                InjectionProcessor.Inject(system, _container);
+            }
         }
     }
 }

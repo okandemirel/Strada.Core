@@ -301,7 +301,7 @@ namespace Strada.Core.Editor.Benchmarking
             var sw = new Stopwatch();
             long memoryBefore = GC.GetTotalMemory(true);
 
-            var world = new WorldBuilder().Build();
+            var world = new ECSBuilder().Build();
             
             for (int i = 0; i < iterations; i++)
             {
@@ -328,7 +328,7 @@ namespace Strada.Core.Editor.Benchmarking
             var sw = new Stopwatch();
             long memoryBefore = GC.GetTotalMemory(true);
 
-            var world = new WorldBuilder().Build();
+            var world = new ECSBuilder().Build();
             var entities = new Entity[iterations];
 
             for (int i = 0; i < iterations; i++)
@@ -361,7 +361,7 @@ namespace Strada.Core.Editor.Benchmarking
             var sw = new Stopwatch();
             long memoryBefore = GC.GetTotalMemory(true);
 
-            var world = new WorldBuilder().Build();
+            var world = new ECSBuilder().Build();
 
             for (int i = 0; i < 1000; i++)
             {
