@@ -299,6 +299,36 @@ public class DamageSystem : SystemBase
 }
 ```
 
+### System Registration
+
+**Recommended: Inspector Configuration with [StradaSystem]**
+
+Mark systems for automatic discovery:
+
+```csharp
+using Strada.Core.Modules;
+
+[StradaSystem(
+    Module = "Combat",
+    Category = "Damage",
+    Description = "Applies damage to entities",
+    Phase = UpdatePhase.Update,
+    Order = 100
+)]
+public class DamageSystem : SystemBase
+{
+    protected override void OnUpdate(float deltaTime) { ... }
+}
+```
+
+Then configure in `ModuleConfig` Inspector:
+1. Open your ModuleConfig asset
+2. Click **Discover** in the Systems section
+3. Select systems to add
+4. Adjust Phase and Order as needed
+
+See [Modules documentation](Modules.md) for full details.
+
 ---
 
 ## Parallel Jobs
@@ -524,6 +554,7 @@ protected void Send<T>(T cmd) where T : struct;
 
 ## Related Documentation
 
+- [Modules](Modules.md) - ModuleConfig, system registration, Inspector configuration
 - [DI Container](DI.md) - Dependency injection for systems
 - [Messaging](Messaging.md) - MessageBus communication
 - [Benchmarks](Benchmarks.md) - Full performance data

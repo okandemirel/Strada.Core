@@ -8,7 +8,12 @@ namespace Strada.Core.Bootstrap
     /// ScriptableObject configuration for the Strada framework bootstrap process.
     /// Controls which modules are loaded and in what order.
     /// </summary>
-    [CreateAssetMenu(fileName = "BootstrapConfig", menuName = "Strada/Bootstrap Config", order = 1)]
+    /// <remarks>
+    /// DEPRECATED: Use GameBootstrapperConfig with ModuleConfig ScriptableObjects instead.
+    /// This provides a more unified, VContainer-like experience with Inspector-based configuration.
+    /// </remarks>
+    [Obsolete("Use GameBootstrapperConfig with ModuleConfig ScriptableObjects instead.")]
+    [CreateAssetMenu(fileName = "BootstrapConfig", menuName = "Strada/Legacy/Bootstrap Config (Deprecated)", order = 100)]
     public class BootstrapConfig : ScriptableObject
     {
         [Header("Module Discovery")]

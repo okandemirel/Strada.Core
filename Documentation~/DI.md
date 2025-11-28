@@ -160,7 +160,29 @@ var container = builder.Build();
 
 ### Bootstrap Integration
 
-Configure auto-binding in `BootstrapConfig` ScriptableObject:
+**Recommended Approach: ModuleConfig**
+
+Use `ModuleConfig` with `IModuleBuilder` for modular service registration:
+
+```csharp
+[CreateAssetMenu(menuName = "Strada/Game Module Config")]
+public class GameModuleConfig : ModuleConfig
+{
+    protected override void Configure(IModuleBuilder builder)
+    {
+        builder
+            .RegisterService<IPlayerService, PlayerService>()
+            .RegisterService<IEnemyService, EnemyService>()
+            .RegisterController<GameController>();
+    }
+}
+```
+
+See [Modules documentation](Modules.md) for the full modular architecture guide.
+
+**Legacy Approach: BootstrapConfig (Deprecated)**
+
+The legacy `BootstrapConfig` with auto-binding is still supported but deprecated:
 
 ```csharp
 // In BootstrapConfig inspector:
@@ -168,19 +190,6 @@ Configure auto-binding in `BootstrapConfig` ScriptableObject:
 // - Force Runtime Scanning: false (use source gen)
 // - Assembly Include Patterns: "Strada.*", "Game.*"
 // - Assembly Exclude Patterns: "Unity.*", "System.*"
-```
-
-The `GameBootstrapper` automatically registers all auto-bindings during startup:
-
-```csharp
-// GameBootstrapper.BuildContainer() does this automatically:
-if (_config.EnableAutoBinding)
-{
-    builder.RegisterAutoBindings(
-        _config.AssemblyIncludePatterns,
-        _config.AssemblyExcludePatterns,
-        _config.ForceRuntimeScanning);
-}
 ```
 
 ### Source Generator vs Runtime Scanning
@@ -508,6 +517,7 @@ public enum Lifetime
 
 ## Related Documentation
 
+- [Modules](Modules.md) - ModuleConfig, IModuleBuilder, service registration
 - [ECS System](ECS.md) - Entity Component System
 - [Messaging](Messaging.md) - MessageBus communication
 - [Benchmarks](Benchmarks.md) - Full performance data

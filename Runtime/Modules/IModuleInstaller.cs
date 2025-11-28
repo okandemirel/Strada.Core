@@ -1,3 +1,4 @@
+using System;
 using Strada.Core.DI;
 
 namespace Strada.Core.Modules
@@ -6,27 +7,39 @@ namespace Strada.Core.Modules
     /// Interface for module installers that register module dependencies with the DI container.
     /// </summary>
     /// <remarks>
-    /// Every module must implement an installer to register its services, controllers, and models.
-    /// Installers are discovered and executed during the bootstrap phase.
+    /// <para>
+    /// DEPRECATED: This interface is part of the legacy module system.
+    /// Please migrate to using ModuleConfig ScriptableObjects for new modules.
+    /// </para>
+    /// <para>
+    /// Migration guide:
+    /// 1. Create a new class inheriting from ModuleConfig
+    /// 2. Override the Configure(IModuleBuilder) method
+    /// 3. Create a ScriptableObject asset and add it to GameBootstrapperConfig
+    /// </para>
     /// </remarks>
     /// <example>
     /// <code>
+    /// // Legacy approach (deprecated):
     /// public class PlayerModuleInstaller : IModuleInstaller
     /// {
-    ///     public void Install(IContainerBuilder builder)
-    ///     {
-    ///         builder.Register&lt;IPlayerModel, PlayerModel&gt;(Lifetime.Singleton);
-    ///         builder.Register&lt;IPlayerController, PlayerController&gt;(Lifetime.Transient);
-    ///     }
+    ///     public void Install(IContainerBuilder builder) { ... }
+    ///     public void Initialize(IContainer container) { ... }
+    /// }
     ///
-    ///     public void Initialize(IContainer container)
+    /// // New approach (recommended):
+    /// [CreateAssetMenu(menuName = "Modules/Player Module")]
+    /// public class PlayerModuleConfig : ModuleConfig
+    /// {
+    ///     protected override void Configure(IModuleBuilder builder)
     ///     {
-    ///         var model = container.Resolve&lt;IPlayerModel&gt;();
-    ///         model.Initialize();
+    ///         builder.RegisterModel&lt;IPlayerModel, PlayerModel&gt;();
+    ///         builder.RegisterController&lt;PlayerController&gt;();
     ///     }
     /// }
     /// </code>
     /// </example>
+    [Obsolete("Use ModuleConfig ScriptableObjects with GameBootstrapperConfig instead. See documentation for migration guide.")]
     public interface IModuleInstaller
     {
         /// <summary>

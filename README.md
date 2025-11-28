@@ -55,6 +55,13 @@ Strada combines enterprise-grade dependency injection with performance-critical 
 - **ReactiveCollection**: Observable lists with add/remove/clear events
 - **ComputedProperty**: Derived values with automatic dependency tracking
 
+### Modular Architecture ([docs](Documentation~/Modules.md))
+- **ModuleConfig**: ScriptableObject-based module configuration
+- **Inspector Systems**: Configure ECS systems via drag-and-drop
+- **IModuleBuilder**: VContainer-like fluent API for DI registration
+- **System Discovery**: Auto-find systems with `[StradaSystem]` attribute
+- **Priority Ordering**: Control module initialization order
+
 ### Utilities
 - **ObjectPool**: Generic pooling with lifecycle hooks (Spawn/Despawn)
 - **StateMachine**: Type-safe FSM with conditional transitions
@@ -235,6 +242,7 @@ health.Value = 75; // healthBar updates automatically
 
 | Document | Description |
 |----------|-------------|
+| [Modules](Documentation~/Modules.md) | Modular architecture, ModuleConfig, Inspector-configurable systems |
 | [DI Container](Documentation~/DI.md) | Dependency injection, lifetimes, scopes |
 | [ECS System](Documentation~/ECS.md) | Entities, components, queries, systems |
 | [Messaging](Documentation~/Messaging.md) | MessageBus, commands, events, queries |
@@ -342,11 +350,23 @@ Packages/com.strada.core/
 │   │   ├── ComputedProperty.cs
 │   │   ├── EntityMediator.cs
 │   │   └── SyncEvents.cs
+│   ├── Modules/               # Modular Architecture
+│   │   ├── ModuleConfig.cs        # Base module ScriptableObject
+│   │   ├── IModuleBuilder.cs      # Fluent registration API
+│   │   ├── ModuleBuilder.cs       # Builder implementation
+│   │   ├── SystemRunner.cs        # Config-driven system execution
+│   │   ├── SystemEntry.cs         # System configuration
+│   │   ├── ServiceEntry.cs        # Service configuration
+│   │   └── SystemAttributes.cs    # [StradaSystem] attribute
+│   ├── Bootstrap/             # Application Bootstrap
+│   │   ├── GameBootstrapper.cs    # Main entry point
+│   │   └── GameBootstrapperConfig.cs  # Central orchestrator
 │   ├── Pooling/               # Object Pooling
 │   │   └── ObjectPool.cs
 │   └── StateMachine/          # FSM
 │       └── StateMachine.cs
 ├── Documentation~/            # Detailed Documentation
+│   ├── Modules.md             # Modular architecture guide
 │   ├── DI.md                  # Dependency injection guide
 │   ├── ECS.md                 # Entity Component System guide
 │   ├── Messaging.md           # MessageBus messaging guide

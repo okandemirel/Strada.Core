@@ -1,0 +1,108 @@
+using System;
+using UnityEngine;
+
+namespace Strada.Core.Modules
+{
+    /// <summary>
+    /// A serializable wrapper for System.Type that can be displayed and selected in the Unity Inspector.
+    /// Used for configuring systems and services in ModuleConfig ScriptableObjects.
+    /// </summary>
+    [Serializable]
+    public class SerializableType : ISerializationCallbackReceiver
+    {
+        [SerializeField] private string _assemblyQualifiedName;
+
+        private Type _cachedType;
+
+        /// <summary>
+        /// Gets or sets the Type represented by this SerializableType.
+        /// </summary>
+        public Type Type
+        {
+            get
+            {
+                if (_cachedType == null && !string.IsNullOrEmpty(_assemblyQualifiedName))
+                {
+                    _cachedType = Type.GetType(_assemblyQualifiedName);
+                }
+                return _cachedType;
+            }
+            set
+            {
+                _cachedType = value;
+                _assemblyQualifiedName = value?.AssemblyQualifiedName;
+            }
+        }
+
+        /// <summary>
+        /// Gets the assembly qualified name of the type.
+        /// </summary>
+        public string AssemblyQualifiedName => _assemblyQualifiedName;
+
+        /// <summary>
+        /// Gets whether this SerializableType has a valid type assigned.
+        /// </summary>
+        public bool IsValid => Type != null;
+
+        /// <summary>
+        /// Gets the simple name of the type (without namespace).
+        /// </summary>
+        public string TypeName => Type?.Name ?? "(None)";
+
+        /// <summary>
+        /// Gets the full name of the type (with namespace).
+        /// </summary>
+        public string FullTypeName => Type?.FullName ?? "(None)";
+
+        public SerializableType() { }
+
+        public SerializableType(Type type)
+        {
+            Type = type;
+        }
+
+        public void OnBeforeSerialize()
+        {
+            // Ensure _assemblyQualifiedName is up to date
+            if (_cachedType != null)
+            {
+                _assemblyQualifiedName = _cachedType.AssemblyQualifiedName;
+            }
+        }
+
+        public void OnAfterDeserialize()
+        {
+            // Clear cache so it will be resolved fresh on next access
+            _cachedType = null;
+        }
+
+        public override string ToString()
+        {
+            return TypeName;
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is SerializableType other)
+            {
+                return _assemblyQualifiedName == other._assemblyQualifiedName;
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return _assemblyQualifiedName?.GetHashCode() ?? 0;
+        }
+
+        public static implicit operator Type(SerializableType serializableType)
+        {
+            return serializableType?.Type;
+        }
+
+        public static implicit operator SerializableType(Type type)
+        {
+            return new SerializableType(type);
+        }
+    }
+}
