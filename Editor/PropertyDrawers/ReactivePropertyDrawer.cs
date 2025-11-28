@@ -13,7 +13,7 @@ namespace Strada.Core.Editor.PropertyDrawers
     /// - "Notify" button to force notification to all subscribers
     /// Requirements: 7.1, 7.3, 7.5
     /// </summary>
-    [CustomPropertyDrawer(typeof(Bridge.ReactiveProperty<>), true)]
+    [CustomPropertyDrawer(typeof(Sync.ReactiveProperty<>), true)]
     public class ReactivePropertyDrawer : PropertyDrawer
     {
         private const float LiveIndicatorWidth = 12f;
@@ -190,7 +190,7 @@ namespace Strada.Core.Editor.PropertyDrawers
                 if (field == null) return null;
 
                 currentType = field.FieldType;
-                if (currentType.IsGenericType && currentType.GetGenericTypeDefinition() == typeof(Bridge.ReactiveProperty<>))
+                if (currentType.IsGenericType && currentType.GetGenericTypeDefinition() == typeof(Sync.ReactiveProperty<>))
                     return field;
             }
 
@@ -214,7 +214,7 @@ namespace Strada.Core.Editor.PropertyDrawers
     /// - Clear all button
     /// Requirements: 7.4
     /// </summary>
-    [CustomPropertyDrawer(typeof(Bridge.ReactiveCollection<>), true)]
+    [CustomPropertyDrawer(typeof(Sync.ReactiveCollection<>), true)]
     public class ReactiveCollectionDrawer : PropertyDrawer
     {
         private bool _foldout = true;
@@ -384,7 +384,7 @@ namespace Strada.Core.Editor.PropertyDrawers
                 if (field == null) return null;
 
                 currentType = field.FieldType;
-                if (currentType.IsGenericType && currentType.GetGenericTypeDefinition() == typeof(Bridge.ReactiveCollection<>))
+                if (currentType.IsGenericType && currentType.GetGenericTypeDefinition() == typeof(Sync.ReactiveCollection<>))
                     return field;
             }
 

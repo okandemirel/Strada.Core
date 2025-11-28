@@ -589,4 +589,4 @@ void OnExit();
 
 - [ECS System](ECS.md) - Entity Component System
 - [Messaging](Messaging.md) - Event system
-- [Bridge](Bridge.md) - Reactive properties
+- [Sync](Sync.md) - Reactive properties

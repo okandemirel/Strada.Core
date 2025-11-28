@@ -11,8 +11,8 @@ using UnityEngine;
 namespace Strada.Core.Editor.DataProviders
 {
     /// <summary>
-    /// Provides access to StradaBus message data for editor tools.
-    /// Hooks into StradaBus for message interception and logging.
+    /// Provides access to MessageBus message data for editor tools.
+    /// Hooks into MessageBus for message interception and logging.
     /// </summary>
     public class BusDataProvider : EditorDataProviderBase<BusSnapshot>, IBusDataProvider
     {
@@ -30,7 +30,7 @@ namespace Strada.Core.Editor.DataProviders
         private BusDataProvider() { }
 
         /// <summary>
-        /// Gets whether the StradaBus is available.
+        /// Gets whether the MessageBus is available.
         /// </summary>
         public override bool IsAvailable
         {
@@ -47,7 +47,7 @@ namespace Strada.Core.Editor.DataProviders
         public bool IsLogging => _isLogging;
 
         /// <summary>
-        /// Starts logging messages from StradaBus.
+        /// Starts logging messages from MessageBus.
         /// </summary>
         public void StartLogging()
         {

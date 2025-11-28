@@ -121,7 +121,7 @@ namespace Strada.Core.Editor.DataProviders.Models
     }
 
     /// <summary>
-    /// Snapshot of the StradaBus state.
+    /// Snapshot of the MessageBus state.
     /// </summary>
     public class BusSnapshot
     {
@@ -133,7 +133,7 @@ namespace Strada.Core.Editor.DataProviders.Models
     }
 
     /// <summary>
-    /// A logged message from StradaBus.
+    /// A logged message from MessageBus.
     /// </summary>
     public class MessageLogEntry
     {
@@ -147,7 +147,7 @@ namespace Strada.Core.Editor.DataProviders.Models
     }
 
     /// <summary>
-    /// Kind of message in StradaBus.
+    /// Kind of message in MessageBus.
     /// </summary>
     public enum MessageKind
     {

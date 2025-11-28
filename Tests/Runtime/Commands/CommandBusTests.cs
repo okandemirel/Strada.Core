@@ -129,7 +129,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Commands
                 bus.Send(new BenchmarkCommand { Value = 1 });
             sw.Stop();
 
-            UnityEngine.Debug.Log($"[StradaBus] 100k typed commands: {sw.ElapsedMilliseconds}ms ({sw.ElapsedTicks * 1000.0 / 100_000 / System.Diagnostics.Stopwatch.Frequency * 1_000_000:F0}ns/send)");
+            UnityEngine.Debug.Log($"[MessageBus] 100k typed commands: {sw.ElapsedMilliseconds}ms ({sw.ElapsedTicks * 1000.0 / 100_000 / System.Diagnostics.Stopwatch.Frequency * 1_000_000:F0}ns/send)");
 
             Assert.AreEqual(100_000, sum);
             Assert.Less(sw.ElapsedMilliseconds, 50);
@@ -154,7 +154,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Commands
             }
             sw.Stop();
 
-            UnityEngine.Debug.Log($"[StradaBus] 100k pooled commands: {sw.ElapsedMilliseconds}ms ({sw.ElapsedTicks * 1000.0 / 100_000 / System.Diagnostics.Stopwatch.Frequency * 1_000_000:F0}ns/execute)");
+            UnityEngine.Debug.Log($"[MessageBus] 100k pooled commands: {sw.ElapsedMilliseconds}ms ({sw.ElapsedTicks * 1000.0 / 100_000 / System.Diagnostics.Stopwatch.Frequency * 1_000_000:F0}ns/execute)");
 
             Assert.AreEqual(100_000, sum);
             Assert.Less(sw.ElapsedMilliseconds, 100);

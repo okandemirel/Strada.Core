@@ -36,6 +36,8 @@ namespace Strada.Core.Communication
         void Publish<TEvent>(ref TEvent message) where TEvent : struct;
         void Publish<TEvent>(TEvent message) where TEvent : struct;
         void Execute(ICommand command);
+
+        [Obsolete("Use ExecuteAsync(IAsyncAwaitCommand, CancellationToken) instead for better async support")]
         void ExecuteAsync(IAsyncCommand command, Action onComplete = null);
         void RegisterCommandHandler<TCommand>(Action<TCommand> handler) where TCommand : struct;
         void RegisterCommandHandler<TCommand>(ICommandHandler<TCommand> handler) where TCommand : struct;
@@ -57,7 +59,13 @@ namespace Strada.Core.Communication
 
     public sealed class MessageBus : IMessageBus
     {
-        private static int _nextTypeId;
+        // Separate type ID counters to avoid wasting array space and prevent theoretical collisions
+        private static int _nextCommandTypeId;
+        private static int _nextQueryTypeId;
+        private static int _nextEventTypeId;
+        private static int _nextAsyncCommandTypeId;
+        private static int _nextAsyncQueryTypeId;
+
         private object[] _commandHandlers = new object[64];
         private object[] _queryHandlers = new object[64];
         private object[] _eventChannels = new object[64];
@@ -277,12 +285,12 @@ namespace Strada.Core.Communication
 
         private static class AsyncCommandTypeId<T>
         {
-            public static readonly int Id = Interlocked.Increment(ref _nextTypeId);
+            public static readonly int Id = Interlocked.Increment(ref _nextAsyncCommandTypeId);
         }
 
         private static class AsyncQueryTypeId<T>
         {
-            public static readonly int Id = Interlocked.Increment(ref _nextTypeId);
+            public static readonly int Id = Interlocked.Increment(ref _nextAsyncQueryTypeId);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -302,17 +310,17 @@ namespace Strada.Core.Communication
 
         private static class CommandTypeId<T>
         {
-            public static readonly int Id = Interlocked.Increment(ref _nextTypeId);
+            public static readonly int Id = Interlocked.Increment(ref _nextCommandTypeId);
         }
 
         private static class QueryTypeId<T>
         {
-            public static readonly int Id = Interlocked.Increment(ref _nextTypeId);
+            public static readonly int Id = Interlocked.Increment(ref _nextQueryTypeId);
         }
 
         private static class EventTypeId<T>
         {
-            public static readonly int Id = Interlocked.Increment(ref _nextTypeId);
+            public static readonly int Id = Interlocked.Increment(ref _nextEventTypeId);
         }
 
         private sealed class EventChannel<T>

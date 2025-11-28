@@ -44,6 +44,11 @@ namespace Strada.Core.ECS.Storage
             return _sparseSet.Get(entityIndex);
         }
 
+        public ref T GetRef(int entityIndex)
+        {
+            return ref _sparseSet.GetRef(entityIndex);
+        }
+
         public bool TryGet(int entityIndex, out T component)
         {
             return _sparseSet.TryGet(entityIndex, out component);

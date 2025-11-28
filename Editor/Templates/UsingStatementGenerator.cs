@@ -22,8 +22,8 @@ namespace Strada.Core.Editor.Templates
                 {
                     "System",
                     "Strada.Core.DI.Attributes",
-                    "Strada.Core.MVCS",
-                    "Strada.Core.MVCS.Interfaces"
+                    "Strada.Core.Patterns",
+                    "Strada.Core.Patterns.Interfaces"
                 }
             },
             {
@@ -32,8 +32,8 @@ namespace Strada.Core.Editor.Templates
                 {
                     "System",
                     "Strada.Core.DI.Attributes",
-                    "Strada.Core.MVCS",
-                    "Strada.Core.MVCS.Interfaces"
+                    "Strada.Core.Patterns",
+                    "Strada.Core.Patterns.Interfaces"
                 }
             },
             {
@@ -61,8 +61,8 @@ namespace Strada.Core.Editor.Templates
                 {
                     "System",
                     "UnityEngine",
-                    "Strada.Core.MVCS",
-                    "Strada.Core.MVCS.Interfaces"
+                    "Strada.Core.Patterns",
+                    "Strada.Core.Patterns.Interfaces"
                 }
             },
             {
@@ -70,7 +70,7 @@ namespace Strada.Core.Editor.Templates
                 new[]
                 {
                     "System",
-                    "Strada.Core.MVCS.Interfaces"
+                    "Strada.Core.Patterns.Interfaces"
                 }
             },
             {
@@ -155,14 +155,14 @@ namespace Strada.Core.Editor.Templates
             { "IContainer", new[] { "Strada.Core.DI" } },
             { "ReactiveProperty", new[] { "Strada.Core.Reactive" } },
             { "ReactiveCollection", new[] { "Strada.Core.Reactive" } },
-            { "StradaBus", new[] { "Strada.Core.Communication" } },
+            { "MessageBus", new[] { "Strada.Core.Communication" } },
             { "EntityManager", new[] { "Strada.Core.ECS" } },
             { "World", new[] { "Strada.Core.ECS.World" } },
             { "IComponent", new[] { "Strada.Core.ECS" } },
             { "ISystem", new[] { "Strada.Core.ECS" } },
             { "SystemBase", new[] { "Strada.Core.ECS.Systems" } },
-            { "ViewMediator", new[] { "Strada.Core.Bridge" } },
-            { "ComponentBinding", new[] { "Strada.Core.Bridge" } },
+            { "EntityMediator", new[] { "Strada.Core.Sync" } },
+            { "ComponentBinding", new[] { "Strada.Core.Sync" } },
             { "Linq", new[] { "System.Linq" } },
             { ".Select(", new[] { "System.Linq" } },
             { ".Where(", new[] { "System.Linq" } },

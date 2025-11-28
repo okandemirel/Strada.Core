@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using NUnit.Framework;
-using Strada.Core.Bridge;
+using Strada.Core.Sync;
 using Strada.Core.DI;
 using Strada.Core.ECS;
 using Strada.Core.ECS.Core;

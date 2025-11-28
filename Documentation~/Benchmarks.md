@@ -11,7 +11,7 @@ Complete performance data for all Strada systems on Apple Silicon (Unity 6, Mono
 - [Entity Component System](#entity-component-system)
 - [Messaging System](#messaging-system)
 - [Object Pooling](#object-pooling)
-- [Reactive Bridge](#reactive-bridge)
+- [Reactive Sync](#reactive-sync)
 - [Parallel Jobs](#parallel-jobs)
 - [Memory Usage](#memory-usage)
 - [Competitive Analysis](#competitive-analysis)
@@ -201,7 +201,7 @@ Sparse Array: [?][3][0][?][1][2]...     ← O(1) lookup
 
 ## Messaging System
 
-### StradaBus Performance
+### MessageBus Performance
 
 | Operation | Time |
 |-----------|------|
@@ -289,7 +289,7 @@ for (int i = 0; i < 10000; i++)
 
 ---
 
-## Reactive Bridge
+## Reactive Sync
 
 ### ReactiveProperty Performance
 
@@ -376,7 +376,7 @@ Diminishing returns above 8 cores due to memory bandwidth.
 |--------|-------------|----------|
 | DI Container | ~10KB | ~200B per registration |
 | EntityManager | ~50KB | ~28B per entity + components |
-| StradaBus | ~5KB | ~64B per subscription |
+| MessageBus | ~5KB | ~64B per subscription |
 | ObjectPool | ~1KB | sizeof(T) per pooled object |
 | StateMachine | ~2KB | ~100B per state |
 
@@ -428,7 +428,7 @@ All hot paths are allocation-free after initialization.
 
 | Framework | Publish Time | Allocation |
 |-----------|--------------|------------|
-| **Strada StradaBus** | ~20ns | 0 bytes |
+| **Strada MessageBus** | ~20ns | 0 bytes |
 | MessagePipe | ~15ns | 0 bytes |
 | UniRx Subject | ~100ns | varies |
 | C# event | ~10ns | delegate alloc |
@@ -552,4 +552,4 @@ public class MyBenchmarks
 - [ECS System](ECS.md) - Entity Component System
 - [Messaging](Messaging.md) - Event system
 - [Pooling](Pooling.md) - Object pooling
-- [Bridge](Bridge.md) - Reactive properties
+- [Sync](Sync.md) - Reactive properties

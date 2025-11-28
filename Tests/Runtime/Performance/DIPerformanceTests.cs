@@ -36,11 +36,11 @@ namespace Strada.Core.Tests.Tests.Runtime.Performance
 
     public interface IRepository { }
     public class Repository : IRepository { }
-    public interface IService { }
-    public class Service : IService
+    public interface IDITestService { }
+    public class DITestService : IDITestService
     {
         public IRepository Repo;
-        public Service(IRepository repo) => Repo = repo;
+        public DITestService(IRepository repo) => Repo = repo;
     }
 
     [TestFixture]
@@ -78,8 +78,8 @@ namespace Strada.Core.Tests.Tests.Runtime.Performance
             DirectFactory<DepFive>.Delegate = null;
             DirectFactory<IRepository>.Delegate = null;
             DirectFactory<Repository>.Delegate = null;
-            DirectFactory<IService>.Delegate = null;
-            DirectFactory<Service>.Delegate = null;
+            DirectFactory<IDITestService>.Delegate = null;
+            DirectFactory<DITestService>.Delegate = null;
         }
 
         [Test]
@@ -215,20 +215,20 @@ namespace Strada.Core.Tests.Tests.Runtime.Performance
         {
             var builder = new ContainerBuilder();
             builder.Register<IRepository, Repository>(Lifetime.Transient);
-            builder.Register<IService, Service>(Lifetime.Transient);
+            builder.Register<IDITestService, DITestService>(Lifetime.Transient);
             using var container = builder.Build();
 
             for (int i = 0; i < WarmupIterations; i++)
-                container.Resolve<IService>();
+                container.Resolve<IDITestService>();
 
-            var instance = container.Resolve<IService>();
+            var instance = container.Resolve<IDITestService>();
             Assert.NotNull(instance);
-            Assert.IsInstanceOf<Service>(instance);
-            Assert.NotNull(((Service)instance).Repo);
+            Assert.IsInstanceOf<DITestService>(instance);
+            Assert.NotNull(((DITestService)instance).Repo);
 
             var sw = Stopwatch.StartNew();
             for (int i = 0; i < SmallIterations; i++)
-                container.Resolve<IService>();
+                container.Resolve<IDITestService>();
             sw.Stop();
 
             double usPerOp = sw.Elapsed.TotalMilliseconds * 1000 / SmallIterations;

@@ -81,9 +81,9 @@ namespace Strada.Core.Editor.Templates
             { TemplateType.Model, "Model - Data container for application state" },
             { TemplateType.Config, "Config - ScriptableObject configuration (CD_ prefix)" },
             { TemplateType.Interface, "Interface - Contract definition" },
-            { TemplateType.Command, "Command - StradaBus command message" },
-            { TemplateType.Query, "Query - StradaBus query message" },
-            { TemplateType.Event, "Event - StradaBus event message" },
+            { TemplateType.Command, "Command - MessageBus command message" },
+            { TemplateType.Query, "Query - MessageBus query message" },
+            { TemplateType.Event, "Event - MessageBus event message" },
             { TemplateType.ModuleInstaller, "Module Installer - Module registration and setup" },
         };
 

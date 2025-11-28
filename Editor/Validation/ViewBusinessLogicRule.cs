@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using Strada.Core.MVCS;
+using Strada.Core.Patterns;
 
 namespace Strada.Core.Editor.Validation
 {
@@ -156,7 +156,7 @@ namespace Strada.Core.Editor.Validation
             if (type == null)
                 return false;
 
-            if (typeof(StradaService).IsAssignableFrom(type))
+            if (typeof(Service).IsAssignableFrom(type))
                 return true;
 
             var typeName = type.Name;

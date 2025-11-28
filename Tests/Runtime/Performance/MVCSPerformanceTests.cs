@@ -1,11 +1,11 @@
 using System;
 using System.Diagnostics;
 using NUnit.Framework;
-using Strada.Core.Bridge;
+using Strada.Core.Sync;
 using Strada.Core.Communication;
 using Strada.Core.DI;
 using Strada.Core.Modules;
-using Strada.Core.MVCS;
+using Strada.Core.Patterns;
 
 namespace Strada.Core.Tests.Tests.Runtime.Performance
 {
@@ -309,7 +309,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Performance
 
         private class LocalService { }
 
-        private class BenchmarkService : StradaService
+        private class BenchmarkService : Service
         {
             protected override void OnInitialize() { }
         }

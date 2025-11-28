@@ -1,12 +1,12 @@
 # Strada Framework
 
-**A high-performance Unity framework unifying MVCS architecture with ECS simulation**
+**A high-performance Unity framework unifying Patterns architecture with ECS simulation**
 
 [![Tests](https://img.shields.io/badge/tests-324%20passing-brightgreen)]()
 [![Unity](https://img.shields.io/badge/Unity-6000.0%2B-blue)]()
 [![.NET](https://img.shields.io/badge/.NET-Standard%202.1-purple)]()
 
-Strada combines enterprise-grade dependency injection with performance-critical ECS, wrapped in a clean modular architecture. Build UI with familiar MVCS patterns while using ECS for high-performance simulation—without choosing between paradigms.
+Strada combines enterprise-grade dependency injection with performance-critical ECS, wrapped in a clean modular architecture. Build UI with familiar patterns while using ECS for high-performance simulation—without choosing between paradigms.
 
 ---
 
@@ -27,7 +27,7 @@ Strada combines enterprise-grade dependency injection with performance-critical 
 ## Features
 
 ### Dependency Injection ([docs](Documentation~/DI.md))
-- **FastContainer**: Expression tree compiled factories (1.56x manual `new()` overhead)
+- **Container**: Expression tree compiled factories (1.56x manual `new()` overhead)
 - **Lifetimes**: Singleton, Transient, Scoped with thread-safe initialization
 - **Auto-Binding**: Attribute-based service registration with `[AutoRegister]`, `[AutoRegisterSingleton]`, etc.
 - **Circular Detection**: Build-time cycle detection prevents runtime errors
@@ -41,16 +41,16 @@ Strada combines enterprise-grade dependency injection with performance-critical 
 - **Source Generation**: Compile-time query generation for 9-16 components
 
 ### Messaging ([docs](Documentation~/Messaging.md))
-- **StradaBus**: Unified command/query/event bus with array-indexed dispatch (4ns/dispatch)
+- **MessageBus**: Unified command/query/event bus with array-indexed dispatch (4ns/dispatch)
 - **Pooled Commands**: Execute ICommand objects with automatic pool return
 - **Zero-alloc Publish**: Struct-based messages, no boxing
 
-### MVCS-ECS Bridge ([docs](Documentation~/Bridge.md))
-- **Event-Driven Integration**: ECS systems publish ComponentChanged events, MVCS controllers subscribe
-- **ViewMediator**: Binds ECS entities to UI views with auto-sync and StradaBus integration
-- **Bidirectional Flow**: Controllers send commands to ECS via StradaBus, receive events back
+### Patterns-ECS Sync ([docs](Documentation~/Sync.md))
+- **Event-Driven Integration**: ECS systems publish ComponentChanged events, Patterns controllers subscribe
+- **EntityMediator**: Binds ECS entities to UI views with auto-sync and MessageBus integration
+- **Bidirectional Flow**: Controllers send commands to ECS via MessageBus, receive events back
 
-### Reactive Bindings ([docs](Documentation~/Bridge.md))
+### Reactive Bindings ([docs](Documentation~/Sync.md))
 - **ReactiveProperty**: Observable values with change notification
 - **ReactiveCollection**: Observable lists with add/remove/clear events
 - **ComputedProperty**: Derived values with automatic dependency tracking
@@ -153,7 +153,7 @@ public struct PlayerDamaged { public int EntityId; public int Damage; }
 public struct SpawnEnemy { public float X, Y; }
 
 // Setup bus
-var bus = new StradaBus();
+var bus = new MessageBus();
 
 // Subscribe to events
 bus.Subscribe<PlayerDamaged>(e => Debug.Log($"Player took {e.Damage} damage"));
@@ -169,7 +169,7 @@ bus.Send(new SpawnEnemy { X = 10, Y = 20 });
 ### Reactive Properties
 
 ```csharp
-using Strada.Core.Bridge;
+using Strada.Core.Sync;
 
 // Create reactive property
 var health = new ReactiveProperty<int>(100);
@@ -237,8 +237,8 @@ health.Value = 75; // healthBar updates automatically
 |----------|-------------|
 | [DI Container](Documentation~/DI.md) | Dependency injection, lifetimes, scopes |
 | [ECS System](Documentation~/ECS.md) | Entities, components, queries, systems |
-| [Messaging](Documentation~/Messaging.md) | StradaBus, commands, events, queries |
-| [Bridge](Documentation~/Bridge.md) | Reactive properties, bindings |
+| [Messaging](Documentation~/Messaging.md) | MessageBus, commands, events, queries |
+| [Sync](Documentation~/Sync.md) | Reactive properties, bindings, EntityMediator |
 | [Pooling](Documentation~/Pooling.md) | Object pools, lifecycle hooks |
 | [StateMachine](Documentation~/StateMachine.md) | FSM with transitions |
 | [Benchmarks](Documentation~/Benchmarks.md) | Full performance data |
@@ -255,7 +255,7 @@ health.Value = 75; // healthBar updates automatically
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
 │   ┌─────────────────────────┐     ┌─────────────────────────┐          │
-│   │      MVCS LAYER         │     │      ECS LAYER          │          │
+│   │    PATTERNS LAYER       │     │      ECS LAYER          │          │
 │   │                         │     │                         │          │
 │   │  ┌─────────────────┐    │     │  ┌─────────────────┐    │          │
 │   │  │     Views       │    │     │  │    Systems      │    │          │
@@ -264,24 +264,24 @@ health.Value = 75; // healthBar updates automatically
 │   │           │             │     │           │             │          │
 │   │  ┌────────▼────────┐    │     │  ┌────────▼────────┐    │          │
 │   │  │   Controllers   │    │     │  │    Entities     │    │          │
-│   │  │ (StradaController)   │     │  │  (EntityManager)│    │          │
+│   │  │  (Controller)   │    │     │  │  (EntityManager)│    │          │
 │   │  └────────┬────────┘    │     │  └────────┬────────┘    │          │
 │   │           │             │     │           │             │          │
 │   │  ┌────────▼────────┐    │     │  ┌────────▼────────┐    │          │
 │   │  │    Services     │    │     │  │   Components    │    │          │
-│   │  │ (StradaService) │    │     │  │  (IComponent)   │    │          │
+│   │  │    (Service)    │    │     │  │  (IComponent)   │    │          │
 │   │  └────────┬────────┘    │     │  └─────────────────┘    │          │
 │   │           │             │     │                         │          │
 │   │  ┌────────▼────────┐    │     │                         │          │
 │   │  │     Models      │    │     │                         │          │
-│   │  │  (StradaModel)  │    │     │                         │          │
+│   │  │    (Model)      │    │     │                         │          │
 │   │  └─────────────────┘    │     │                         │          │
 │   └────────────┬────────────┘     └────────────┬────────────┘          │
 │                │                               │                        │
 │                └───────────┬───────────────────┘                        │
 │                            │                                            │
 │                ┌───────────▼───────────┐                                │
-│                │      StradaBus        │                                │
+│                │      MessageBus       │                                │
 │                │  (Events/Commands/    │                                │
 │                │       Queries)        │                                │
 │                └───────────┬───────────┘                                │
@@ -290,9 +290,9 @@ health.Value = 75; // healthBar updates automatically
 │    │                       │                       │                    │
 │    ▼                       ▼                       ▼                    │
 │ ┌──────────────┐   ┌──────────────┐   ┌──────────────────────┐         │
-│ │     DI       │   │   Reactive   │   │   Bridge/Mediator    │         │
+│ │     DI       │   │   Reactive   │   │   Sync/Mediator      │         │
 │ │  Container   │   │  Properties  │   │      Registry        │         │
-│ │(FastContainer)   │(ReactiveProperty) │   (ViewMediator)      │         │
+│ │ (Container)  │   │(ReactiveProperty) │  (EntityMediator)    │         │
 │ └──────────────┘   └──────────────┘   └──────────────────────┘         │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -302,7 +302,7 @@ health.Value = 75; // healthBar updates automatically
 
 ```
 ┌──────────────┐   Commands    ┌──────────────┐   Component     ┌──────────┐
-│  Controller  │──────────────▶│  StradaBus   │───Updates──────▶│   ECS    │
+│  Controller  │──────────────▶│  MessageBus  │───Updates──────▶│   ECS    │
 │              │               │              │                 │  System  │
 └──────────────┘               └──────────────┘                 └──────────┘
        ▲                              │                               │
@@ -318,8 +318,8 @@ Packages/com.strada.core/
 ├── Runtime/
 │   ├── DI/                    # Dependency Injection
 │   │   ├── ContainerBuilder.cs
-│   │   ├── FastContainer.cs
-│   │   ├── FastContainerScope.cs
+│   │   ├── Container.cs
+│   │   ├── ContainerScope.cs
 │   │   ├── Lifetime.cs
 │   │   ├── Attributes/        # Auto-binding attributes
 │   │   │   └── AutoRegisterAttribute.cs
@@ -332,16 +332,16 @@ Packages/com.strada.core/
 │   │   ├── Systems/SystemBase.cs
 │   │   └── Jobs/ParallelComponentJob.cs
 │   ├── Communication/         # Unified Messaging
-│   │   └── StradaBus.cs
+│   │   └── MessageBus.cs
 │   ├── Commands/              # Command Pattern
 │   │   ├── ICommand.cs
 │   │   ├── CommandPool.cs
 │   │   └── CommandSequencer.cs
-│   ├── Bridge/                # MVCS-ECS Integration
+│   ├── Sync/                  # Patterns-ECS Integration
 │   │   ├── ReactiveProperty.cs
 │   │   ├── ComputedProperty.cs
-│   │   ├── ViewMediator.cs
-│   │   └── BridgeEvents.cs
+│   │   ├── EntityMediator.cs
+│   │   └── SyncEvents.cs
 │   ├── Pooling/               # Object Pooling
 │   │   └── ObjectPool.cs
 │   └── StateMachine/          # FSM
@@ -349,8 +349,8 @@ Packages/com.strada.core/
 ├── Documentation~/            # Detailed Documentation
 │   ├── DI.md                  # Dependency injection guide
 │   ├── ECS.md                 # Entity Component System guide
-│   ├── Messaging.md           # StradaBus messaging guide
-│   ├── Bridge.md              # Reactive bindings guide
+│   ├── Messaging.md           # MessageBus messaging guide
+│   ├── Sync.md                # Reactive bindings guide
 │   ├── Pooling.md             # Object pooling guide
 │   ├── StateMachine.md        # FSM guide
 │   └── Benchmarks.md          # Performance benchmarks
@@ -410,7 +410,7 @@ T GetComponent<T>(Entity entity) where T : unmanaged, IComponent;
 void SetComponent<T>(Entity entity, T component) where T : unmanaged, IComponent;
 ```
 
-### StradaBus
+### MessageBus
 
 ```csharp
 // Events (pub/sub)

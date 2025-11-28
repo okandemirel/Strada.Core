@@ -280,9 +280,9 @@ Systems support dependency injection:
 public class DamageSystem : SystemBase
 {
     [Inject]
-    public void Inject(EntityManager em, StradaBus bus)
+    public void Inject(EntityManager em, MessageBus bus)
     {
-        // EntityManager and StradaBus injected automatically
+        // EntityManager and MessageBus injected automatically
     }
 
     protected override void OnUpdate(float deltaTime)
@@ -504,7 +504,7 @@ public readonly struct Entity
 
 ```csharp
 protected EntityManager EntityManager { get; }
-protected StradaBus Bus { get; }
+protected MessageBus Bus { get; }
 
 protected virtual void OnInitialize() { }
 protected abstract void OnUpdate(float deltaTime);
@@ -525,5 +525,5 @@ protected void Send<T>(T cmd) where T : struct;
 ## Related Documentation
 
 - [DI Container](DI.md) - Dependency injection for systems
-- [Messaging](Messaging.md) - StradaBus communication
+- [Messaging](Messaging.md) - MessageBus communication
 - [Benchmarks](Benchmarks.md) - Full performance data

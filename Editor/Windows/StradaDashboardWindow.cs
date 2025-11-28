@@ -1017,7 +1017,7 @@ namespace Strada.Core.Editor.Windows
         {
             if (!_busProvider.IsAvailable)
             {
-                EditorGUILayout.HelpBox("StradaBus not available. Ensure a World with a Bus is created.", MessageType.Warning);
+                EditorGUILayout.HelpBox("MessageBus not available. Ensure a World with a Bus is created.", MessageType.Warning);
                 return;
             }
 

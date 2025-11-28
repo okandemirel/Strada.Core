@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using Strada.Core.MVCS;
+using Strada.Core.Patterns;
 using UnityEngine;
 
 namespace Strada.Core.Editor.Validation
@@ -48,7 +48,7 @@ namespace Strada.Core.Editor.Validation
             if (type == null || type.IsInterface || type.IsAbstract)
                 return false;
 
-            return typeof(StradaService).IsAssignableFrom(type);
+            return typeof(Service).IsAssignableFrom(type);
         }
 
         public IEnumerable<ValidationIssue> Validate(Type type)

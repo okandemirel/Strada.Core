@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using Strada.Core.MVCS.Interfaces;
+using Strada.Core.Patterns.Interfaces;
 using Strada.Core.Pooling;
 
 namespace Strada.Core.Services

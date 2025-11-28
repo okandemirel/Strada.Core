@@ -539,8 +539,8 @@ namespace {ns}
 
         private void CreateController(string basePath, string ns)
         {
-            var content = GenerateFileHeader() + $@"using Strada.Core.MVCS;
-using Strada.Core.MVCS.Interfaces;
+            var content = GenerateFileHeader() + $@"using Strada.Core.Patterns;
+using Strada.Core.Patterns.Interfaces;
 
 namespace {ns}
 {{
@@ -568,7 +568,7 @@ namespace {ns}
 
         private void CreateService(string basePath, string ns)
         {
-            var content = GenerateFileHeader() + $@"using Strada.Core.MVCS.Interfaces;
+            var content = GenerateFileHeader() + $@"using Strada.Core.Patterns.Interfaces;
 
 namespace {ns}
 {{

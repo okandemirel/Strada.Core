@@ -77,6 +77,12 @@ namespace Strada.Core.ECS.Storage
             return _data[_sparse[entityIndex]];
         }
 
+        public ref T GetRef(int entityIndex)
+        {
+            int denseIndex = _sparse[entityIndex];
+            return ref ((T*)_data.GetUnsafePtr())[denseIndex];
+        }
+
         public bool TryGet(int entityIndex, out T component)
         {
             if (entityIndex < _sparse.Length)

@@ -57,7 +57,7 @@ namespace Strada.Core.Bootstrap
                 _config = BootstrapConfig.CreateDefault();
             }
 
-            StradaPlayerLoop.Initialize();
+            PlayerLoop.Initialize();
             StartCoroutine(InitializeAsync());
         }
 
@@ -325,7 +325,7 @@ namespace Strada.Core.Bootstrap
             Container = null;
             _isInitialized = false;
 
-            StradaPlayerLoop.Shutdown();
+            PlayerLoop.Shutdown();
 
             Log("=== Strada Framework Shutdown Complete ===");
         }

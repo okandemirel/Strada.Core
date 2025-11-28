@@ -142,14 +142,14 @@ namespace Strada.Core.DI.AutoBinding
                 };
             }
 
-            var stradaService = type.GetCustomAttribute<StradaServiceAttribute>();
-            if (stradaService != null)
+            var serviceAttr = type.GetCustomAttribute<ServiceAttribute>();
+            if (serviceAttr != null)
             {
                 return new AutoBindingEntry
                 {
                     ImplementationType = type,
-                    ServiceType = stradaService.InterfaceType ?? type,
-                    Lifetime = stradaService.Lifetime,
+                    ServiceType = serviceAttr.InterfaceType ?? type,
+                    Lifetime = serviceAttr.Lifetime,
                     Priority = 0,
                     RegisterSelf = false
                 };

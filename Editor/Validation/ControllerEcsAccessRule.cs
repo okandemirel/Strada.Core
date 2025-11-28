@@ -4,7 +4,7 @@ using System.Linq;
 using System.Reflection;
 using Strada.Core.ECS;
 using Strada.Core.ECS.Core;
-using Strada.Core.MVCS;
+using Strada.Core.Patterns;
 
 namespace Strada.Core.Editor.Validation
 {
@@ -16,7 +16,7 @@ namespace Strada.Core.Editor.Validation
     {
         public string RuleId => "STRADA002";
         public string RuleName => "Controller ECS Access";
-        public string Description => "Controllers should not directly access EntityManager or World; use the Bridge layer instead";
+        public string Description => "Controllers should not directly access EntityManager or World; use the Sync layer instead";
 
         private static readonly Type[] ForbiddenTypes = new[]
         {
@@ -52,7 +52,7 @@ namespace Strada.Core.Editor.Validation
                     yield return new ValidationIssue(
                         ValidationSeverity.Warning,
                         $"Controller '{type.Name}' has field '{field.Name}' of ECS type '{field.FieldType.Name}'",
-                        "Use ViewMediator or StradaBus to interact with ECS instead of direct access");
+                        "Use EntityMediator or MessageBus to interact with ECS instead of direct access");
                 }
             }
 
@@ -65,7 +65,7 @@ namespace Strada.Core.Editor.Validation
                     yield return new ValidationIssue(
                         ValidationSeverity.Warning,
                         $"Controller '{type.Name}' has property '{prop.Name}' of ECS type '{prop.PropertyType.Name}'",
-                        "Use ViewMediator or StradaBus to interact with ECS instead of direct access");
+                        "Use EntityMediator or MessageBus to interact with ECS instead of direct access");
                 }
             }
 
@@ -79,7 +79,7 @@ namespace Strada.Core.Editor.Validation
                     yield return new ValidationIssue(
                         ValidationSeverity.Warning,
                         $"Controller '{type.Name}' method '{method.Name}' returns ECS type '{method.ReturnType.Name}'",
-                        "Use ViewMediator or StradaBus to interact with ECS instead of direct access");
+                        "Use EntityMediator or MessageBus to interact with ECS instead of direct access");
                 }
 
                 foreach (var param in method.GetParameters())
@@ -89,7 +89,7 @@ namespace Strada.Core.Editor.Validation
                         yield return new ValidationIssue(
                             ValidationSeverity.Warning,
                             $"Controller '{type.Name}' method '{method.Name}' has parameter '{param.Name}' of ECS type '{param.ParameterType.Name}'",
-                            "Use ViewMediator or StradaBus to interact with ECS instead of direct access");
+                            "Use EntityMediator or MessageBus to interact with ECS instead of direct access");
                     }
                 }
             }

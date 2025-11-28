@@ -126,7 +126,7 @@ namespace Strada.Core.Editor.Templates
             sb.AppendLine("    /// <summary>");
             sb.AppendLine("    /// Service containing business logic, shared across modules.");
             sb.AppendLine("    /// </summary>");
-            sb.AppendLine($"    public class {className} : StradaService");
+            sb.AppendLine($"    public class {className} : Service");
             sb.AppendLine("    {");
             sb.AppendLine("        public override void Initialize()");
             sb.AppendLine("        {");
@@ -253,7 +253,7 @@ namespace Strada.Core.Editor.Templates
         }
 
         /// <summary>
-        /// Generates a Command template for StradaBus.
+        /// Generates a Command template for MessageBus.
         /// </summary>
         public static string GenerateCommand(string className, string namespaceName)
         {
@@ -269,7 +269,7 @@ namespace Strada.Core.Editor.Templates
             sb.AppendLine($"namespace {namespaceName}");
             sb.AppendLine("{");
             sb.AppendLine("    /// <summary>");
-            sb.AppendLine("    /// Command message for StradaBus.");
+            sb.AppendLine("    /// Command message for MessageBus.");
             sb.AppendLine("    /// Use with bus.Send() to dispatch commands.");
             sb.AppendLine("    /// </summary>");
             sb.AppendLine($"    public readonly struct {className}");
@@ -287,7 +287,7 @@ namespace Strada.Core.Editor.Templates
         }
 
         /// <summary>
-        /// Generates an Event template for StradaBus.
+        /// Generates an Event template for MessageBus.
         /// </summary>
         public static string GenerateEvent(string className, string namespaceName)
         {
@@ -303,7 +303,7 @@ namespace Strada.Core.Editor.Templates
             sb.AppendLine($"namespace {namespaceName}");
             sb.AppendLine("{");
             sb.AppendLine("    /// <summary>");
-            sb.AppendLine("    /// Event message for StradaBus.");
+            sb.AppendLine("    /// Event message for MessageBus.");
             sb.AppendLine("    /// Use with bus.Publish() to broadcast events.");
             sb.AppendLine("    /// </summary>");
             sb.AppendLine($"    public readonly struct {className}");

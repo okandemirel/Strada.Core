@@ -350,7 +350,7 @@ var container = builder.Build(); // Throws InvalidOperationException
 
 ## Performance
 
-FastContainer uses expression tree compilation for near-native performance.
+Container uses expression tree compilation for near-native performance.
 
 ### Benchmarks (Apple Silicon, Unity 6, Mono)
 
@@ -371,7 +371,7 @@ FastContainer uses expression tree compilation for near-native performance.
 
 ### Type ID System
 
-FastContainer uses a static type ID system for O(1) lookup:
+Container uses a static type ID system for O(1) lookup:
 
 ```csharp
 // Internal implementation
@@ -509,5 +509,5 @@ public enum Lifetime
 ## Related Documentation
 
 - [ECS System](ECS.md) - Entity Component System
-- [Messaging](Messaging.md) - StradaBus communication
+- [Messaging](Messaging.md) - MessageBus communication
 - [Benchmarks](Benchmarks.md) - Full performance data

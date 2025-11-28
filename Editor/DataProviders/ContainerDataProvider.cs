@@ -11,7 +11,7 @@ namespace Strada.Core.Editor.DataProviders
 {
     /// <summary>
     /// Provides access to DI container registration data for editor tools.
-    /// Connects to FastContainer at runtime via GameBootstrapper.Container.
+    /// Connects to Container at runtime via GameBootstrapper.Container.
     /// </summary>
     public class ContainerDataProvider : EditorDataProviderBase<ContainerSnapshot>, IContainerDataProvider
     {
@@ -87,12 +87,12 @@ namespace Strada.Core.Editor.DataProviders
         {
             var registrations = new List<ServiceRegistrationInfo>();
 
-            if (container is not FastContainer fastContainer)
+            if (container is not Container fastContainer)
                 return registrations;
 
             try
             {
-                var containerType = typeof(FastContainer);
+                var containerType = typeof(Container);
                 var flags = BindingFlags.NonPublic | BindingFlags.Instance;
 
                 var registeredTypesField = containerType.GetField("_registeredTypes", flags);

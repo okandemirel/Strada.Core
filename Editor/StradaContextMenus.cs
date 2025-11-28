@@ -24,7 +24,7 @@ namespace Strada.Core.Editor
 
             var type = target.GetType();
             
-            if (type.Name.Contains("ViewMediator") || type.Name.Contains("Mediator"))
+            if (type.Name.Contains("EntityMediator") || type.Name.Contains("Mediator"))
             {
                 Selection.activeObject = target;
                 EditorGUIUtility.PingObject(target);
@@ -32,7 +32,7 @@ namespace Strada.Core.Editor
             }
             else
             {
-                Debug.Log($"[Strada] {target.name} is not a ViewMediator. Select a ViewMediator to inspect bindings.");
+                Debug.Log($"[Strada] {target.name} is not an EntityMediator. Select an EntityMediator to inspect bindings.");
             }
         }
 

@@ -1,133 +1,304 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Strada.Core.ECS.Storage;
 
 namespace Strada.Core.ECS.Core
 {
     public sealed class EntityManager : IDisposable
     {
-        private int _nextEntityIndex;
-        private readonly Dictionary<int, int> _entityVersions;
-        private readonly HashSet<int> _activeEntities;
-        private readonly ComponentStore _store;
-        private readonly Queue<int> _recycledIndices;
+        private const int InitialCapacity = 1024;
 
-        public int EntityCount => _activeEntities.Count;
+        private NativeArray<int> _versions;
+        private NativeArray<byte> _active; // 1 = active, 0 = inactive (using byte for NativeArray compatibility)
+        private NativeList<int> _recycledIndices;
+        private int _nextEntityIndex;
+        private int _entityCount;
+        private readonly ComponentStore _store;
+        private bool _disposed;
+
+        public int EntityCount => _entityCount;
         public ComponentStore Store => _store;
 
-        public EntityManager()
+        public EntityManager() : this(InitialCapacity) { }
+
+        public EntityManager(int initialCapacity)
         {
+            _versions = new NativeArray<int>(initialCapacity, Allocator.Persistent);
+            _active = new NativeArray<byte>(initialCapacity, Allocator.Persistent);
+            _recycledIndices = new NativeList<int>(256, Allocator.Persistent);
             _nextEntityIndex = 1;
-            _entityVersions = new Dictionary<int, int>();
-            _activeEntities = new HashSet<int>();
+            _entityCount = 0;
             _store = new ComponentStore();
-            _recycledIndices = new Queue<int>();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Entity CreateEntity()
         {
-            int index = _recycledIndices.Count > 0 ? _recycledIndices.Dequeue() : _nextEntityIndex++;
+            int index;
+            int version;
 
-            if (!_entityVersions.TryGetValue(index, out int version))
-                version = 1;
+            if (_recycledIndices.Length > 0)
+            {
+                index = _recycledIndices[_recycledIndices.Length - 1];
+                _recycledIndices.RemoveAt(_recycledIndices.Length - 1);
+                version = _versions[index] + 1;
+            }
             else
-                version++;
+            {
+                index = _nextEntityIndex++;
+                EnsureCapacity(index + 1);
+                version = 1;
+            }
 
-            _entityVersions[index] = version;
-            _activeEntities.Add(index);
+            _versions[index] = version;
+            _active[index] = 1;
+            _entityCount++;
 
             return new Entity(index, version);
         }
 
+        /// <summary>
+        /// Creates multiple entities at once for better performance when spawning many entities.
+        /// </summary>
+        public void CreateEntities(NativeArray<Entity> entities)
+        {
+            int count = entities.Length;
+            EnsureCapacity(_nextEntityIndex + count);
+
+            for (int i = 0; i < count; i++)
+            {
+                int index;
+                int version;
+
+                if (_recycledIndices.Length > 0)
+                {
+                    index = _recycledIndices[_recycledIndices.Length - 1];
+                    _recycledIndices.RemoveAt(_recycledIndices.Length - 1);
+                    version = _versions[index] + 1;
+                }
+                else
+                {
+                    index = _nextEntityIndex++;
+                    version = 1;
+                }
+
+                _versions[index] = version;
+                _active[index] = 1;
+                entities[i] = new Entity(index, version);
+            }
+
+            _entityCount += count;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void DestroyEntity(Entity entity)
         {
-            if (!_activeEntities.Contains(entity.Index))
+            if (!IsActiveIndex(entity.Index))
+                return;
+
+            // Version check for safety
+            if (_versions[entity.Index] != entity.Version)
                 return;
 
             _store.RemoveEntity(entity.Index);
-            _activeEntities.Remove(entity.Index);
-            _recycledIndices.Enqueue(entity.Index);
+            _active[entity.Index] = 0;
+            _recycledIndices.Add(entity.Index);
+            _entityCount--;
         }
 
+        /// <summary>
+        /// Destroys multiple entities at once for better performance.
+        /// </summary>
+        public void DestroyEntities(NativeArray<Entity> entities)
+        {
+            for (int i = 0; i < entities.Length; i++)
+            {
+                DestroyEntity(entities[i]);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Exists(Entity entity)
         {
-            if (!_activeEntities.Contains(entity.Index))
+            if (entity.Index <= 0 || entity.Index >= _versions.Length)
                 return false;
 
-            return _entityVersions.TryGetValue(entity.Index, out int version) && version == entity.Version;
+            return _active[entity.Index] == 1 && _versions[entity.Index] == entity.Version;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
-            if (!_activeEntities.Contains(entity.Index))
+            if (!IsActiveIndex(entity.Index))
                 return;
 
             var storage = _store.GetOrCreateStorage<T>();
             storage.Add(entity.Index, default);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddComponent<T>(Entity entity, T component) where T : unmanaged, IComponent
         {
-            if (!_activeEntities.Contains(entity.Index))
+            if (!IsActiveIndex(entity.Index))
                 return;
 
             var storage = _store.GetOrCreateStorage<T>();
             storage.Add(entity.Index, component);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
-            if (!_activeEntities.Contains(entity.Index))
+            if (!IsActiveIndex(entity.Index))
                 return;
 
             var storage = _store.GetOrCreateStorage<T>();
             storage.Remove(entity.Index);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool HasComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
-            if (!_activeEntities.Contains(entity.Index))
+            if (!IsActiveIndex(entity.Index))
                 return false;
 
             var storage = _store.GetOrCreateStorage<T>();
             return storage.Contains(entity.Index);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T GetComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
             var storage = _store.GetOrCreateStorage<T>();
             return storage.Get(entity.Index);
         }
 
+        /// <summary>
+        /// Gets a reference to a component, allowing direct modification without copy.
+        /// Includes entity version validation for safety.
+        /// WARNING: The reference becomes invalid if the entity is destroyed or component removed.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref T GetComponentRef<T>(Entity entity) where T : unmanaged, IComponent
+        {
+            if (!Exists(entity))
+                ThrowEntityNotExists(entity);
+
+            var storage = _store.GetOrCreateStorage<T>();
+            if (!storage.Contains(entity.Index))
+                ThrowComponentNotFound<T>(entity);
+
+            return ref storage.GetRef(entity.Index);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void ThrowEntityNotExists(Entity entity) =>
+            throw new InvalidOperationException($"Entity {entity.Index}:{entity.Version} does not exist or version mismatch");
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void ThrowComponentNotFound<T>(Entity entity) =>
+            throw new InvalidOperationException($"Entity {entity.Index} does not have component {typeof(T).Name}");
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetComponent<T>(Entity entity, T component) where T : unmanaged, IComponent
         {
-            if (!_activeEntities.Contains(entity.Index))
+            if (!IsActiveIndex(entity.Index))
                 return;
 
             var storage = _store.GetOrCreateStorage<T>();
             storage.Set(entity.Index, component);
         }
 
+        /// <summary>
+        /// Gets all active entity indices. Allocates a managed list for compatibility.
+        /// For performance-critical code, use GetActiveEntitiesNonAlloc instead.
+        /// </summary>
         public IEnumerable<int> GetAllEntities()
         {
-            return _activeEntities;
+            var result = new List<int>(_entityCount);
+            for (int i = 1; i < _nextEntityIndex; i++)
+            {
+                if (_active[i] == 1)
+                    result.Add(i);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Gets active entity indices without allocation. Caller provides the output array.
+        /// Returns the number of active entities written.
+        /// </summary>
+        public int GetActiveEntitiesNonAlloc(NativeArray<int> output)
+        {
+            int written = 0;
+            int maxWrite = output.Length;
+
+            for (int i = 1; i < _nextEntityIndex && written < maxWrite; i++)
+            {
+                if (_active[i] == 1)
+                    output[written++] = i;
+            }
+
+            return written;
         }
 
         public void Clear()
         {
             _store.Clear();
-            _activeEntities.Clear();
-            _entityVersions.Clear();
+
+            // Reset all tracking arrays
+            unsafe
+            {
+                UnsafeUtility.MemClear(_versions.GetUnsafePtr(), _versions.Length * sizeof(int));
+                UnsafeUtility.MemClear(_active.GetUnsafePtr(), _active.Length * sizeof(byte));
+            }
+
             _recycledIndices.Clear();
             _nextEntityIndex = 1;
+            _entityCount = 0;
         }
 
         public void Dispose()
         {
+            if (_disposed) return;
+            _disposed = true;
+
             _store.Dispose();
-            _activeEntities.Clear();
-            _entityVersions.Clear();
-            _recycledIndices.Clear();
+
+            if (_versions.IsCreated) _versions.Dispose();
+            if (_active.IsCreated) _active.Dispose();
+            if (_recycledIndices.IsCreated) _recycledIndices.Dispose();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool IsActiveIndex(int index)
+        {
+            return index > 0 && index < _active.Length && _active[index] == 1;
+        }
+
+        private void EnsureCapacity(int required)
+        {
+            if (required <= _versions.Length)
+                return;
+
+            int newCapacity = _versions.Length;
+            while (newCapacity < required)
+                newCapacity *= 2;
+
+            var newVersions = new NativeArray<int>(newCapacity, Allocator.Persistent);
+            var newActive = new NativeArray<byte>(newCapacity, Allocator.Persistent);
+
+            NativeArray<int>.Copy(_versions, newVersions, _versions.Length);
+            NativeArray<byte>.Copy(_active, newActive, _active.Length);
+
+            _versions.Dispose();
+            _active.Dispose();
+
+            _versions = newVersions;
+            _active = newActive;
         }
     }
 }

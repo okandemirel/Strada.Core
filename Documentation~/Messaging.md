@@ -1,11 +1,11 @@
 # Messaging System
 
-Strada provides zero-allocation messaging through `StradaBus` - the unified messaging system for events, commands, and queries.
+Strada provides zero-allocation messaging through `MessageBus` - the unified messaging system for events, commands, and queries.
 
 ## Table of Contents
 
 - [Quick Start](#quick-start)
-- [StradaBus](#stradabus)
+- [MessageBus](#stradabus)
   - [Events (Pub/Sub)](#events-pubsub)
   - [Struct Commands](#struct-commands)
   - [Object Commands](#object-commands)
@@ -22,7 +22,7 @@ Strada provides zero-allocation messaging through `StradaBus` - the unified mess
 using Strada.Core.Communication;
 
 // Create bus
-var bus = new StradaBus();
+var bus = new MessageBus();
 
 // Define messages as structs (zero allocation)
 public struct PlayerDamaged { public int EntityId; public int Damage; }
@@ -43,7 +43,7 @@ bus.Send(new SpawnEnemy { X = 100, Y = 50 });
 
 ---
 
-## StradaBus
+## MessageBus
 
 The unified messaging bus supporting events, commands, and queries.
 
@@ -135,7 +135,7 @@ public class LoadLevelCommand : ICommand
     }
 }
 
-// Execute via StradaBus
+// Execute via MessageBus
 bus.Execute(new LoadLevelCommand { LevelName = "Level1" });
 
 // Async command
@@ -206,7 +206,7 @@ var result = bus.Query<ComplexQuery, Result>(ref query);
 
 ## Pooled Commands
 
-Reuse command objects to avoid allocation. StradaBus automatically returns pooled commands after execution.
+Reuse command objects to avoid allocation. MessageBus automatically returns pooled commands after execution.
 
 ### Using PooledCommandBase
 
@@ -250,7 +250,7 @@ Pre-warm pools for better performance:
 // Access the pool
 CommandPool<SpawnEnemyCommand>.Instance.Prewarm(50);
 
-// Manual rent/return (if not using StradaBus.Execute)
+// Manual rent/return (if not using MessageBus.Execute)
 var cmd = CommandPool<SpawnEnemyCommand>.Instance.Rent();
 // ... use command ...
 CommandPool<SpawnEnemyCommand>.Instance.Return(cmd);
@@ -277,7 +277,7 @@ public class CustomCommand : ICommand, IPooledCommand
     }
 }
 
-// StradaBus calls ReturnToPool() automatically after Execute()
+// MessageBus calls ReturnToPool() automatically after Execute()
 bus.Execute(myCommand);
 ```
 
@@ -287,7 +287,7 @@ bus.Execute(myCommand);
 
 ### Benchmarks
 
-StradaBus uses array-indexed dispatch for O(1) message routing:
+MessageBus uses array-indexed dispatch for O(1) message routing:
 
 | Operation | Time |
 |-----------|------|
@@ -365,7 +365,7 @@ public struct ItemCollected
 ```csharp
 public class EnemyController : MonoBehaviour
 {
-    private StradaBus _bus;
+    private MessageBus _bus;
     private Action<DamageEvent> _handler;
 
     void OnEnable()
@@ -404,7 +404,7 @@ var health = bus.Query<GetHealth, int>(new GetHealth { EntityId = id });
 
 ## API Reference
 
-### IStradaBus
+### IMessageBus
 
 ```csharp
 // Events
@@ -474,4 +474,4 @@ public interface ICommandHandler<TCommand> where TCommand : struct
 
 - [DI Container](DI.md) - Dependency injection
 - [ECS System](ECS.md) - Entity Component System
-- [Bridge](Bridge.md) - Reactive properties
+- [Sync](Sync.md) - Reactive properties
