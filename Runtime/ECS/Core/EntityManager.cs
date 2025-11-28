@@ -130,6 +130,15 @@ namespace Strada.Core.ECS.Core
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Entity GetEntity(int index)
+        {
+            if (index <= 0 || index >= _versions.Length || _active[index] == 0)
+                return Entity.Null;
+
+            return new Entity(index, _versions[index]);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
             if (!IsActiveIndex(entity.Index))
