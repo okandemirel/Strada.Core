@@ -14,7 +14,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Patterns
         public void SetUp()
         {
             var builder = new ContainerBuilder();
-            builder.Register<MessageBus>(Lifetime.Singleton);
+            builder.Register<EventBus>(Lifetime.Singleton);
             _container = builder.Build();
         }
 
@@ -79,7 +79,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Patterns
             InjectionProcessor.Inject(controller, _container);
             controller.Initialize();
 
-            var bus = _container.Resolve<MessageBus>();
+            var bus = _container.Resolve<EventBus>();
             int beforeCount = bus.GetSubscriberCount<TestEvent>();
 
             controller.Dispose();

@@ -14,13 +14,13 @@ namespace Strada.Core.ECS.Systems
         private bool _disposed;
 
         protected EntityManager EntityManager { get; private set; }
-        protected MessageBus MessageBus { get; private set; }
+        protected EventBus EventBus { get; private set; }
         protected EntityHandleRegistry HandleRegistry { get; private set; }
 
-        public void Inject(EntityManager entityManager, MessageBus bus = null, EntityHandleRegistry handleRegistry = null)
+        public void Inject(EntityManager entityManager, EventBus bus = null, EntityHandleRegistry handleRegistry = null)
         {
             EntityManager = entityManager;
-            MessageBus = bus;
+            EventBus = bus;
             HandleRegistry = handleRegistry;
         }
 
@@ -83,13 +83,19 @@ namespace Strada.Core.ECS.Systems
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected void Publish<T>(T evt) where T : struct
         {
-            MessageBus?.Publish(evt);
+            EventBus?.Publish(evt);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected void Send<T>(T command) where T : struct
+        protected void Send<T>(T signal) where T : struct
         {
-            MessageBus?.Send(command);
+            EventBus?.Send(signal);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected void RegisterSignalHandler<T>(Action<T> handler) where T : struct
+        {
+            EventBus?.RegisterSignalHandler(handler);
         }
     }
 

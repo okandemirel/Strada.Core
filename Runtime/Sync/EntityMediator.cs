@@ -15,7 +15,7 @@ namespace Strada.Core.Sync
         private readonly List<Action> _unsubscribeActions = new(4);
         private EntityManager _entities;
         private IContainer _container;
-        private IMessageBus _bus;
+        private IEventBus _bus;
         private TView _view;
         private Entity _entity;
         private bool _bound;
@@ -23,7 +23,7 @@ namespace Strada.Core.Sync
 
         protected EntityManager Entities => _entities;
         protected IContainer Container => _container;
-        protected IMessageBus MessageBus => _bus;
+        protected IEventBus EventBus => _bus;
         protected TView View => _view;
         protected Entity Entity => _entity;
         public bool IsBound => _bound;
@@ -163,7 +163,7 @@ namespace Strada.Core.Sync
         }
 
         /// <summary>
-        /// Subscribe to any event via MessageBus.
+        /// Subscribe to any event via EventBus.
         /// Auto-unsubscribes when Unbind is called.
         /// </summary>
         protected void Subscribe<TEvent>(Action<TEvent> handler) where TEvent : struct
@@ -174,7 +174,7 @@ namespace Strada.Core.Sync
         }
 
         /// <summary>
-        /// Publish an event via MessageBus.
+        /// Publish an event via EventBus.
         /// </summary>
         protected void Publish<TEvent>(TEvent message) where TEvent : struct
         {
@@ -182,11 +182,11 @@ namespace Strada.Core.Sync
         }
 
         /// <summary>
-        /// Send a command via MessageBus to ECS systems.
+        /// Send a signal via EventBus to ECS systems.
         /// </summary>
-        protected void SendCommand<TCommand>(TCommand command) where TCommand : struct
+        protected void SendSignal<TSignal>(TSignal signal) where TSignal : struct
         {
-            _bus?.Send(command);
+            _bus?.Send(signal);
         }
 
         public void Dispose()

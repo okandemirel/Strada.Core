@@ -9,12 +9,12 @@ namespace Strada.Core.Tests.Tests.Runtime.Communication
     [TestFixture]
     public class MessageBusTests
     {
-        private MessageBus _bus;
+        private EventBus _bus;
 
         [SetUp]
         public void SetUp()
         {
-            _bus = new MessageBus();
+            _bus = new EventBus();
         }
 
         [TearDown]
@@ -26,10 +26,10 @@ namespace Strada.Core.Tests.Tests.Runtime.Communication
         [Test]
         public void Send_WithRegisteredHandler_ExecutesHandler()
         {
-            var command = new TestCommand { Value = 42 };
+            var command = new TestSignal { Value = 42 };
             int receivedValue = 0;
 
-            _bus.RegisterCommandHandler<TestCommand>(cmd => receivedValue = cmd.Value);
+            _bus.RegisterSignalHandler<TestSignal>(cmd => receivedValue = cmd.Value);
             _bus.Send(command);
 
             Assert.AreEqual(42, receivedValue);
@@ -38,10 +38,10 @@ namespace Strada.Core.Tests.Tests.Runtime.Communication
         [Test]
         public void Send_ByRef_ExecutesHandler()
         {
-            var command = new TestCommand { Value = 100 };
+            var command = new TestSignal { Value = 100 };
             int receivedValue = 0;
 
-            _bus.RegisterCommandHandler<TestCommand>(cmd => receivedValue = cmd.Value);
+            _bus.RegisterSignalHandler<TestSignal>(cmd => receivedValue = cmd.Value);
             _bus.Send(ref command);
 
             Assert.AreEqual(100, receivedValue);
@@ -59,9 +59,9 @@ namespace Strada.Core.Tests.Tests.Runtime.Communication
         public void Send_WithInterfaceHandler_ExecutesHandler()
         {
             var handler = new TestCommandHandler();
-            var command = new TestCommand { Value = 55 };
+            var command = new TestSignal { Value = 55 };
 
-            _bus.RegisterCommandHandler<TestCommand>(handler);
+            _bus.RegisterSignalHandler<TestSignal>(handler);
             _bus.Send(command);
 
             Assert.AreEqual(55, handler.LastValue);
@@ -73,10 +73,10 @@ namespace Strada.Core.Tests.Tests.Runtime.Communication
             int handler1Called = 0;
             int handler2Called = 0;
 
-            _bus.RegisterCommandHandler<TestCommand>(_ => handler1Called++);
-            _bus.RegisterCommandHandler<TestCommand>(_ => handler2Called++);
+            _bus.RegisterSignalHandler<TestSignal>(_ => handler1Called++);
+            _bus.RegisterSignalHandler<TestSignal>(_ => handler2Called++);
 
-            _bus.Send(new TestCommand());
+            _bus.Send(new TestSignal());
 
             Assert.AreEqual(0, handler1Called);
             Assert.AreEqual(1, handler2Called);
@@ -289,10 +289,10 @@ namespace Strada.Core.Tests.Tests.Runtime.Communication
         [Test]
         public void Clear_RemovesAllCommandHandlers()
         {
-            _bus.RegisterCommandHandler<TestCommand>(_ => { });
+            _bus.RegisterSignalHandler<TestSignal>(_ => { });
             _bus.Clear();
 
-            Assert.Throws<InvalidOperationException>(() => _bus.Send(new TestCommand()));
+            Assert.Throws<InvalidOperationException>(() => _bus.Send(new TestSignal()));
         }
 
         [Test]
@@ -320,7 +320,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Communication
         [Test]
         public void Dispose_ClearsAllHandlers()
         {
-            _bus.RegisterCommandHandler<TestCommand>(_ => { });
+            _bus.RegisterSignalHandler<TestSignal>(_ => { });
             _bus.Subscribe<TestEvent>(_ => { });
 
             _bus.Dispose();
@@ -345,10 +345,10 @@ namespace Strada.Core.Tests.Tests.Runtime.Communication
             int command1Count = 0;
             int command2Count = 0;
 
-            _bus.RegisterCommandHandler<TestCommand>(_ => command1Count++);
-            _bus.RegisterCommandHandler<AnotherCommand>(_ => command2Count++);
+            _bus.RegisterSignalHandler<TestSignal>(_ => command1Count++);
+            _bus.RegisterSignalHandler<AnotherCommand>(_ => command2Count++);
 
-            _bus.Send(new TestCommand());
+            _bus.Send(new TestSignal());
 
             Assert.AreEqual(1, command1Count);
             Assert.AreEqual(0, command2Count);
@@ -405,14 +405,14 @@ namespace Strada.Core.Tests.Tests.Runtime.Communication
             const int typeCount = 100;
             var results = new int[typeCount];
 
-            _bus.RegisterCommandHandler<TestCommand>(c => results[0] = c.Value);
+            _bus.RegisterSignalHandler<TestSignal>(c => results[0] = c.Value);
 
-            _bus.Send(new TestCommand { Value = 42 });
+            _bus.Send(new TestSignal { Value = 42 });
 
             Assert.AreEqual(42, results[0]);
         }
 
-        private struct TestCommand
+        private struct TestSignal
         {
             public int Value;
         }
@@ -446,13 +446,13 @@ namespace Strada.Core.Tests.Tests.Runtime.Communication
 
         private struct UnhandledQuery : IQuery<int> { }
 
-        private class TestCommandHandler : ICommandHandler<TestCommand>
+        private class TestCommandHandler : ISignalHandler<TestSignal>
         {
             public int LastValue;
 
-            public void Handle(TestCommand command)
+            public void Handle(TestSignal signal)
             {
-                LastValue = command.Value;
+                LastValue = signal.Value;
             }
         }
 

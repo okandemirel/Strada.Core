@@ -14,7 +14,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Patterns
         public void SetUp()
         {
             var builder = new ContainerBuilder();
-            builder.Register<MessageBus>(Lifetime.Singleton);
+            builder.Register<EventBus>(Lifetime.Singleton);
             _container = builder.Build();
         }
 
@@ -113,7 +113,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Patterns
             public int DisposeCount;
             public bool IsInit => IsInitialized;
             public IContainer InjectedContainer => Container;
-            public MessageBus InjectedBus => MessageBus;
+            public EventBus InjectedBus => EventBus;
 
             protected override void OnInitialize()
             {

@@ -37,7 +37,7 @@ namespace Strada.Core.Editor.DataProviders
             get
             {
                 if (!Application.isPlaying) return false;
-                return World.Current?.MessageBus != null;
+                return World.Current?.EventBus != null;
             }
         }
 
@@ -92,7 +92,7 @@ namespace Strada.Core.Editor.DataProviders
 
                 if (!string.IsNullOrEmpty(filter.TypePattern))
                 {
-                    filtered = filtered.Where(e => 
+                    filtered = filtered.Where(e =>
                         MatchesTypePattern(e.MessageType?.Name, filter.TypePattern));
                 }
 
@@ -145,9 +145,9 @@ namespace Strada.Core.Editor.DataProviders
 
             try
             {
-                var bus = World.Current.MessageBus;
+                var bus = World.Current.EventBus;
 
-                var method = typeof(MessageBus).GetMethod("GetSubscriberCount");
+                var method = typeof(EventBus).GetMethod("GetSubscriberCount");
                 if (method != null)
                 {
                     var genericMethod = method.MakeGenericMethod(messageType);
@@ -213,7 +213,7 @@ namespace Strada.Core.Editor.DataProviders
         /// <summary>
         /// Logs a query execution.
         /// </summary>
-        public void LogQuery<TQuery, TResult>(TQuery query, double processingTimeMs) 
+        public void LogQuery<TQuery, TResult>(TQuery query, double processingTimeMs)
             where TQuery : struct
         {
             LogMessage(new MessageLogEntry
@@ -236,8 +236,8 @@ namespace Strada.Core.Editor.DataProviders
 
             try
             {
-                var bus = World.Current.MessageBus;
-                var busType = typeof(MessageBus);
+                var bus = World.Current.EventBus;
+                var busType = typeof(EventBus);
                 var flags = BindingFlags.NonPublic | BindingFlags.Instance;
 
                 var handlersField = busType.GetField("_commandHandlers", flags);
@@ -251,7 +251,7 @@ namespace Strada.Core.Editor.DataProviders
 
                 var typeIdType = busType.GetNestedType("CommandTypeId`1", BindingFlags.NonPublic)
                     ?.MakeGenericType(commandType);
-                
+
                 if (typeIdType == null) return false;
 
                 var idField = typeIdType.GetField("Id", BindingFlags.Public | BindingFlags.Static);

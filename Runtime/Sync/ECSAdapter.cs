@@ -16,7 +16,7 @@ namespace Strada.Core.Sync
 
         public World World => _world;
         public EntityManager EntityManager => _world?.EntityManager;
-        public MessageBus MessageBus => _world?.MessageBus;
+        public EventBus EventBus => _world?.EventBus;
         public bool AutoUpdate { get => _autoUpdate; set => _autoUpdate = value; }
 
         public ECSAdapter() { }

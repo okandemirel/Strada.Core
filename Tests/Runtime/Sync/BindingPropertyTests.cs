@@ -20,7 +20,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Sync
     {
         private EntityManager _entityManager;
         private IContainer _container;
-        private MessageBus _bus;
+        private EventBus _bus;
 
         [OneTimeSetUp]
         public void OneTimeSetUp()
@@ -32,11 +32,11 @@ namespace Strada.Core.Tests.Tests.Runtime.Sync
         public void SetUp()
         {
             _entityManager = new EntityManager();
-            _bus = new MessageBus();
+            _bus = new EventBus();
 
             var builder = new ContainerBuilder();
             builder.RegisterInstance(_entityManager);
-            builder.RegisterInstance<IMessageBus>(_bus);
+            builder.RegisterInstance<IEventBus>(_bus);
             _container = builder.Build();
         }
 

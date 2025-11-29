@@ -10,12 +10,12 @@ namespace Strada.Core.Tests.Tests.Runtime.Performance
     [Category("Performance")]
     public class MessageBusPerformanceTests
     {
-        private MessageBus _bus;
+        private EventBus _bus;
 
         [SetUp]
         public void SetUp()
         {
-            _bus = new MessageBus();
+            _bus = new EventBus();
         }
 
         [TearDown]
@@ -31,18 +31,18 @@ namespace Strada.Core.Tests.Tests.Runtime.Performance
             const int Warmup = 1000;
             int counter = 0;
 
-            _bus.RegisterCommandHandler<BenchmarkCommand>(cmd => counter += cmd.Value);
+            _bus.RegisterSignalHandler<BenchmarkSignal>(cmd => counter += cmd.Value);
 
             for (int i = 0; i < Warmup; i++)
             {
-                _bus.Send(new BenchmarkCommand { Value = 1 });
+                _bus.Send(new BenchmarkSignal { Value = 1 });
             }
             counter = 0;
 
             var sw = Stopwatch.StartNew();
             for (int i = 0; i < Iterations; i++)
             {
-                _bus.Send(new BenchmarkCommand { Value = 1 });
+                _bus.Send(new BenchmarkSignal { Value = 1 });
             }
             sw.Stop();
 
@@ -239,14 +239,14 @@ namespace Strada.Core.Tests.Tests.Runtime.Performance
             int querySum = 0;
             int evtCount = 0;
 
-            _bus.RegisterCommandHandler<BenchmarkCommand>(c => cmdCount++);
+            _bus.RegisterSignalHandler<BenchmarkSignal>(c => cmdCount++);
             _bus.RegisterQueryHandler<BenchmarkQuery, int>(q => q.Input * 2);
             _bus.Subscribe<BenchmarkEvent>(e => evtCount++);
 
             var sw = Stopwatch.StartNew();
             for (int i = 0; i < Iterations; i++)
             {
-                _bus.Send(new BenchmarkCommand { Value = i });
+                _bus.Send(new BenchmarkSignal { Value = i });
                 querySum += _bus.Query<BenchmarkQuery, int>(new BenchmarkQuery { Input = 1 });
                 _bus.Publish(new BenchmarkEvent { Value = i });
             }
@@ -265,7 +265,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Performance
             Assert.Less(sw.ElapsedMilliseconds, 50, "Mixed operations too slow (Target: <50ms for 10k)");
         }
 
-        private struct BenchmarkCommand
+        private struct BenchmarkSignal
         {
             public int Value;
         }

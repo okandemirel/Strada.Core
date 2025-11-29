@@ -22,7 +22,7 @@ namespace Strada.Core.Modules
         private readonly List<SystemInstance>[] _systemsByPhase;
         private readonly List<SystemInstance> _allSystems;
         private readonly EntityManager _entityManager;
-        private readonly MessageBus _messageBus;
+        private readonly EventBus _eventBus;
         private readonly EntityHandleRegistry _handleRegistry;
         private readonly IContainer _container;
         private bool _initialized;
@@ -49,13 +49,13 @@ namespace Strada.Core.Modules
         /// Creates a new SystemRunner.
         /// </summary>
         /// <param name="entityManager">The entity manager for system injection.</param>
-        /// <param name="messageBus">The message bus for system injection.</param>
+        /// <param name="eventBus">The event bus for system injection.</param>
         /// <param name="handleRegistry">The entity handle registry for system injection.</param>
         /// <param name="container">The DI container for resolving system dependencies.</param>
-        public SystemRunner(EntityManager entityManager, MessageBus messageBus, EntityHandleRegistry handleRegistry, IContainer container = null)
+        public SystemRunner(EntityManager entityManager, EventBus eventBus, EntityHandleRegistry handleRegistry, IContainer container = null)
         {
             _entityManager = entityManager ?? throw new ArgumentNullException(nameof(entityManager));
-            _messageBus = messageBus;
+            _eventBus = eventBus;
             _handleRegistry = handleRegistry;
             _container = container;
 
@@ -269,7 +269,7 @@ namespace Strada.Core.Modules
         {
             if (system is SystemBase systemBase)
             {
-                systemBase.Inject(_entityManager, _messageBus, _handleRegistry);
+                systemBase.Inject(_entityManager, _eventBus, _handleRegistry);
             }
         }
     }

@@ -25,7 +25,7 @@ namespace Strada.Core.Patterns
         protected IContainer Container { get; private set; }
         protected World World { get; private set; }
         protected EntityManager EntityManager { get; private set; }
-        protected MessageBus MessageBus { get; private set; }
+        protected EventBus EventBus { get; private set; }
         protected bool IsInitialized => _initialized;
         protected bool IsDisposed => _disposed;
 
@@ -36,8 +36,8 @@ namespace Strada.Core.Patterns
             container.TryResolve(out World world);
             World = world;
             EntityManager = world?.EntityManager;
-            container.TryResolve(out MessageBus bus);
-            MessageBus = bus;
+            container.TryResolve(out EventBus bus);
+            EventBus = bus;
         }
 
         public void Initialize()
@@ -68,30 +68,30 @@ namespace Strada.Core.Patterns
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected void Subscribe<T>(Action<T> handler) where T : struct
         {
-            MessageBus?.Subscribe(handler);
-            _unsubscribes.Add(() => MessageBus?.Unsubscribe(handler));
+            EventBus?.Subscribe(handler);
+            _unsubscribes.Add(() => EventBus?.Unsubscribe(handler));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected void Publish<T>(T message) where T : struct
         {
-            MessageBus?.Publish(message);
+            EventBus?.Publish(message);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected void Send<T>(T command) where T : struct
+        protected void Send<T>(T signal) where T : struct
         {
-            MessageBus?.Send(command);
+            EventBus?.Send(signal);
         }
 
         /// <summary>
-        /// Register a command handler. Commands have exactly one handler and are used for direct actions.
+        /// Register a signal handler. Signals have exactly one handler and are used for direct actions.
         /// Use this instead of Subscribe for messages that represent requests/actions.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected void RegisterCommandHandler<T>(Action<T> handler) where T : struct
+        protected void RegisterSignalHandler<T>(Action<T> handler) where T : struct
         {
-            MessageBus?.RegisterCommandHandler(handler);
+            EventBus?.RegisterSignalHandler(handler);
         }
 
         /// <summary>
@@ -101,13 +101,13 @@ namespace Strada.Core.Patterns
         protected void RegisterQueryHandler<TQuery, TResult>(Func<TQuery, TResult> handler)
             where TQuery : struct, IQuery<TResult>
         {
-            MessageBus?.RegisterQueryHandler(handler);
+            EventBus?.RegisterQueryHandler(handler);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected TResult Query<TQuery, TResult>(TQuery query) where TQuery : struct, IQuery<TResult>
         {
-            return MessageBus != null ? MessageBus.Query<TQuery, TResult>(query) : default;
+            return EventBus != null ? EventBus.Query<TQuery, TResult>(query) : default;
         }
 
         protected void AddDisposable(IDisposable disposable)

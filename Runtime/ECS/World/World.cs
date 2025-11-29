@@ -10,7 +10,7 @@ namespace Strada.Core.ECS.World
 
         private readonly EntityManager _entities;
         private readonly SystemScheduler _scheduler;
-        private readonly MessageBus _bus;
+        private readonly EventBus _bus;
         private bool _initialized;
         private bool _disposed;
 
@@ -35,16 +35,16 @@ namespace Strada.Core.ECS.World
         public SystemScheduler SystemScheduler => _scheduler;
 
         /// <summary>
-        /// Gets the MessageBus for publish/subscribe communication.
+        /// Gets the EventBus for publish/subscribe communication.
         /// </summary>
-        public MessageBus MessageBus => _bus;
+        public EventBus EventBus => _bus;
 
         /// <summary>
         /// Gets a value indicating whether the World has been initialized.
         /// </summary>
         public bool IsInitialized => _initialized;
 
-        internal World(EntityManager entities, SystemScheduler scheduler, MessageBus bus)
+        internal World(EntityManager entities, SystemScheduler scheduler, EventBus bus)
         {
             _entities = entities;
             _scheduler = scheduler;

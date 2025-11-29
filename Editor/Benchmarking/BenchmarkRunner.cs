@@ -18,17 +18,17 @@ namespace Strada.Core.Editor.Benchmarking
     {
         private readonly List<BenchmarkDefinition> _benchmarks = new List<BenchmarkDefinition>();
         private readonly Dictionary<string, BenchmarkThreshold> _thresholds = new Dictionary<string, BenchmarkThreshold>();
-        
+
         public IReadOnlyList<BenchmarkDefinition> Benchmarks => _benchmarks;
         public event Action<BenchmarkResult> OnBenchmarkCompleted;
         public event Action<string> OnBenchmarkStarted;
-        
+
         public BenchmarkRunner()
         {
             RegisterDefaultBenchmarks();
             RegisterDefaultThresholds();
         }
-        
+
         private void RegisterDefaultBenchmarks()
         {
             _benchmarks.Add(new BenchmarkDefinition
@@ -39,7 +39,7 @@ namespace Strada.Core.Editor.Benchmarking
                 DefaultIterations = 10000,
                 Execute = RunDITransientBenchmark
             });
-            
+
             _benchmarks.Add(new BenchmarkDefinition
             {
                 Name = "DI_SingletonResolve",
@@ -57,7 +57,7 @@ namespace Strada.Core.Editor.Benchmarking
                 DefaultIterations = 10000,
                 Execute = RunECSEntityCreationBenchmark
             });
-            
+
             _benchmarks.Add(new BenchmarkDefinition
             {
                 Name = "ECS_ComponentAdd",
@@ -66,7 +66,7 @@ namespace Strada.Core.Editor.Benchmarking
                 DefaultIterations = 10000,
                 Execute = RunECSComponentAddBenchmark
             });
-            
+
             _benchmarks.Add(new BenchmarkDefinition
             {
                 Name = "ECS_ComponentQuery",
@@ -84,7 +84,7 @@ namespace Strada.Core.Editor.Benchmarking
                 DefaultIterations = 10000,
                 Execute = RunBusEventBenchmark
             });
-            
+
             _benchmarks.Add(new BenchmarkDefinition
             {
                 Name = "Bus_CommandDispatch",
@@ -94,7 +94,7 @@ namespace Strada.Core.Editor.Benchmarking
                 Execute = RunBusCommandBenchmark
             });
         }
-        
+
         private void RegisterDefaultThresholds()
         {
             _thresholds["DI_TransientResolve"] = new BenchmarkThreshold
@@ -103,28 +103,28 @@ namespace Strada.Core.Editor.Benchmarking
                 MinOpsPerSecond = 100000,
                 MaxAverageTimeMs = 0.01
             };
-            
+
             _thresholds["DI_SingletonResolve"] = new BenchmarkThreshold
             {
                 BenchmarkName = "DI_SingletonResolve",
                 MinOpsPerSecond = 500000,
                 MaxAverageTimeMs = 0.002
             };
-            
+
             _thresholds["ECS_EntityCreation"] = new BenchmarkThreshold
             {
                 BenchmarkName = "ECS_EntityCreation",
                 MinOpsPerSecond = 50000,
                 MaxAverageTimeMs = 0.02
             };
-            
+
             _thresholds["ECS_ComponentQuery"] = new BenchmarkThreshold
             {
                 BenchmarkName = "ECS_ComponentQuery",
                 MinOpsPerSecond = 10000,
                 MaxAverageTimeMs = 0.1
             };
-            
+
             _thresholds["Bus_EventPublish"] = new BenchmarkThreshold
             {
                 BenchmarkName = "Bus_EventPublish",
@@ -132,18 +132,18 @@ namespace Strada.Core.Editor.Benchmarking
                 MaxAverageTimeMs = 0.01
             };
         }
-        
+
         public BenchmarkThreshold GetThreshold(string benchmarkName)
         {
             return _thresholds.TryGetValue(benchmarkName, out var threshold) ? threshold : null;
         }
-        
+
         public void SetThreshold(string benchmarkName, BenchmarkThreshold threshold)
         {
             _thresholds[benchmarkName] = threshold;
         }
 
-        
+
         /// <summary>
         /// Runs a single benchmark by name.
         /// </summary>
@@ -160,17 +160,17 @@ namespace Strada.Core.Editor.Benchmarking
                     ErrorMessage = $"Benchmark '{name}' not found"
                 };
             }
-            
+
             return RunBenchmark(benchmark, iterations ?? benchmark.DefaultIterations);
         }
-        
+
         /// <summary>
         /// Runs a benchmark definition.
         /// </summary>
         public BenchmarkResult RunBenchmark(BenchmarkDefinition benchmark, int iterations)
         {
             OnBenchmarkStarted?.Invoke(benchmark.Name);
-            
+
             try
             {
                 var result = benchmark.Execute(iterations);
@@ -183,7 +183,7 @@ namespace Strada.Core.Editor.Benchmarking
                         result.ErrorMessage = threshold.GetFailureReason(result);
                     }
                 }
-                
+
                 OnBenchmarkCompleted?.Invoke(result);
                 return result;
             }
@@ -202,7 +202,7 @@ namespace Strada.Core.Editor.Benchmarking
                 return result;
             }
         }
-        
+
         /// <summary>
         /// Runs all benchmarks.
         /// </summary>
@@ -215,7 +215,7 @@ namespace Strada.Core.Editor.Benchmarking
             }
             return results;
         }
-        
+
         /// <summary>
         /// Runs benchmarks in a specific category.
         /// </summary>
@@ -228,7 +228,7 @@ namespace Strada.Core.Editor.Benchmarking
             }
             return results;
         }
-        
+
         /// <summary>
         /// Gets all unique categories.
         /// </summary>
@@ -246,7 +246,7 @@ namespace Strada.Core.Editor.Benchmarking
             var container = new ContainerBuilder()
                 .Register<ITestService, TestServiceImpl>(Lifetime.Transient)
                 .Build();
-            
+
             for (int i = 0; i < iterations; i++)
             {
                 sw.Restart();
@@ -254,10 +254,10 @@ namespace Strada.Core.Editor.Benchmarking
                 sw.Stop();
                 timings[i] = sw.Elapsed.TotalMilliseconds;
             }
-            
+
             long memoryAfter = GC.GetTotalMemory(false);
             container.Dispose();
-            
+
             return BenchmarkResult.Calculate(
                 "DI_TransientResolve",
                 "DI Container",
@@ -265,7 +265,7 @@ namespace Strada.Core.Editor.Benchmarking
                 memoryAfter - memoryBefore,
                 iterations);
         }
-        
+
         private BenchmarkResult RunDISingletonBenchmark(int iterations)
         {
             var timings = new double[iterations];
@@ -275,7 +275,7 @@ namespace Strada.Core.Editor.Benchmarking
             var container = new ContainerBuilder()
                 .Register<ITestService, TestServiceImpl>(Lifetime.Singleton)
                 .Build();
-            
+
             for (int i = 0; i < iterations; i++)
             {
                 sw.Restart();
@@ -283,10 +283,10 @@ namespace Strada.Core.Editor.Benchmarking
                 sw.Stop();
                 timings[i] = sw.Elapsed.TotalMilliseconds;
             }
-            
+
             long memoryAfter = GC.GetTotalMemory(false);
             container.Dispose();
-            
+
             return BenchmarkResult.Calculate(
                 "DI_SingletonResolve",
                 "DI Container",
@@ -302,7 +302,7 @@ namespace Strada.Core.Editor.Benchmarking
             long memoryBefore = GC.GetTotalMemory(true);
 
             var world = new ECSBuilder().Build();
-            
+
             for (int i = 0; i < iterations; i++)
             {
                 sw.Restart();
@@ -310,10 +310,10 @@ namespace Strada.Core.Editor.Benchmarking
                 sw.Stop();
                 timings[i] = sw.Elapsed.TotalMilliseconds;
             }
-            
+
             long memoryAfter = GC.GetTotalMemory(false);
             world.Dispose();
-            
+
             return BenchmarkResult.Calculate(
                 "ECS_EntityCreation",
                 "ECS",
@@ -321,7 +321,7 @@ namespace Strada.Core.Editor.Benchmarking
                 memoryAfter - memoryBefore,
                 iterations);
         }
-        
+
         private BenchmarkResult RunECSComponentAddBenchmark(int iterations)
         {
             var timings = new double[iterations];
@@ -343,10 +343,10 @@ namespace Strada.Core.Editor.Benchmarking
                 sw.Stop();
                 timings[i] = sw.Elapsed.TotalMilliseconds;
             }
-            
+
             long memoryAfter = GC.GetTotalMemory(false);
             world.Dispose();
-            
+
             return BenchmarkResult.Calculate(
                 "ECS_ComponentAdd",
                 "ECS",
@@ -354,7 +354,7 @@ namespace Strada.Core.Editor.Benchmarking
                 memoryAfter - memoryBefore,
                 iterations);
         }
-        
+
         private BenchmarkResult RunECSQueryBenchmark(int iterations)
         {
             var timings = new double[iterations];
@@ -377,10 +377,10 @@ namespace Strada.Core.Editor.Benchmarking
                 sw.Stop();
                 timings[i] = sw.Elapsed.TotalMilliseconds;
             }
-            
+
             long memoryAfter = GC.GetTotalMemory(false);
             world.Dispose();
-            
+
             return BenchmarkResult.Calculate(
                 "ECS_ComponentQuery",
                 "ECS",
@@ -394,13 +394,13 @@ namespace Strada.Core.Editor.Benchmarking
             var timings = new double[iterations];
             var sw = new Stopwatch();
             long memoryBefore = GC.GetTotalMemory(true);
-            
-            var bus = new MessageBus();
+
+            var bus = new EventBus();
             int receivedCount = 0;
             bus.Subscribe<TestEvent>(e => receivedCount++);
-            
+
             var testEvent = new TestEvent { Data = "test" };
-            
+
             for (int i = 0; i < iterations; i++)
             {
                 sw.Restart();
@@ -408,10 +408,10 @@ namespace Strada.Core.Editor.Benchmarking
                 sw.Stop();
                 timings[i] = sw.Elapsed.TotalMilliseconds;
             }
-            
+
             long memoryAfter = GC.GetTotalMemory(false);
             bus.Dispose();
-            
+
             return BenchmarkResult.Calculate(
                 "Bus_EventPublish",
                 "Message Bus",
@@ -419,18 +419,18 @@ namespace Strada.Core.Editor.Benchmarking
                 memoryAfter - memoryBefore,
                 iterations);
         }
-        
+
         private BenchmarkResult RunBusCommandBenchmark(int iterations)
         {
             var timings = new double[iterations];
             var sw = new Stopwatch();
             long memoryBefore = GC.GetTotalMemory(true);
-            
-            var bus = new MessageBus();
-            bus.RegisterCommandHandler<TestCommand>(cmd => { /* no-op handler */ });
-            
-            var testCommand = new TestCommand { Id = 1 };
-            
+
+            var bus = new EventBus();
+            bus.RegisterSignalHandler<TestSignal>(cmd => { /* no-op handler */ });
+
+            var testCommand = new TestSignal { Id = 1 };
+
             for (int i = 0; i < iterations; i++)
             {
                 sw.Restart();
@@ -438,10 +438,10 @@ namespace Strada.Core.Editor.Benchmarking
                 sw.Stop();
                 timings[i] = sw.Elapsed.TotalMilliseconds;
             }
-            
+
             long memoryAfter = GC.GetTotalMemory(false);
             bus.Dispose();
-            
+
             return BenchmarkResult.Calculate(
                 "Bus_CommandDispatch",
                 "Message Bus",
@@ -452,18 +452,18 @@ namespace Strada.Core.Editor.Benchmarking
 
         private interface ITestService { }
         private class TestServiceImpl : ITestService { }
-        
+
         private struct TestComponent : IComponent
         {
             public int Value;
         }
-        
+
         private struct TestEvent
         {
             public string Data;
         }
-        
-        private struct TestCommand
+
+        private struct TestSignal
         {
             public int Id;
         }

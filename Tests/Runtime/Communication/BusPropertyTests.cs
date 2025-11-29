@@ -61,7 +61,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Communication
                 EventValueGen.ToArbitrary(),
                 (subscriberCount, eventValue) =>
                 {
-                    using var bus = new MessageBus();
+                    using var bus = new EventBus();
                     var receivedValues = new List<int>();
                     var receiveCounts = new int[subscriberCount];
 
@@ -113,7 +113,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Communication
                 PublishCountGen.ToArbitrary(),
                 (subscriberCount, publishCount) =>
                 {
-                    using var bus = new MessageBus();
+                    using var bus = new EventBus();
                     var totalReceived = new int[subscriberCount];
 
                     for (int i = 0; i < subscriberCount; i++)
@@ -154,11 +154,11 @@ namespace Strada.Core.Tests.Tests.Runtime.Communication
                 CommandValueGen.ToArbitrary(),
                 (commandValue) =>
                 {
-                    using var bus = new MessageBus();
+                    using var bus = new EventBus();
                     int invokeCount = 0;
                     int receivedValue = 0;
 
-                    bus.RegisterCommandHandler<TestCommand>(cmd =>
+                    bus.RegisterSignalHandler<TestCommand>(cmd =>
                     {
                         invokeCount++;
                         receivedValue = cmd.Value;
@@ -186,11 +186,11 @@ namespace Strada.Core.Tests.Tests.Runtime.Communication
                 PublishCountGen.ToArbitrary(),
                 (sendCount) =>
                 {
-                    using var bus = new MessageBus();
+                    using var bus = new EventBus();
                     int invokeCount = 0;
                     var receivedValues = new List<int>();
 
-                    bus.RegisterCommandHandler<TestCommand>(cmd =>
+                    bus.RegisterSignalHandler<TestCommand>(cmd =>
                     {
                         invokeCount++;
                         receivedValues.Add(cmd.Value);
@@ -231,7 +231,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Communication
                 QueryMultiplierGen.ToArbitrary(),
                 (multiplier) =>
                 {
-                    using var bus = new MessageBus();
+                    using var bus = new EventBus();
                     const int baseValue = 10;
                     int expectedResult = baseValue * multiplier;
 
@@ -259,7 +259,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Communication
                 Gen.Choose(1, 1000).ToArbitrary(),
                 (id) =>
                 {
-                    using var bus = new MessageBus();
+                    using var bus = new EventBus();
                     string expectedResult = $"Result_{id}";
 
                     bus.RegisterQueryHandler<TestStringQuery, string>(q => $"Result_{q.Id}");
@@ -287,7 +287,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Communication
                 PublishCountGen.ToArbitrary(),
                 (multiplier, queryCount) =>
                 {
-                    using var bus = new MessageBus();
+                    using var bus = new EventBus();
                     bus.RegisterQueryHandler<TestQuery, int>(q => 10 * q.Multiplier);
 
                     var results = new List<int>();
@@ -324,7 +324,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Communication
                 PublishCountGen.ToArbitrary(),
                 (publishCount) =>
                 {
-                    using var bus = new MessageBus();
+                    using var bus = new EventBus();
                     int invokeCount = 0;
                     Action<TestEvent> handler = _ => invokeCount++;
 
@@ -363,7 +363,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Communication
                 {
                     if (subscriberCount < 2) subscriberCount = 2;
 
-                    using var bus = new MessageBus();
+                    using var bus = new EventBus();
                     var invokeCounts = new int[subscriberCount];
                     var handlers = new Action<TestEvent>[subscriberCount];
 
@@ -410,7 +410,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Communication
                 SubscriberCountGen.ToArbitrary(),
                 (subscriberCount) =>
                 {
-                    using var bus = new MessageBus();
+                    using var bus = new EventBus();
                     var handlers = new Action<TestEvent>[subscriberCount];
 
                     for (int i = 0; i < subscriberCount; i++)

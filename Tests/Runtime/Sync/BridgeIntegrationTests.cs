@@ -21,7 +21,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Sync
         private World _world;
         private ContainerBuilder _builder;
         private IContainer _container;
-        private MessageBus _bus;
+        private EventBus _bus;
         private EntityManager _entities;
 
         [SetUp]
@@ -31,16 +31,16 @@ namespace Strada.Core.Tests.Tests.Runtime.Sync
                 .WithInitialEntityCapacity(128)
                 .Build();
 
-            _bus = _world.MessageBus;
+            _bus = _world.EventBus;
             _entities = _world.EntityManager;
 
             _builder = new ContainerBuilder();
             _builder.RegisterInstance(_world);
             _builder.RegisterInstance(_entities);
             _builder.RegisterInstance(_bus);
-            _builder.RegisterInstance<IMessageBus>(_bus);
+            _builder.RegisterInstance<IEventBus>(_bus);
             _container = _builder.Build();
-            
+
             _world.Initialize();
         }
 
@@ -176,8 +176,8 @@ namespace Strada.Core.Tests.Tests.Runtime.Sync
             var entity = _entities.CreateEntity();
             _entities.AddComponent(entity, new HealthComponent { Current = 100, Max = 100 });
 
-            DamageCommand? receivedCommand = null;
-            _bus.RegisterCommandHandler<DamageCommand>(cmd => receivedCommand = cmd);
+            DamageSignal? receivedCommand = null;
+            _bus.RegisterSignalHandler<DamageSignal>(cmd => receivedCommand = cmd);
 
             var controller = new TestDamageController();
             controller.Construct(_container);
@@ -202,7 +202,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Sync
             var entity = _entities.CreateEntity();
             _entities.AddComponent(entity, new HealthComponent { Current = 100, Max = 100 });
 
-            _bus.RegisterCommandHandler<DamageCommand>(cmd =>
+            _bus.RegisterSignalHandler<DamageSignal>(cmd =>
             {
                 if (_entities.HasComponent<HealthComponent>(cmd.Target))
                 {
@@ -234,7 +234,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Sync
             var entity = _entities.CreateEntity();
             _entities.AddComponent(entity, new HealthComponent { Current = 100, Max = 100 });
 
-            _bus.RegisterCommandHandler<DamageCommand>(cmd =>
+            _bus.RegisterSignalHandler<DamageSignal>(cmd =>
             {
                 if (_entities.HasComponent<HealthComponent>(cmd.Target))
                 {
@@ -274,14 +274,14 @@ namespace Strada.Core.Tests.Tests.Runtime.Sync
             var entity = _entities.CreateEntity();
             _entities.AddComponent(entity, new HealthComponent { Current = 100, Max = 100 });
 
-            _bus.RegisterCommandHandler<DamageCommand>(cmd =>
+            _bus.RegisterSignalHandler<DamageSignal>(cmd =>
             {
                 var health = _entities.GetComponent<HealthComponent>(cmd.Target);
                 health.Current = Math.Max(0, health.Current - cmd.Amount);
                 _entities.SetComponent(cmd.Target, health);
             });
 
-            _bus.RegisterCommandHandler<HealCommand>(cmd =>
+            _bus.RegisterSignalHandler<HealSignal>(cmd =>
             {
                 var health = _entities.GetComponent<HealthComponent>(cmd.Target);
                 health.Current = Math.Min(health.Max, health.Current + cmd.Amount);
@@ -309,13 +309,13 @@ namespace Strada.Core.Tests.Tests.Runtime.Sync
             public float Max;
         }
 
-        private struct DamageCommand
+        private struct DamageSignal
         {
             public Entity Target;
             public float Amount;
         }
 
-        private struct HealCommand
+        private struct HealSignal
         {
             public Entity Target;
             public float Amount;
@@ -374,7 +374,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Sync
         {
             public void SendDamageCommand(Entity target, float amount)
             {
-                Send(new DamageCommand { Target = target, Amount = amount });
+                Send(new DamageSignal { Target = target, Amount = amount });
             }
         }
 
@@ -382,12 +382,12 @@ namespace Strada.Core.Tests.Tests.Runtime.Sync
         {
             public void SendDamage(Entity target, float amount)
             {
-                Send(new DamageCommand { Target = target, Amount = amount });
+                Send(new DamageSignal { Target = target, Amount = amount });
             }
 
             public void SendHeal(Entity target, float amount)
             {
-                Send(new HealCommand { Target = target, Amount = amount });
+                Send(new HealSignal { Target = target, Amount = amount });
             }
         }
 

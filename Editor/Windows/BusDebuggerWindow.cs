@@ -10,7 +10,7 @@ using UnityEngine;
 namespace Strada.Core.Editor.Windows
 {
     /// <summary>
-    /// Editor window for debugging MessageBus messages.
+    /// Editor window for debugging EventBus messages.
     /// Provides message logging, filtering, and payload inspection.
     /// Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6
     /// </summary>
@@ -205,11 +205,11 @@ namespace Strada.Core.Editor.Windows
             EditorGUILayout.BeginVertical(GUILayout.Width(450));
             EditorGUILayout.HelpBox(
                 "STRADABUS MESSAGE DEBUGGER\n\n" +
-                "Real-time monitoring of MessageBus messages:\n" +
-                "• View Events, Commands, and Queries\n" +
+                "Real-time monitoring of EventBus messages:\n" +
+                "• View Events, Signals, and Queries\n" +
                 "• Filter by message type pattern\n" +
                 "• Inspect message payloads\n" +
-                "• Detect unhandled commands\n\n" +
+                "• Detect unhandled signals\n\n" +
                 "Enter Play Mode to start debugging.",
                 MessageType.Info);
 
@@ -237,7 +237,7 @@ namespace Strada.Core.Editor.Windows
             EditorGUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
             EditorGUILayout.HelpBox(
-                "No active MessageBus found.\n\nEnsure a World with a Bus is created.",
+                "No active EventBus found.\n\nEnsure a World with a Bus is created.",
                 MessageType.Warning,
                 true);
             GUILayout.FlexibleSpace();

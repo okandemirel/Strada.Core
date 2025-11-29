@@ -52,7 +52,7 @@ namespace Strada.Core.Editor.Validation
                     yield return new ValidationIssue(
                         ValidationSeverity.Warning,
                         $"Controller '{type.Name}' has field '{field.Name}' of ECS type '{field.FieldType.Name}'",
-                        "Use EntityMediator or MessageBus to interact with ECS instead of direct access");
+                        "Use EntityMediator or EventBus to interact with ECS instead of direct access");
                 }
             }
 
@@ -65,7 +65,7 @@ namespace Strada.Core.Editor.Validation
                     yield return new ValidationIssue(
                         ValidationSeverity.Warning,
                         $"Controller '{type.Name}' has property '{prop.Name}' of ECS type '{prop.PropertyType.Name}'",
-                        "Use EntityMediator or MessageBus to interact with ECS instead of direct access");
+                        "Use EntityMediator or EventBus to interact with ECS instead of direct access");
                 }
             }
 
@@ -79,7 +79,7 @@ namespace Strada.Core.Editor.Validation
                     yield return new ValidationIssue(
                         ValidationSeverity.Warning,
                         $"Controller '{type.Name}' method '{method.Name}' returns ECS type '{method.ReturnType.Name}'",
-                        "Use EntityMediator or MessageBus to interact with ECS instead of direct access");
+                        "Use EntityMediator or EventBus to interact with ECS instead of direct access");
                 }
 
                 foreach (var param in method.GetParameters())
@@ -89,7 +89,7 @@ namespace Strada.Core.Editor.Validation
                         yield return new ValidationIssue(
                             ValidationSeverity.Warning,
                             $"Controller '{type.Name}' method '{method.Name}' has parameter '{param.Name}' of ECS type '{param.ParameterType.Name}'",
-                            "Use EntityMediator or MessageBus to interact with ECS instead of direct access");
+                            "Use EntityMediator or EventBus to interact with ECS instead of direct access");
                     }
                 }
             }

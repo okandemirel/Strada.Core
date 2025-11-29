@@ -7,7 +7,7 @@ using Unity.Collections.LowLevel.Unsafe;
 
 namespace Strada.Core.ECS.Jobs
 {
-    public enum ECBCommand : byte
+    public enum EntityOperation : byte
     {
         CreateEntity,
         DestroyEntity,
@@ -42,21 +42,21 @@ namespace Strada.Core.ECS.Jobs
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int CreateEntity()
         {
-            WriteCommand(ECBCommand.CreateEntity);
+            WriteCommand(EntityOperation.CreateEntity);
             return _createEntityCount++;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void DestroyEntity(Entity entity)
         {
-            WriteCommand(ECBCommand.DestroyEntity);
+            WriteCommand(EntityOperation.DestroyEntity);
             WriteEntity(entity);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddComponent<T>(Entity entity, T component) where T : unmanaged, IComponent
         {
-            WriteCommand(ECBCommand.AddComponent);
+            WriteCommand(EntityOperation.AddComponent);
             WriteEntity(entity);
             WriteTypeHash<T>();
             WriteComponent(component);
@@ -65,7 +65,7 @@ namespace Strada.Core.ECS.Jobs
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddComponent<T>(int deferredEntityIndex, T component) where T : unmanaged, IComponent
         {
-            WriteCommand(ECBCommand.AddComponent);
+            WriteCommand(EntityOperation.AddComponent);
             WriteDeferredEntity(deferredEntityIndex);
             WriteTypeHash<T>();
             WriteComponent(component);
@@ -74,7 +74,7 @@ namespace Strada.Core.ECS.Jobs
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
-            WriteCommand(ECBCommand.RemoveComponent);
+            WriteCommand(EntityOperation.RemoveComponent);
             WriteEntity(entity);
             WriteTypeHash<T>();
         }
@@ -82,7 +82,7 @@ namespace Strada.Core.ECS.Jobs
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetComponent<T>(Entity entity, T component) where T : unmanaged, IComponent
         {
-            WriteCommand(ECBCommand.SetComponent);
+            WriteCommand(EntityOperation.SetComponent);
             WriteEntity(entity);
             WriteTypeHash<T>();
             WriteComponent(component);
@@ -102,18 +102,18 @@ namespace Strada.Core.ECS.Jobs
                 var cmd = reader.ReadCommand();
                 switch (cmd)
                 {
-                    case ECBCommand.CreateEntity:
+                    case EntityOperation.CreateEntity:
                         break;
-                    case ECBCommand.DestroyEntity:
+                    case EntityOperation.DestroyEntity:
                         PlaybackDestroyEntity(ref reader, entityManager);
                         break;
-                    case ECBCommand.AddComponent:
+                    case EntityOperation.AddComponent:
                         PlaybackAddComponent(ref reader, entityManager);
                         break;
-                    case ECBCommand.RemoveComponent:
+                    case EntityOperation.RemoveComponent:
                         PlaybackRemoveComponent(ref reader, entityManager);
                         break;
-                    case ECBCommand.SetComponent:
+                    case EntityOperation.SetComponent:
                         PlaybackSetComponent(ref reader, entityManager);
                         break;
                 }
@@ -136,7 +136,7 @@ namespace Strada.Core.ECS.Jobs
             _isCreated = false;
         }
 
-        private void WriteCommand(ECBCommand cmd)
+        private void WriteCommand(EntityOperation cmd)
         {
             _commandStream.Add((byte)cmd);
             CommandCount++;
@@ -248,7 +248,7 @@ namespace Strada.Core.ECS.Jobs
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public ECBCommand ReadCommand() => (ECBCommand)_data[_position++];
+            public EntityOperation ReadCommand() => (EntityOperation)_data[_position++];
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public byte ReadByte() => _data[_position++];

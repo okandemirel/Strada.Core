@@ -8,12 +8,12 @@ namespace Strada.Core.Tests.Tests.Runtime.Commands
     [TestFixture]
     public class CommandBusTests
     {
-        private MessageBus _bus;
+        private EventBus _bus;
 
         [SetUp]
         public void SetUp()
         {
-            _bus = new MessageBus();
+            _bus = new EventBus();
         }
 
         [TearDown]
@@ -26,7 +26,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Commands
         public void Send_WithRegisteredHandler_ExecutesHandler()
         {
             var executed = false;
-            _bus.RegisterCommandHandler<TestCommand>(cmd => executed = true);
+            _bus.RegisterSignalHandler<TestCommand>(cmd => executed = true);
 
             _bus.Send(new TestCommand());
 
@@ -37,7 +37,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Commands
         public void Send_PassesCorrectData()
         {
             var receivedValue = 0;
-            _bus.RegisterCommandHandler<TestCommand>(cmd => receivedValue = cmd.Value);
+            _bus.RegisterSignalHandler<TestCommand>(cmd => receivedValue = cmd.Value);
 
             _bus.Send(new TestCommand { Value = 42 });
 
@@ -121,12 +121,12 @@ namespace Strada.Core.Tests.Tests.Runtime.Commands
         public void Command_Execute_InvokesHandler()
         {
             var sum = 0;
-            var bus = new MessageBus();
-            bus.RegisterCommandHandler<BenchmarkCommand>(cmd => sum += cmd.Value);
+            var bus = new EventBus();
+            bus.RegisterSignalHandler<BenchmarkSignal>(cmd => sum += cmd.Value);
 
             var sw = System.Diagnostics.Stopwatch.StartNew();
             for (int i = 0; i < 100_000; i++)
-                bus.Send(new BenchmarkCommand { Value = 1 });
+                bus.Send(new BenchmarkSignal { Value = 1 });
             sw.Stop();
 
             UnityEngine.Debug.Log($"[MessageBus] 100k typed commands: {sw.ElapsedMilliseconds}ms ({sw.ElapsedTicks * 1000.0 / 100_000 / System.Diagnostics.Stopwatch.Frequency * 1_000_000:F0}ns/send)");
@@ -140,7 +140,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Commands
         [Test]
         public void Benchmark_100k_PooledCommands()
         {
-            var bus = new MessageBus();
+            var bus = new EventBus();
             CommandPool<BenchmarkPooledCommand>.Instance.Prewarm(100);
             var sum = 0;
 
@@ -162,7 +162,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Commands
             bus.Dispose();
         }
 
-        private struct BenchmarkCommand
+        private struct BenchmarkSignal
         {
             public int Value;
         }

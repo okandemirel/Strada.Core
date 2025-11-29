@@ -19,7 +19,7 @@ namespace Strada.Core.Tests.Tests.Runtime.Performance
         public void SetUp()
         {
             var builder = new ContainerBuilder();
-            builder.Register<MessageBus>(Lifetime.Singleton);
+            builder.Register<EventBus>(Lifetime.Singleton);
             _container = builder.Build();
         }
 

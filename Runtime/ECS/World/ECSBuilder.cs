@@ -9,7 +9,7 @@ namespace Strada.Core.ECS.World
     {
         private readonly List<(Type systemType, UpdatePhase phase, Func<World, ISystem> factory)> _systemFactories = new();
         private int _initialEntityCapacity = 1024;
-        private MessageBus _messageBus;
+        private EventBus _eventBus;
 
         public ECSBuilder WithInitialEntityCapacity(int capacity)
         {
@@ -17,9 +17,9 @@ namespace Strada.Core.ECS.World
             return this;
         }
 
-        public ECSBuilder WithMessageBus(MessageBus messageBus)
+        public ECSBuilder WithEventBus(EventBus eventBus)
         {
-            _messageBus = messageBus;
+            _eventBus = eventBus;
             return this;
         }
 
@@ -39,7 +39,7 @@ namespace Strada.Core.ECS.World
         {
             var entities = new EntityManager();
             var scheduler = new SystemScheduler();
-            var bus = _messageBus ?? new MessageBus();
+            var bus = _eventBus ?? new EventBus();
 
             var world = new World(entities, scheduler, bus);
 
