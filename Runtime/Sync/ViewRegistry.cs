@@ -108,6 +108,18 @@ namespace Strada.Core.Sync
             }
         }
 
+        /// <summary>
+        /// Force sync all views regardless of dirty flag.
+        /// Use for high-frequency updates.
+        /// </summary>
+        public void ForceSyncAll()
+        {
+            for (int i = 0; i < _allViews.Count; i++)
+            {
+                _allViews[i].ForceSyncBindings();
+            }
+        }
+
         public void Clear()
         {
             foreach (var view in _allViews)

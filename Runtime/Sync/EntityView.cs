@@ -100,6 +100,21 @@ namespace Strada.Core.Sync
             }
         }
 
+        /// <summary>
+        /// Force sync all bindings regardless of dirty flag.
+        /// Use this for high-frequency updates like position.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void ForceSyncBindings()
+        {
+            if (!_bound) return;
+
+            for (int i = 0; i < _bindings.Count; i++)
+            {
+                _bindings[i].Sync();
+            }
+        }
+
         protected abstract void OnBind();
 
         protected virtual void OnUnbind() { }

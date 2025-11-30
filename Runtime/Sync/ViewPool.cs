@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Strada.Core.Sync
 {
-    public sealed class ViewPool<TView> : IDisposable where TView : EntityView
+    public sealed class ViewPool<TView> : IViewPool, IDisposable where TView : EntityView
     {
         private readonly Stack<TView> _available;
         private readonly List<TView> _active;
