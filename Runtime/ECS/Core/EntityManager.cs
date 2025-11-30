@@ -12,7 +12,7 @@ namespace Strada.Core.ECS.Core
         private const int InitialCapacity = 1024;
 
         private NativeArray<int> _versions;
-        private NativeArray<byte> _active; // 1 = active, 0 = inactive (using byte for NativeArray compatibility)
+        private NativeArray<byte> _active;
         private NativeList<int> _recycledIndices;
         private int _nextEntityIndex;
         private int _entityCount;

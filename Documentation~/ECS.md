@@ -272,29 +272,61 @@ public class GameSystem : SystemBase
 }
 ```
 
-### System with Dependencies
+### System with Built-in Dependencies
 
-Systems support dependency injection:
+SystemBase provides core dependencies automatically:
 
 ```csharp
 public class DamageSystem : SystemBase
 {
-    [Inject]
-    public void Inject(EntityManager em, MessageBus bus)
-    {
-        // EntityManager and MessageBus injected automatically
-    }
-
     protected override void OnUpdate(float deltaTime)
     {
+        // EntityManager, EventBus, and HandleRegistry are available
         ForEach<Health, Damage>((int e, ref Health h, ref Damage d) =>
         {
             h.Current -= d.Amount;
             if (h.Current <= 0)
             {
-                Publish(new EntityDied { EntityId = e });
+                var entity = EntityManager.GetEntity(e);
+                var handle = HandleRegistry.Register(entity);
+                Publish(new EntityDied { Handle = handle });
             }
         });
+    }
+}
+```
+
+### Accessing Additional Services
+
+For additional dependencies, use `GameBootstrapper.Services`:
+
+```csharp
+public class SpawnSystem : SystemBase
+{
+    private GameConfigData _config;
+    private float _cellSize;
+
+    protected override void OnInitialize()
+    {
+        // Access services from the global service locator
+        _config = GameBootstrapper.Services.Get<GameConfigData>();
+
+        // Or query config from ECS component
+        ForEach<BoardConfigComponent>((int idx, ref BoardConfigComponent config) =>
+        {
+            _cellSize = config.CellSize;
+        });
+
+        // Register signal handlers
+        RegisterSignalHandler<SpawnEnemySignal>(OnSpawnEnemy);
+    }
+
+    protected override void OnUpdate(float deltaTime) { }
+
+    private void OnSpawnEnemy(SpawnEnemySignal signal)
+    {
+        var entity = CreateEntity();
+        // Use _config and _cellSize...
     }
 }
 ```
@@ -533,21 +565,29 @@ public readonly struct Entity
 ### SystemBase
 
 ```csharp
+// Core dependencies (automatically injected)
 protected EntityManager EntityManager { get; }
-protected MessageBus Bus { get; }
+protected EventBus EventBus { get; }
+protected EntityHandleRegistry HandleRegistry { get; }
 
+// Lifecycle
 protected virtual void OnInitialize() { }
 protected abstract void OnUpdate(float deltaTime);
 protected virtual void OnDispose() { }
 
+// Query helpers
 protected void ForEach<T1>(QueryDelegate<T1> action);
 protected void ForEach<T1, T2>(QueryDelegate<T1, T2> action);
 protected void ForEach<T1, T2, T3>(QueryDelegate<T1, T2, T3> action);
 
+// Entity operations
 protected Entity CreateEntity();
 protected void DestroyEntity(Entity entity);
+
+// Messaging
 protected void Publish<T>(T evt) where T : struct;
-protected void Send<T>(T cmd) where T : struct;
+protected void Send<T>(T signal) where T : struct;
+protected void RegisterSignalHandler<T>(Action<T> handler) where T : struct;
 ```
 
 ---
@@ -555,6 +595,7 @@ protected void Send<T>(T cmd) where T : struct;
 ## Related Documentation
 
 - [Modules](Modules.md) - ModuleConfig, system registration, Inspector configuration
-- [DI Container](DI.md) - Dependency injection for systems
-- [Messaging](Messaging.md) - MessageBus communication
+- [Sync](Sync.md) - EntityHandleRegistry, entity-view synchronization
+- [Messaging](Messaging.md) - EventBus communication
+- [DI Container](DI.md) - Dependency injection for controllers and services
 - [Benchmarks](Benchmarks.md) - Full performance data

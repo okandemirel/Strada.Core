@@ -116,12 +116,14 @@ namespace Strada.Core.Sync
         {
             for (int i = _active.Count - 1; i >= 0; i--)
             {
-                if (_active[i].Entity.Index == entity.Index)
+                var viewEntity = _active[i].Entity;
+                if (viewEntity.Index == entity.Index && viewEntity.Version == entity.Version)
                 {
                     Despawn(_active[i]);
                     return;
                 }
             }
+            UnityEngine.Debug.LogWarning($"[ViewPool<{typeof(TView).Name}>] No match for Entity({entity.Index},{entity.Version}) in {_active.Count} active views");
         }
 
         public void DespawnAll()

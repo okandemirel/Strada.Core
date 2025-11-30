@@ -9,7 +9,7 @@ namespace Strada.Core.Sync
 {
     public sealed class ViewRegistry : IDisposable
     {
-        private readonly Dictionary<int, EntityView> _entityToView = new(256);
+        private readonly Dictionary<long, EntityView> _entityToView = new(256);
         private readonly List<EntityView> _allViews = new(256);
         private readonly EntityManager _entityManager;
         private readonly IContainer _container;
@@ -25,6 +25,9 @@ namespace Strada.Core.Sync
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static long GetEntityKey(Entity entity) => ((long)entity.Index << 32) | (uint)entity.Version;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Register(EntityView view, Entity entity)
         {
             if (_disposed) return;
@@ -35,7 +38,7 @@ namespace Strada.Core.Sync
                 view.Bind(_container, _entityManager, entity);
             }
 
-            _entityToView[entity.Index] = view;
+            _entityToView[GetEntityKey(entity)] = view;
             _allViews.Add(view);
         }
 
@@ -47,7 +50,7 @@ namespace Strada.Core.Sync
 
             if (view.IsBound)
             {
-                _entityToView.Remove(view.Entity.Index);
+                _entityToView.Remove(GetEntityKey(view.Entity));
             }
 
             _allViews.Remove(view);
@@ -58,9 +61,10 @@ namespace Strada.Core.Sync
         {
             if (_disposed) return;
 
-            if (_entityToView.TryGetValue(entity.Index, out var view))
+            var key = GetEntityKey(entity);
+            if (_entityToView.TryGetValue(key, out var view))
             {
-                _entityToView.Remove(entity.Index);
+                _entityToView.Remove(key);
                 _allViews.Remove(view);
             }
         }
@@ -68,25 +72,25 @@ namespace Strada.Core.Sync
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityView GetView(Entity entity)
         {
-            return _entityToView.TryGetValue(entity.Index, out var view) ? view : null;
+            return _entityToView.TryGetValue(GetEntityKey(entity), out var view) ? view : null;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T GetView<T>(Entity entity) where T : EntityView
         {
-            return _entityToView.TryGetValue(entity.Index, out var view) ? view as T : null;
+            return _entityToView.TryGetValue(GetEntityKey(entity), out var view) ? view as T : null;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGetView(Entity entity, out EntityView view)
         {
-            return _entityToView.TryGetValue(entity.Index, out view);
+            return _entityToView.TryGetValue(GetEntityKey(entity), out view);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGetView<T>(Entity entity, out T view) where T : EntityView
         {
-            if (_entityToView.TryGetValue(entity.Index, out var baseView))
+            if (_entityToView.TryGetValue(GetEntityKey(entity), out var baseView))
             {
                 view = baseView as T;
                 return view != null;
@@ -99,7 +103,7 @@ namespace Strada.Core.Sync
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool HasView(Entity entity)
         {
-            return _entityToView.ContainsKey(entity.Index);
+            return _entityToView.ContainsKey(GetEntityKey(entity));
         }
 
         public void SyncAll()

@@ -6,12 +6,12 @@ namespace Strada.Core.Sync
     public sealed class EntityHandleRegistry
     {
         private readonly Dictionary<int, Entity> _handleToEntity = new(256);
-        private readonly Dictionary<int, int> _entityToHandle = new(256);
+        private readonly Dictionary<long, int> _entityToHandle = new(256);
         private int _nextHandleId = 1;
 
         public EntityHandle Register(Entity entity)
         {
-            int entityKey = GetEntityKey(entity);
+            long entityKey = GetEntityKey(entity);
             if (_entityToHandle.TryGetValue(entityKey, out int existingHandleId))
                 return new EntityHandle(existingHandleId, entity.Version);
 
@@ -57,6 +57,13 @@ namespace Strada.Core.Sync
             return false;
         }
 
-        private static int GetEntityKey(Entity entity) => entity.Index;
+        public void Clear()
+        {
+            _handleToEntity.Clear();
+            _entityToHandle.Clear();
+            _nextHandleId = 1;
+        }
+
+        private static long GetEntityKey(Entity entity) => ((long)entity.Index << 32) | (uint)entity.Version;
     }
 }

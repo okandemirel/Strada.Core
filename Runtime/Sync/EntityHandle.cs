@@ -16,8 +16,8 @@ namespace Strada.Core.Sync
         public bool IsValid => _id > 0;
         public static EntityHandle Invalid => default;
 
-        internal int Id => _id;
-        internal int Version => _version;
+        public int Id => _id;
+        public int Version => _version;
 
         public bool Equals(EntityHandle other) => _id == other._id && _version == other._version;
         public override bool Equals(object obj) => obj is EntityHandle other && Equals(other);

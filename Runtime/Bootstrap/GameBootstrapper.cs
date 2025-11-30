@@ -52,6 +52,11 @@ namespace Strada.Core.Bootstrap
         public static ECS.World.World World { get; private set; }
 
         /// <summary>
+        /// Gets the SystemRunner instance.
+        /// </summary>
+        public static SystemRunner Systems { get; private set; }
+
+        /// <summary>
         /// Gets whether the bootstrapper has completed initialization.
         /// </summary>
         public bool IsInitialized => _isInitialized;
@@ -180,6 +185,8 @@ namespace Strada.Core.Bootstrap
 
             _container = builder.Build();
             _serviceLocator = new ServiceLocator(_container);
+            Container = _container;
+            Services = _serviceLocator;
 
             Log($"Container built with {_gameConfig.EnabledModuleCount} modules");
         }
@@ -193,6 +200,7 @@ namespace Strada.Core.Bootstrap
 
             _systemRunner = new SystemRunner(_world.EntityManager, _world.EventBus, _sharedHandleRegistry, _container);
             _systemRunner.AddSystemsFromConfigs(_gameConfig.GetEnabledModules());
+            Systems = _systemRunner;
 
             Log($"World created with {_systemRunner.SystemCount} systems");
         }
@@ -238,6 +246,7 @@ namespace Strada.Core.Bootstrap
             Container = _container;
             Services = _serviceLocator;
             World = _world;
+            Systems = _systemRunner;
 
             Log("=== Strada Framework Bootstrap Complete ===");
             OnInitializationComplete?.Invoke();
@@ -305,6 +314,7 @@ namespace Strada.Core.Bootstrap
             Container = null;
             Services = null;
             World = null;
+            Systems = null;
             _isInitialized = false;
 
             PlayerLoop.Shutdown();
