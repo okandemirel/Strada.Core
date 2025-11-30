@@ -30,7 +30,11 @@ namespace Strada.Core.Sync
             if (_disposed) return;
             if (view == null) return;
 
-            view.Bind(_container, _entityManager, entity);
+            if (!view.IsBound)
+            {
+                view.Bind(_container, _entityManager, entity);
+            }
+
             _entityToView[entity.Index] = view;
             _allViews.Add(view);
         }
@@ -44,7 +48,6 @@ namespace Strada.Core.Sync
             if (view.IsBound)
             {
                 _entityToView.Remove(view.Entity.Index);
-                view.Unbind();
             }
 
             _allViews.Remove(view);
@@ -57,7 +60,6 @@ namespace Strada.Core.Sync
 
             if (_entityToView.TryGetValue(entity.Index, out var view))
             {
-                view.Unbind();
                 _entityToView.Remove(entity.Index);
                 _allViews.Remove(view);
             }

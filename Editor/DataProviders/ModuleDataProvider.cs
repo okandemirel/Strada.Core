@@ -3,14 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using Strada.Core.Bootstrap;
 using Strada.Core.Editor.DataProviders.Models;
+using Strada.Core.Modules;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
 namespace Strada.Core.Editor.DataProviders
 {
     /// <summary>
-    /// Provides access to module registry data for editor tools.
-    /// Connects to ModuleRegistry via GameBootstrapper.
+    /// Provides access to module data for editor tools.
+    /// Connects to GameBootstrapperConfig for module information.
     /// </summary>
     public class ModuleDataProvider : EditorDataProviderBase<ModuleSnapshot>, IModuleDataProvider
     {
@@ -24,7 +25,7 @@ namespace Strada.Core.Editor.DataProviders
         private ModuleDataProvider() { }
 
         /// <summary>
-        /// Gets whether the module registry is available.
+        /// Gets whether the module data is available.
         /// </summary>
         public override bool IsAvailable
         {
@@ -61,38 +62,29 @@ namespace Strada.Core.Editor.DataProviders
         {
             var result = new ValidationResult();
 
-            var bootstrapper = Object.FindObjectOfType<GameBootstrapper>();
-            if (bootstrapper == null)
+            var config = FindGameBootstrapperConfig();
+            if (config == null)
             {
                 result.IsValid = false;
                 result.Issues.Add(new ValidationIssue
                 {
                     Severity = ValidationSeverity.Error,
-                    Message = "No GameBootstrapper found in scene"
+                    Message = "No GameBootstrapperConfig found"
                 });
                 return result;
             }
 
-            var registry = bootstrapper.GetRegistry();
-            if (registry == null)
+            if (!config.Validate(out var errors))
             {
                 result.IsValid = false;
-                result.Issues.Add(new ValidationIssue
+                foreach (var error in errors)
                 {
-                    Severity = ValidationSeverity.Error,
-                    Message = "Module registry not initialized"
-                });
-                return result;
-            }
-
-            if (!registry.Validate(out var errorMessage))
-            {
-                result.IsValid = false;
-                result.Issues.Add(new ValidationIssue
-                {
-                    Severity = ValidationSeverity.Error,
-                    Message = errorMessage
-                });
+                    result.Issues.Add(new ValidationIssue
+                    {
+                        Severity = ValidationSeverity.Error,
+                        Message = error
+                    });
+                }
             }
             else
             {
@@ -104,34 +96,39 @@ namespace Strada.Core.Editor.DataProviders
 
         protected override ModuleSnapshot FetchData()
         {
-            var bootstrapper = Object.FindObjectOfType<GameBootstrapper>();
-            if (bootstrapper == null) return null;
+            var config = FindGameBootstrapperConfig();
+            if (config == null) return null;
 
-            var registry = bootstrapper.GetRegistry();
-            if (registry == null) return null;
+            var enabledModules = config.GetEnabledModules().ToList();
 
             var snapshot = new ModuleSnapshot
             {
                 Timestamp = DateTime.Now,
-                ModuleCount = registry.Modules.Count,
+                ModuleCount = enabledModules.Count,
                 Modules = new List<ModuleInfoData>()
             };
 
-            foreach (var module in registry.Modules)
+            foreach (var module in enabledModules)
             {
+                var dependencies = module.Dependencies?
+                    .Where(d => d != null)
+                    .Select(d => d.GetType())
+                    .ToList() ?? new List<Type>();
+
                 snapshot.Modules.Add(new ModuleInfoData
                 {
-                    ModuleType = module.Type,
-                    Name = module.Name,
-                    Priority = module.Priority,
-                    Dependencies = module.Dependencies?.ToList() ?? new List<Type>(),
+                    ModuleType = module.GetType(),
+                    Name = module.ModuleName,
+                    Priority = 0,
+                    Dependencies = dependencies,
                     IsInitialized = true
                 });
             }
 
-            if (!registry.Validate(out var errorMessage))
+            if (!config.Validate(out var errors))
             {
-                snapshot.HasCircularDependency = errorMessage?.Contains("Circular") ?? false;
+                var errorMessage = string.Join("\n", errors);
+                snapshot.HasCircularDependency = errorMessage.Contains("Circular");
                 if (snapshot.HasCircularDependency)
                 {
                     snapshot.CircularDependencyPath = ParseCyclePath(errorMessage);
@@ -139,6 +136,29 @@ namespace Strada.Core.Editor.DataProviders
             }
 
             return snapshot;
+        }
+
+        private GameBootstrapperConfig FindGameBootstrapperConfig()
+        {
+            var bootstrapper = Object.FindObjectOfType<GameBootstrapper>();
+            if (bootstrapper != null)
+            {
+                var configField = typeof(GameBootstrapper).GetField("_gameConfig",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (configField != null)
+                {
+                    return configField.GetValue(bootstrapper) as GameBootstrapperConfig;
+                }
+            }
+
+            var guids = UnityEditor.AssetDatabase.FindAssets("t:GameBootstrapperConfig");
+            if (guids.Length > 0)
+            {
+                var path = UnityEditor.AssetDatabase.GUIDToAssetPath(guids[0]);
+                return UnityEditor.AssetDatabase.LoadAssetAtPath<GameBootstrapperConfig>(path);
+            }
+
+            return null;
         }
 
         private List<string> ParseCyclePath(string errorMessage)

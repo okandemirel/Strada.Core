@@ -374,8 +374,10 @@ Packages/com.strada.core/
 │   ├── Pooling.md             # Object pooling guide
 │   ├── StateMachine.md        # FSM guide
 │   └── Benchmarks.md          # Performance benchmarks
-├── SourceGeneration~/         # Roslyn Source Generators
-│   ├── StradaFactoryGenerator.cs   # DI factory generation
+├── SourceGenerationDI~/       # DI Roslyn Source Generators
+│   └── StradaDISourceGenerator.cs  # DI auto-binding generation
+├── SourceGenerationECS~/      # ECS Roslyn Source Generators
+│   ├── StradaFactoryGenerator.cs   # Factory generation
 │   └── EntityQueryGenerator.cs     # Query T9-T16 generation
 ├── Editor/                    # Editor Tools
 └── Tests/                     # Test Suite
