@@ -50,7 +50,7 @@ namespace Strada.Core.Sync
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public TView Spawn(Entity entity)
+        public TView Spawn(Entity entity, Transform parent = null)
         {
             TView view;
 
@@ -71,8 +71,7 @@ namespace Strada.Core.Sync
                 _totalCreated++;
             }
 
-            if (_activeRoot != null)
-                view.transform.SetParent(_activeRoot, false);
+            view.transform.SetParent(parent ?? _activeRoot, false);
 
             view.Bind(_container, _entityManager, entity);
             _registry?.Register(view, entity);
@@ -82,9 +81,9 @@ namespace Strada.Core.Sync
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public TView Spawn(Entity entity, Vector3 position, Quaternion rotation)
+        public TView Spawn(Entity entity, Vector3 position, Quaternion rotation, Transform parent = null)
         {
-            var view = Spawn(entity);
+            var view = Spawn(entity, parent);
             view.transform.SetPositionAndRotation(position, rotation);
             return view;
         }

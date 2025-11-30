@@ -122,7 +122,7 @@ namespace Strada.Core.Sync
         /// <summary>
         /// Spawn a view from the pool and bind it to the entity.
         /// </summary>
-        public TView Spawn<TView>(Entity entity) where TView : EntityView
+        public TView Spawn<TView>(Entity entity, Transform parent = null) where TView : EntityView
         {
             var pool = GetPool<TView>();
             if (pool == null)
@@ -130,13 +130,13 @@ namespace Strada.Core.Sync
                 Debug.LogError($"[PoolManager] No pool registered for {typeof(TView).Name}");
                 return null;
             }
-            return pool.Spawn(entity);
+            return pool.Spawn(entity, parent);
         }
 
         /// <summary>
         /// Spawn a view from the pool at a specific position and rotation.
         /// </summary>
-        public TView Spawn<TView>(Entity entity, Vector3 position, Quaternion rotation) where TView : EntityView
+        public TView Spawn<TView>(Entity entity, Vector3 position, Quaternion rotation, Transform parent = null) where TView : EntityView
         {
             var pool = GetPool<TView>();
             if (pool == null)
@@ -144,7 +144,7 @@ namespace Strada.Core.Sync
                 Debug.LogError($"[PoolManager] No pool registered for {typeof(TView).Name}");
                 return null;
             }
-            return pool.Spawn(entity, position, rotation);
+            return pool.Spawn(entity, position, rotation, parent);
         }
 
         /// <summary>
