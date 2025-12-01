@@ -224,6 +224,8 @@ namespace Strada.Core.ECS.Core
         /// Gets all active entity indices. Allocates a managed list for compatibility.
         /// For performance-critical code, use GetActiveEntitiesNonAlloc instead.
         /// </summary>
+
+
         public IEnumerable<int> GetAllEntities()
         {
             var result = new List<int>(_entityCount);

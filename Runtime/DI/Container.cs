@@ -51,6 +51,15 @@ namespace Strada.Core.DI
                 var index = _typeIdToIndex[typeId];
                 if (index >= 0)
                 {
+                    var lifetime = _lifetimes[index];
+                    if (lifetime == Lifetime.Singleton || lifetime == Lifetime.Scoped)
+                    {
+                        lock (_lock)
+                        {
+                            return (T)_factories[index](this);
+                        }
+                    }
+                    
                     return (T)_factories[index](this);
                 }
             }
@@ -78,7 +87,18 @@ namespace Strada.Core.DI
             if (typeId <= _maxTypeId && _typeIdToIndex[typeId] >= 0)
             {
                 var index = _typeIdToIndex[typeId];
-                instance = (T)_factories[index](this);
+                var lifetime = _lifetimes[index];
+                if (lifetime == Lifetime.Singleton || lifetime == Lifetime.Scoped)
+                {
+                    lock (_lock)
+                    {
+                        instance = (T)_factories[index](this);
+                    }
+                }
+                else
+                {
+                    instance = (T)_factories[index](this);
+                }
                 return true;
             }
             instance = null;
