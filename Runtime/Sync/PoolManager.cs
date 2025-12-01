@@ -10,7 +10,7 @@ namespace Strada.Core.Sync
 {
     /// <summary>
     /// Central manager for all view pools. Creates persistent GameObjects that survive scene transitions.
-    /// Based on Svelto ECS pattern where entities and pools live independently of Unity scenes.
+    /// Entities and pools live independently of Unity scenes.
     /// </summary>
     public class PoolManager : IDisposable
     {
@@ -80,7 +80,6 @@ namespace Strada.Core.Sync
                 return _pools[viewType] as ViewPool<TView>;
             }
 
-            // Create type-specific root transforms under pool/active roots
             var typePoolRoot = new GameObject($"Pool_{viewType.Name}").transform;
             typePoolRoot.SetParent(_poolRoot);
 
@@ -191,8 +190,7 @@ namespace Strada.Core.Sync
         {
             if (_disposed) return;
             _disposed = true;
-
-            // Clear all pools
+            
             foreach (var pool in _pools.Values)
             {
                 if (pool is IDisposable disposable)
@@ -202,7 +200,6 @@ namespace Strada.Core.Sync
 
             _viewRegistry.Dispose();
 
-            // Destroy persistent GameObjects
             if (_rootTransform != null)
                 Object.Destroy(_rootTransform.gameObject);
         }
