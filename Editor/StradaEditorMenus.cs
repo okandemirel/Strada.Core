@@ -133,6 +133,12 @@ namespace Strada.Core.Editor
             BusDebuggerWindow.ShowWindow();
         }
 
+        [MenuItem(MenuRoot + "Debugger/Time Machine %#t", priority = 122)]
+        private static void OpenTimeMachine()
+        {
+            TimeMachineWindow.ShowWindow();
+        }
+
         [MenuItem(MenuRoot + "Debugger/Benchmark Runner", priority = 130)]
         private static void OpenBenchmarkRunner()
         {
