@@ -352,7 +352,6 @@ namespace Strada.Core.Editor.DataProviders
                 var bus = World.Current.EventBus;
                 var busType = typeof(EventBus);
                 
-                // Get _eventChannels array
                 var channelsField = busType.GetField("_eventChannels", BindingFlags.NonPublic | BindingFlags.Instance);
                 var channels = channelsField?.GetValue(bus) as object[];
                 if (channels == null) return results;
@@ -368,7 +367,6 @@ namespace Strada.Core.Editor.DataProviders
                 var channel = channels[id];
                 var channelType = channel.GetType();
                 
-                // Get _handlers array from channel
                 var handlersField = channelType.GetField("_handlers", BindingFlags.NonPublic | BindingFlags.Instance);
                 var countField = channelType.GetField("_count", BindingFlags.NonPublic | BindingFlags.Instance);
                 

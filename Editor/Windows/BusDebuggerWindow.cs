@@ -358,8 +358,6 @@ namespace Strada.Core.Editor.Windows
             _cachedEventTypes.Clear();
             if (!Application.isPlaying) return;
 
-            // Find all types that are Events (structs) - this is a simplification
-            // In a real scenario, we might track what has been published
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
             foreach (var assembly in assemblies)
             {
@@ -367,7 +365,6 @@ namespace Strada.Core.Editor.Windows
                 {
                     foreach (var type in assembly.GetTypes())
                     {
-                        // Heuristic: Structs ending in "Event" or "Signal"
                         if (type.IsValueType && !type.IsPrimitive && !type.IsEnum && 
                            (type.Name.EndsWith("Event") || type.Name.EndsWith("Signal")))
                         {
@@ -404,7 +401,6 @@ namespace Strada.Core.Editor.Windows
                 
                 if (GUILayout.Button($"{targetName}.{methodName}", EditorStyles.label))
                 {
-                    // Ping the script if possible
                     if (sub.Target is MonoBehaviour mb)
                     {
                         EditorGUIUtility.PingObject(mb);
