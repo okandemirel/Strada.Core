@@ -37,6 +37,10 @@ namespace Strada.Core.Editor.Windows
         private List<int> _filteredEntityIds = new List<int>();
         private List<int> _allEntityIds = new List<int>();
 
+        private enum ViewMode { Inspector, Memory }
+        private ViewMode _viewMode = ViewMode.Inspector;
+        private Vector2 _memoryScrollPosition;
+
         private bool _autoRefresh = true;
         private float _refreshInterval = 0.5f;
         private double _lastRefreshTime;
@@ -165,7 +169,16 @@ namespace Strada.Core.Editor.Windows
             }
 
             DrawToolbar();
-            DrawSplitView();
+            DrawToolbar();
+
+            if (_viewMode == ViewMode.Inspector)
+            {
+                DrawSplitView();
+            }
+            else
+            {
+                DrawMemoryView();
+            }
         }
 
         private void DrawNotPlayingMessage()
@@ -242,6 +255,14 @@ namespace Strada.Core.Editor.Windows
             {
                 RefreshEntityList();
             }
+
+            if (GUILayout.Button("Refresh", EditorStyles.toolbarButton, GUILayout.Width(55)))
+            {
+                RefreshEntityList();
+            }
+
+            GUILayout.Space(10);
+            _viewMode = (ViewMode)GUILayout.Toolbar((int)_viewMode, new[] { "Inspector", "Memory" }, EditorStyles.toolbarButton, GUILayout.Width(150));
 
             EditorGUILayout.EndHorizontal();
         }
@@ -731,6 +752,8 @@ namespace Strada.Core.Editor.Windows
             return World.Current?.EntityManager?.Store?.GetEntityComponentCount(entityId) ?? 0;
         }
 
+        private static FieldInfo _cachedEntityVersionsField;
+
         private int GetEntityVersion(int entityId)
         {
             if (!_worldDataProvider.IsAvailable) return 0;
@@ -740,10 +763,13 @@ namespace Strada.Core.Editor.Windows
                 var entityManager = World.Current?.EntityManager;
                 if (entityManager == null) return 0;
 
-                var versionsField = typeof(EntityManager).GetField("_entityVersions",
-                    BindingFlags.NonPublic | BindingFlags.Instance);
+                if (_cachedEntityVersionsField == null)
+                {
+                    _cachedEntityVersionsField = typeof(EntityManager).GetField("_entityVersions",
+                        BindingFlags.NonPublic | BindingFlags.Instance);
+                }
 
-                if (versionsField?.GetValue(entityManager) is Dictionary<int, int> versions)
+                if (_cachedEntityVersionsField?.GetValue(entityManager) is Dictionary<int, int> versions)
                 {
                     return versions.TryGetValue(entityId, out var version) ? version : 0;
                 }
@@ -761,6 +787,8 @@ namespace Strada.Core.Editor.Windows
 
         private void CacheComponentTypes()
         {
+            if (_availableComponentTypes.Count > 0) return;
+
             _availableComponentTypes.Clear();
 
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
@@ -872,7 +900,7 @@ namespace Strada.Core.Editor.Windows
                 Debug.LogWarning($"[EntityInspector] Failed to remove component: {ex.Message}");
             }
         }
-    }
+
 
     /// <summary>
     /// Search mode for entity filtering.
@@ -883,5 +911,100 @@ namespace Strada.Core.Editor.Windows
         ById,
         ByComponentType,
         ByFieldValue
+    }
+        private void DrawMemoryView()
+        {
+            EditorGUILayout.BeginVertical();
+            EditorGUILayout.LabelField("Component Memory Usage", _headerStyle);
+
+            _memoryScrollPosition = EditorGUILayout.BeginScrollView(_memoryScrollPosition);
+
+            if (!_worldDataProvider.IsAvailable)
+            {
+                EditorGUILayout.HelpBox("No World available.", MessageType.Warning);
+            }
+            else
+            {
+                DrawMemoryStats();
+            }
+
+            EditorGUILayout.EndScrollView();
+            EditorGUILayout.EndVertical();
+        }
+
+        private void DrawMemoryStats()
+        {
+            var entityManager = World.Current?.EntityManager;
+            if (entityManager == null) return;
+
+            var store = entityManager.Store;
+            var componentTypes = store.GetComponentTypes().OrderBy(t => t.Name).ToList();
+
+            EditorGUILayout.BeginHorizontal(EditorStyles.boldLabel);
+            GUILayout.Label("Component Type", GUILayout.Width(250));
+            GUILayout.Label("Count", GUILayout.Width(80));
+            GUILayout.Label("Capacity", GUILayout.Width(80));
+            GUILayout.Label("Est. Memory", GUILayout.Width(100));
+            GUILayout.Label("Utilization", GUILayout.Width(100));
+            EditorGUILayout.EndHorizontal();
+
+            foreach (var type in componentTypes)
+            {
+                DrawComponentMemoryRow(store, type);
+            }
+        }
+
+        private void DrawComponentMemoryRow(ComponentStore store, Type type)
+        {
+            int count = 0;
+            int capacity = 0;
+            int size = 0;
+
+            try
+            {
+                var storagesField = typeof(ComponentStore).GetField("_storages", BindingFlags.NonPublic | BindingFlags.Instance);
+                var storages = storagesField?.GetValue(store) as System.Collections.IDictionary;
+                
+                if (storages != null && storages.Contains(type))
+                {
+                    var storage = storages[type];
+                    var countProp = storage.GetType().GetProperty("Count");
+                    count = (int)(countProp?.GetValue(storage) ?? 0);
+
+                    var sparseSetField = storage.GetType().GetField("_sparseSet", BindingFlags.NonPublic | BindingFlags.Instance);
+                    var sparseSet = sparseSetField?.GetValue(storage);
+                    if (sparseSet != null)
+                    {
+                        var denseField = sparseSet.GetType().GetField("_dense", BindingFlags.NonPublic | BindingFlags.Instance);
+                        var dense = denseField?.GetValue(sparseSet);
+                        
+                        if (dense != null)
+                        {
+                            var lengthProp = dense.GetType().GetProperty("Length");
+                            capacity = (int)(lengthProp?.GetValue(dense) ?? 0);
+                        }
+                    }
+
+                    size = System.Runtime.InteropServices.Marshal.SizeOf(type);
+                }
+            }
+            catch { }
+
+            EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
+            GUILayout.Label(type.Name, GUILayout.Width(250));
+            GUILayout.Label(count.ToString(), GUILayout.Width(80));
+            GUILayout.Label(capacity.ToString(), GUILayout.Width(80));
+            
+            long totalBytes = (long)size * capacity;
+            GUILayout.Label(EditorUtility.FormatBytes(totalBytes), GUILayout.Width(100));
+
+            float utilization = capacity > 0 ? (float)count / capacity : 0;
+            var prevColor = GUI.color;
+            GUI.color = Color.Lerp(Color.red, Color.green, utilization);
+            GUILayout.Label($"{utilization:P1}", GUILayout.Width(100));
+            GUI.color = prevColor;
+
+            EditorGUILayout.EndHorizontal();
+        }
     }
 }

@@ -551,34 +551,10 @@ namespace Strada.Core.Editor.Windows
             
             try
             {
-                var schedulerType = scheduler.GetType();
-                var systemsByPhaseField = schedulerType.GetField("_systemsByPhase", 
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                
-                if (systemsByPhaseField != null)
+                var executionTimes = scheduler.LastExecutionTimes;
+                foreach (var kvp in executionTimes)
                 {
-                    var systemsByPhase = systemsByPhaseField.GetValue(scheduler) as System.Collections.IList[];
-                    if (systemsByPhase != null)
-                    {
-                        var stopwatch = new System.Diagnostics.Stopwatch();
-                        
-                        for (int phaseIndex = 0; phaseIndex < systemsByPhase.Length; phaseIndex++)
-                        {
-                            var systems = systemsByPhase[phaseIndex];
-                            if (systems == null) continue;
-
-                            foreach (ISystem system in systems)
-                            {
-                                if (system == null) continue;
-
-                                var entityCount = World.Current?.EntityManager?.EntityCount ?? 0;
-                                var baseTime = 0.01 + UnityEngine.Random.Range(0f, 0.1f);
-                                var scaledTime = baseTime + entityCount * 0.00001;
-                                
-                                _profiler.RecordSample(system.GetType(), scaledTime);
-                            }
-                        }
-                    }
+                    _profiler.RecordSample(kvp.Key, kvp.Value);
                 }
             }
             catch (Exception ex)

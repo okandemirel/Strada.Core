@@ -47,7 +47,16 @@ namespace Strada.Core.ECS.World
         {
             var systems = _systemsByPhase[(int)UpdatePhase.Update];
             for (int i = 0; i < systems.Count; i++)
+            {
+#if UNITY_EDITOR
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+#endif
                 systems[i].Update(deltaTime);
+#if UNITY_EDITOR
+                sw.Stop();
+                _lastExecutionTimes[systems[i].GetType()] = sw.Elapsed.TotalMilliseconds;
+#endif
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -55,7 +64,16 @@ namespace Strada.Core.ECS.World
         {
             var systems = _systemsByPhase[(int)UpdatePhase.LateUpdate];
             for (int i = 0; i < systems.Count; i++)
+            {
+#if UNITY_EDITOR
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+#endif
                 systems[i].Update(deltaTime);
+#if UNITY_EDITOR
+                sw.Stop();
+                _lastExecutionTimes[systems[i].GetType()] = sw.Elapsed.TotalMilliseconds;
+#endif
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -63,7 +81,16 @@ namespace Strada.Core.ECS.World
         {
             var systems = _systemsByPhase[(int)UpdatePhase.FixedUpdate];
             for (int i = 0; i < systems.Count; i++)
+            {
+#if UNITY_EDITOR
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+#endif
                 systems[i].Update(fixedDeltaTime);
+#if UNITY_EDITOR
+                sw.Stop();
+                _lastExecutionTimes[systems[i].GetType()] = sw.Elapsed.TotalMilliseconds;
+#endif
+            }
         }
 
         public void Dispose()
@@ -75,5 +102,10 @@ namespace Strada.Core.ECS.World
             for (int i = 0; i < _systemsByPhase.Length; i++)
                 _systemsByPhase[i].Clear();
         }
+
+#if UNITY_EDITOR
+        private readonly Dictionary<Type, double> _lastExecutionTimes = new Dictionary<Type, double>();
+        public IReadOnlyDictionary<Type, double> LastExecutionTimes => _lastExecutionTimes;
+#endif
     }
 }

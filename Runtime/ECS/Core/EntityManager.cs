@@ -99,7 +99,6 @@ namespace Strada.Core.ECS.Core
             if (!IsActiveIndex(entity.Index))
                 return;
 
-            // Version check for safety
             if (_versions[entity.Index] != entity.Version)
                 return;
 
@@ -258,7 +257,6 @@ namespace Strada.Core.ECS.Core
         {
             _store.Clear();
 
-            // Reset all tracking arrays
             unsafe
             {
                 UnsafeUtility.MemClear(_versions.GetUnsafePtr(), _versions.Length * sizeof(int));
@@ -308,6 +306,48 @@ namespace Strada.Core.ECS.Core
 
             _versions = newVersions;
             _active = newActive;
+        }
+        public void RestoreState(int nextEntityIndex, int[] activeIndices, int[] versions)
+        {
+            Clear();
+            
+            EnsureCapacity(nextEntityIndex);
+            _nextEntityIndex = nextEntityIndex;
+            
+            for (int i = 0; i < activeIndices.Length; i++)
+            {
+                int idx = activeIndices[i];
+                if (idx < _active.Length)
+                {
+                    _active[idx] = 1;
+                    _entityCount++;
+                }
+            }
+
+            for (int i = 0; i < versions.Length; i++)
+            {
+                if (i < _versions.Length)
+                {
+                    _versions[i] = versions[i];
+                }
+            }
+        }
+        public void CaptureState(out int nextEntityIndex, out int[] activeIndices, out int[] versions)
+        {
+            nextEntityIndex = _nextEntityIndex;
+            
+            var activeList = new List<int>(_entityCount);
+            for (int i = 1; i < _nextEntityIndex; i++)
+            {
+                if (_active[i] == 1) activeList.Add(i);
+            }
+            activeIndices = activeList.ToArray();
+
+            versions = new int[_versions.Length];
+            for (int i = 0; i < _versions.Length; i++)
+            {
+                versions[i] = _versions[i];
+            }
         }
     }
 }

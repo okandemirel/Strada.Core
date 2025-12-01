@@ -107,6 +107,44 @@ namespace Strada.Core.Editor.DataProviders
         }
 
         /// <summary>
+        /// Populates the provided list with log entries matching the filter, avoiding new allocations.
+        /// </summary>
+        public void GetLogEntriesNonAlloc(List<MessageLogEntry> results, MessageFilter filter = null)
+        {
+            lock (_logLock)
+            {
+                results.Clear();
+                if (filter == null)
+                {
+                    results.AddRange(_logEntries);
+                    return;
+                }
+
+                var filtered = _logEntries.AsEnumerable();
+
+                if (filter.Kind.HasValue)
+                    filtered = filtered.Where(e => e.Kind == filter.Kind.Value);
+
+                if (!string.IsNullOrEmpty(filter.TypePattern))
+                {
+                    filtered = filtered.Where(e =>
+                        MatchesTypePattern(e.MessageType?.Name, filter.TypePattern));
+                }
+
+                if (filter.StartTime.HasValue)
+                    filtered = filtered.Where(e => e.Timestamp >= filter.StartTime.Value);
+
+                if (filter.EndTime.HasValue)
+                    filtered = filtered.Where(e => e.Timestamp <= filter.EndTime.Value);
+
+                foreach (var entry in filtered.Take(filter.MaxResults))
+                {
+                    results.Add(entry);
+                }
+            }
+        }
+
+        /// <summary>
         /// Checks if a message type name matches the filter pattern.
         /// Supports wildcards (* for any characters, ? for single character) and partial matches.
         /// </summary>
@@ -297,6 +335,69 @@ namespace Strada.Core.Editor.DataProviders
                 _isLogging = false;
             }
         }
+
+        public struct SubscriberInfo
+        {
+            public object Target;
+            public MethodInfo Method;
+        }
+
+        public List<SubscriberInfo> GetSubscriberDetails(Type eventType)
+        {
+            var results = new List<SubscriberInfo>();
+            if (!IsAvailable) return results;
+
+            try
+            {
+                var bus = World.Current.EventBus;
+                var busType = typeof(EventBus);
+                
+                // Get _eventChannels array
+                var channelsField = busType.GetField("_eventChannels", BindingFlags.NonPublic | BindingFlags.Instance);
+                var channels = channelsField?.GetValue(bus) as object[];
+                if (channels == null) return results;
+
+            
+                var typeIdType = busType.GetNestedType("EventTypeId`1", BindingFlags.NonPublic)?.MakeGenericType(eventType);
+                var idField = typeIdType?.GetField("Id", BindingFlags.Public | BindingFlags.Static);
+                if (idField == null) return results;
+
+                var id = (int)idField.GetValue(null);
+                if (id >= channels.Length || channels[id] == null) return results;
+
+                var channel = channels[id];
+                var channelType = channel.GetType();
+                
+                // Get _handlers array from channel
+                var handlersField = channelType.GetField("_handlers", BindingFlags.NonPublic | BindingFlags.Instance);
+                var countField = channelType.GetField("_count", BindingFlags.NonPublic | BindingFlags.Instance);
+                
+                var handlers = handlersField?.GetValue(channel) as Array;
+                var count = (int)(countField?.GetValue(channel) ?? 0);
+
+                if (handlers != null)
+                {
+                    for (int i = 0; i < count; i++)
+                    {
+                        var deleg = handlers.GetValue(i) as Delegate;
+                        if (deleg != null)
+                        {
+                            results.Add(new SubscriberInfo
+                            {
+                                Target = deleg.Target,
+                                Method = deleg.Method
+                            });
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[BusDataProvider] Failed to get subscribers for {eventType.Name}: {ex.Message}");
+            }
+
+            return results;
+        }
     }
 
     /// <summary>
@@ -307,6 +408,8 @@ namespace Strada.Core.Editor.DataProviders
         void StartLogging();
         void StopLogging();
         IReadOnlyList<MessageLogEntry> GetLogEntries(MessageFilter filter);
+        void GetLogEntriesNonAlloc(List<MessageLogEntry> results, MessageFilter filter);
         int GetSubscriberCount(Type messageType);
+        List<BusDataProvider.SubscriberInfo> GetSubscriberDetails(Type eventType);
     }
 }

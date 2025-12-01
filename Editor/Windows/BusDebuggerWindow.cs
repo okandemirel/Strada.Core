@@ -33,6 +33,12 @@ namespace Strada.Core.Editor.Windows
         private MessageKind? _kindFilter;
         private bool _showFilterOptions;
 
+        private enum Tab { Log, FlowGraph }
+        private Tab _currentTab = Tab.Log;
+        private Vector2 _graphScrollPosition;
+        private List<Type> _cachedEventTypes = new List<Type>();
+        private bool _graphNeedsRefresh = true;
+
         private bool _isPaused;
         private bool _autoScroll = true;
 
@@ -192,8 +198,16 @@ namespace Strada.Core.Editor.Windows
             }
 
             DrawToolbar();
-            DrawFilterBar();
-            DrawSplitView();
+            
+            if (_currentTab == Tab.Log)
+            {
+                DrawFilterBar();
+                DrawSplitView();
+            }
+            else
+            {
+                DrawFlowGraph();
+            }
         }
 
         private void DrawNotPlayingMessage()
@@ -251,6 +265,9 @@ namespace Strada.Core.Editor.Windows
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
 
+            _currentTab = (Tab)GUILayout.Toolbar((int)_currentTab, new[] { "Log", "Flow Graph" }, EditorStyles.toolbarButton, GUILayout.Width(150));
+            GUILayout.Space(10);
+
             var isLogging = _busDataProvider.IsLogging;
             var logIcon = isLogging ? "●" : "○";
             var logColor = isLogging ? Color.green : Color.gray;
@@ -298,6 +315,107 @@ namespace Strada.Core.Editor.Windows
             }
 
             EditorGUILayout.EndHorizontal();
+        }
+
+        private void DrawFlowGraph()
+        {
+            if (_graphNeedsRefresh)
+            {
+                RefreshGraphData();
+                _graphNeedsRefresh = false;
+            }
+
+            EditorGUILayout.BeginVertical();
+            
+            EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
+            if (GUILayout.Button("Refresh Graph", EditorStyles.toolbarButton))
+            {
+                _graphNeedsRefresh = true;
+            }
+            GUILayout.FlexibleSpace();
+            EditorGUILayout.EndHorizontal();
+
+            _graphScrollPosition = EditorGUILayout.BeginScrollView(_graphScrollPosition);
+            
+            if (_cachedEventTypes.Count == 0)
+            {
+                EditorGUILayout.HelpBox("No events found or not in Play Mode.", MessageType.Info);
+            }
+            else
+            {
+                foreach (var eventType in _cachedEventTypes)
+                {
+                    DrawEventNode(eventType);
+                }
+            }
+
+            EditorGUILayout.EndScrollView();
+            EditorGUILayout.EndVertical();
+        }
+
+        private void RefreshGraphData()
+        {
+            _cachedEventTypes.Clear();
+            if (!Application.isPlaying) return;
+
+            // Find all types that are Events (structs) - this is a simplification
+            // In a real scenario, we might track what has been published
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            foreach (var assembly in assemblies)
+            {
+                try 
+                {
+                    foreach (var type in assembly.GetTypes())
+                    {
+                        // Heuristic: Structs ending in "Event" or "Signal"
+                        if (type.IsValueType && !type.IsPrimitive && !type.IsEnum && 
+                           (type.Name.EndsWith("Event") || type.Name.EndsWith("Signal")))
+                        {
+                            _cachedEventTypes.Add(type);
+                        }
+                    }
+                }
+                catch {}
+            }
+            _cachedEventTypes.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.Ordinal));
+        }
+
+        private void DrawEventNode(Type eventType)
+        {
+            var subscribers = _busDataProvider.GetSubscriberDetails(eventType);
+            if (subscribers.Count == 0) return;
+
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Label(eventType.Name, EditorStyles.boldLabel, GUILayout.Width(200));
+            GUILayout.FlexibleSpace();
+            GUILayout.Label($"{subscribers.Count} Subscribers", EditorStyles.miniLabel);
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUI.indentLevel++;
+            foreach (var sub in subscribers)
+            {
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.Label("↳", GUILayout.Width(15));
+                
+                var targetName = sub.Target?.GetType().Name ?? "Static/Unknown";
+                var methodName = sub.Method?.Name ?? "Unknown";
+                
+                if (GUILayout.Button($"{targetName}.{methodName}", EditorStyles.label))
+                {
+                    // Ping the script if possible
+                    if (sub.Target is MonoBehaviour mb)
+                    {
+                        EditorGUIUtility.PingObject(mb);
+                    }
+                }
+                EditorGUILayout.EndHorizontal();
+            }
+            EditorGUI.indentLevel--;
+
+            EditorGUILayout.EndVertical();
+            GUILayout.Space(5);
         }
 
         private void DrawFilterBar()
@@ -665,7 +783,7 @@ namespace Strada.Core.Editor.Windows
         private void RefreshDisplayedEntries()
         {
             var filter = BuildMessageFilter();
-            _displayedEntries = _busDataProvider.GetLogEntries(filter).ToList();
+            _busDataProvider.GetLogEntriesNonAlloc(_displayedEntries, filter);
         }
 
         /// <summary>

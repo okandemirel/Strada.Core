@@ -25,8 +25,9 @@ namespace Strada.Core.Editor.Windows
         private const int TabModules = 2;
         private const int TabBus = 3;
         private const int TabPerformance = 4;
+        private const int TabArchitecture = 5;
 
-        private readonly string[] _tabNames = { "DI Container", "ECS World", "Modules", "Bus Activity", "Performance" };
+        private readonly string[] _tabNames = { "DI Container", "ECS World", "Modules", "Bus Activity", "Performance", "Architecture" };
 
         private int _selectedTab;
 
@@ -219,6 +220,9 @@ namespace Strada.Core.Editor.Windows
                     break;
                 case TabPerformance:
                     DrawPerformanceTab();
+                    break;
+                case TabArchitecture:
+                    DrawArchitectureTab();
                     break;
             }
         }
@@ -1638,6 +1642,56 @@ namespace Strada.Core.Editor.Windows
             _hoveredModuleNode = null;
             _moduleGraphView?.ClearHighlights();
             Repaint();
+        }
+        private void DrawArchitectureTab()
+        {
+            EditorGUILayout.BeginVertical();
+            EditorGUILayout.LabelField("Architecture Graph", _headerStyle);
+            
+            if (GUILayout.Button("Open Full Graph Window", GUILayout.Height(30)))
+            {
+                ModuleGraphWindow.ShowWindow();
+            }
+
+            EditorGUILayout.HelpBox(
+                "The Architecture Graph visualizes the dependencies between Modules.\n" +
+                "This helps identify circular dependencies and understand the initialization order.\n\n" +
+                "Click the button above to open the interactive graph view.", 
+                MessageType.Info);
+
+            EditorGUILayout.Space(10);
+            EditorGUILayout.LabelField("Module Dependencies (Static Analysis)", EditorStyles.boldLabel);
+
+            var modules = _moduleProvider.GetModules();
+            if (modules.Count == 0)
+            {
+                EditorGUILayout.HelpBox("No modules found. Enter Play Mode to see runtime modules.", MessageType.Info);
+            }
+            else
+            {
+                foreach (var module in modules)
+                {
+                    EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+                    EditorGUILayout.LabelField(module.Name, EditorStyles.boldLabel);
+                    
+                    if (module.Dependencies.Count > 0)
+                    {
+                        EditorGUI.indentLevel++;
+                        foreach (var dep in module.Dependencies)
+                        {
+                            EditorGUILayout.LabelField($"→ {dep}", EditorStyles.miniLabel);
+                        }
+                        EditorGUI.indentLevel--;
+                    }
+                    else
+                    {
+                        EditorGUILayout.LabelField("No dependencies", EditorStyles.centeredGreyMiniLabel);
+                    }
+                    EditorGUILayout.EndVertical();
+                }
+            }
+
+            EditorGUILayout.EndVertical();
         }
     }
 }
