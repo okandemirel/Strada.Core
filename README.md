@@ -29,6 +29,7 @@ Strada combines enterprise-grade dependency injection with performance-critical 
 ### Dependency Injection ([docs](Documentation~/DI.md))
 - **Container**: Expression tree compiled factories (1.56x manual `new()` overhead)
 - **Lifetimes**: Singleton, Transient, Scoped with thread-safe initialization
+- **Disposal**: LIFO disposal order (dependents disposed before dependencies)
 - **Auto-Binding**: Attribute-based service registration with `[AutoRegister]`, `[AutoRegisterSingleton]`, etc.
 - **Circular Detection**: Build-time cycle detection prevents runtime errors
 - **Zero-alloc Resolution**: No GC allocation for singleton/scoped paths
@@ -36,6 +37,7 @@ Strada combines enterprise-grade dependency injection with performance-critical 
 ### Entity Component System ([docs](Documentation~/ECS.md))
 - **SparseSet Storage**: Cache-friendly component iteration (6-28ns per entity)
 - **Query System**: `ForEach<T1...T16>()` - up to 8 hand-written, 9-16 source-generated
+- **Safety**: `EntityCommandBuffer` for safe structural changes during iteration
 - **Parallel Jobs**: Burst-compiled jobs with 17x speedup over sequential
 - **Entity Recycling**: Automatic index reuse with version tracking
 - **Source Generation**: Compile-time query generation for 9-16 components
@@ -521,9 +523,9 @@ UNITY_PATH="/path/to/Unity" PROJECT_PATH="/path/to/project"
 ```
 
 **Test Coverage:**
-- 324 functional tests
-- 93 performance benchmarks
-- All 417 tests passing (324 functional + 93 performance)
+- 330 functional tests (Hardened DI & ECS edge cases)
+- 94 performance benchmarks (Added realistic simulation scenarios)
+- All 424 tests passing
 
 ---
 

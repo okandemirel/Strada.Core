@@ -9,6 +9,8 @@ namespace Strada.Core.DI
 {
     public sealed class Container : IContainer, IIndexResolver
     {
+        private readonly Stack<IDisposable> _disposalStack = new Stack<IDisposable>();
+        private readonly object _lock = new object();
         private readonly Func<IIndexResolver, object>[] _factories;
         private readonly Func<IIndexResolver, object>[] _scopedFactories;
         private readonly object[] _singletons;
@@ -108,15 +110,26 @@ namespace Strada.Core.DI
             if (_disposed) return;
             _disposed = true;
 
+            lock (_lock)
+            {
+                while (_disposalStack.Count > 0)
+                {
+                    try
+                    {
+                        _disposalStack.Pop().Dispose();
+                    }
+                    catch (Exception e)
+                    {
+                        UnityEngine.Debug.LogError($"Error disposing service: {e}");
+                    }
+                }
+            }
+
             for (int i = 0; i < _registeredCount; i++)
                 ClearFactory(_registeredTypes[i]);
 
             for (int i = 0; i < _singletons.Length; i++)
-            {
-                var obj = Volatile.Read(ref _singletons[i]);
-                if (obj is IDisposable d) d.Dispose();
                 _singletons[i] = null;
-            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -182,7 +195,10 @@ namespace Strada.Core.DI
 
                 if (reg.Instance != null)
                 {
-                    _singletons[index] = reg.Instance;
+                    if (reg.Instance is IDisposable d)
+                    {
+                        lock (_lock) _disposalStack.Push(d);
+                    }
                     rawFactory = _ => reg.Instance;
                 }
                 else if (reg.Factory != null)
@@ -210,6 +226,12 @@ namespace Strada.Core.DI
                             if (instance is IDisposable d) d.Dispose();
                             return prev;
                         }
+
+                        if (instance is IDisposable disposable)
+                        {
+                            lock (_lock) _disposalStack.Push(disposable);
+                        }
+                        
                         return instance;
                     };
                 }
