@@ -21,12 +21,6 @@ namespace Strada.Core.Editor
             StradaDashboardWindow.ShowWindow();
         }
 
-        [MenuItem(MenuRoot + "Tools/Create Module... %#n", priority = 50)]
-        private static void OpenModuleGenerator()
-        {
-            StradaModuleGeneratorWindow.ShowWindow();
-        }
-
         [MenuItem(MenuRoot + "Tools/Config Data Manager %#c", priority = 51)]
         private static void OpenConfigDataManager()
         {
@@ -243,15 +237,7 @@ namespace Strada.Core.Editor
         [MenuItem(MenuRoot + "About Strada", priority = 1000)]
         private static void ShowAbout()
         {
-            EditorUtility.DisplayDialog(
-                "Strada Framework",
-                "Version: 1.0.0-alpha\n\n" +
-                "Unified MVCS+ECS Framework\n\n" +
-                "Performance: World Class\n" +
-                "Developer Experience: Modular & Clean\n" +
-                "Architecture: Truly unified DI+MVCS+ECS\n\n" +
-                "© 2025 Strada Framework Team",
-                "OK");
+            StradaAboutWindow.ShowWindow();
         }
     }
 }

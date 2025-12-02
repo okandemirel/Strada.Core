@@ -5,6 +5,7 @@ Strada's modular architecture provides a unified pattern for organizing game cod
 ## Table of Contents
 
 - [Overview](#overview)
+- [Module Generator](#module-generator)
 - [Quick Start](#quick-start)
 - [ModuleConfig](#moduleconfig)
 - [GameBootstrapperConfig](#gamebootstrapperconfig)
@@ -47,6 +48,132 @@ The modular architecture combines:
 │  └─────────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Module Generator
+
+The Strada Module Generator is a powerful editor tool that creates complete module structures with a single click.
+
+### Accessing the Generator
+
+- **Menu:** `Strada > Module Generator`
+- **Context Menu:** Right-click in Project → `Create > Strada > New Module Here`
+- **Shortcut:** `Ctrl+Enter` to generate (when window is focused)
+
+### Module Types
+
+| Type | Description | Use Case |
+|------|-------------|----------|
+| **Main** | Standalone module with full structure and assembly definition | Core features, major game systems |
+| **Sub** | Child module that inherits parent's assembly definition | Feature extensions, sub-systems |
+| **Screen** | UI-focused module with View and Mediator components | UI screens, dialogs, panels |
+| **Test** | Test module for unit and integration testing | Module testing |
+
+### Components to Generate
+
+#### ECS Components
+- **System** - Creates `{Name}System.cs` with SystemBase template
+- **Component** - Creates `{Name}Component.cs` ECS component
+- **Entity Mediator** - Creates `{Name}Mediator.cs` for entity-view binding
+
+#### MVCS Pattern
+- **Service Interface** - Creates `I{Name}Service.cs` interface
+- **Service** - Creates `{Name}Service.cs` implementation
+- **Controller** - Creates `{Name}Controller.cs` logic orchestrator
+- **Model** - Creates `{Name}Model.cs` state container
+- **View** - Creates `{Name}View.cs` MonoBehaviour view
+
+#### Data & Events
+- **ConfigData** - Creates `CD_{Name}.cs` ScriptableObject config
+- **ValueObject** - Creates `{Name}Config.cs` POCO config
+- **Events** - Creates `{Name}Events.cs` event definitions
+- **Signals** - Creates `{Name}Signals.cs` signal definitions
+
+#### Infrastructure
+- **ModuleConfig** - Creates `{Name}ModuleConfig.cs` ScriptableObject (Main modules only)
+- **Assembly Definition** - Creates `{Name}.asmdef` (Main modules only)
+- **Runtime Tests** - Creates test structure with NUnit
+- **Editor Tests** - Creates editor test structure
+- **Editor Scripts** - Creates Editor folder with `.Editor.asmdef`
+
+#### Optional Folders
+- Resources, Prefabs, Scenes, Sprites, Art, Audio
+
+### Hierarchical Module View
+
+The generator displays existing modules in a tree structure:
+- Expandable/collapsible with ▶/▼ arrows
+- Type labels: **(Sub)**, **(Screen)**, **(Test)**
+- Color-coded by type for visual identification
+- **Select** button to quickly set a parent module
+
+### Generated Structure (Main Module)
+
+```
+Assets/Modules/PlayerModule/
+├── Scripts/
+│   ├── Interfaces/
+│   │   └── IPlayerService.cs
+│   ├── Services/
+│   │   └── PlayerService.cs
+│   ├── Controllers/
+│   │   └── PlayerController.cs
+│   ├── Systems/
+│   │   └── PlayerSystem.cs
+│   ├── Components/
+│   │   └── PlayerComponent.cs
+│   └── Data/
+│       ├── UnityObjects/
+│       │   └── CD_Player.cs
+│       └── ValueObjects/
+│           └── PlayerConfig.cs
+├── Editor/
+│   └── Player.Editor.asmdef
+├── Tests/
+│   ├── Runtime/
+│   │   └── PlayerTests.cs
+│   ├── Editor/
+│   │   └── PlayerEditorTests.cs
+│   └── Player.Tests.asmdef
+├── Resources/
+├── Prefabs/
+├── PlayerModuleConfig.cs
+└── Player.asmdef
+```
+
+### Post-Generation Options
+
+| Option | Description |
+|--------|-------------|
+| **Register in GameBootstrapper** | Auto-adds module to GameBootstrapperConfig |
+| **Create ModuleConfig Asset** | Creates ScriptableObject asset after compilation |
+| **Open Folder** | Opens the created folder in Project window |
+
+### Example: Creating a Player Module
+
+1. Open `Strada > Module Generator`
+2. Enter "Player" as Module Name
+3. Select **Main** as Module Type
+4. Choose components:
+   - ✓ Service Interface
+   - ✓ Service
+   - ✓ Controller
+   - ✓ ConfigData
+   - ✓ ModuleConfig
+   - ✓ Assembly Definition
+5. Click **Create Module** (or `Ctrl+Enter`)
+
+### Example: Creating a Sub-Module
+
+1. Open Module Generator
+2. Enter "Inventory" as Module Name
+3. Select **Sub** as Module Type
+4. In the Parent Module hierarchy, click **Select** on "PlayerModule"
+5. The target path auto-updates to the parent module path
+6. Click **Create Module**
+
+The sub-module will be created inside the parent module folder and use the parent's assembly definition.
 
 ---
 

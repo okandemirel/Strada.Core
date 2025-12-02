@@ -104,24 +104,6 @@ namespace Strada.Core.Editor
         }
 
         /// <summary>
-        /// Context menu for creating a new Strada module in the selected folder.
-        /// </summary>
-        [MenuItem("Assets/Create/Strada/New Module Here...", false, 1)]
-        private static void CreateModuleInFolder()
-        {
-            var folderPath = GetSelectedFolderPath();
-            if (string.IsNullOrEmpty(folderPath))
-            {
-                folderPath = "Assets/Modules";
-            }
-
-            var window = EditorWindow.GetWindow<StradaModuleGeneratorWindow>("Create Module");
-            window.Show();
-
-            Debug.Log($"[Strada] Creating module in: {folderPath}");
-        }
-
-        /// <summary>
         /// Context menu for validating module structure in the selected folder.
         /// </summary>
         [MenuItem("Assets/Strada/Validate Module Structure", false, 100)]

@@ -251,6 +251,8 @@ health.Value = 75; // healthBar updates automatically
 | [Sync](Documentation~/Sync.md) | Reactive properties, bindings, EntityMediator |
 | [Pooling](Documentation~/Pooling.md) | Object pools, lifecycle hooks |
 | [StateMachine](Documentation~/StateMachine.md) | FSM with transitions |
+| [TimerService](Documentation~/TimerService.md) | Managed timers with pause/resume |
+| [Debugging](Documentation~/Debugging.md) | Troubleshooting, common issues, debugging tools |
 | [Benchmarks](Documentation~/Benchmarks.md) | Full performance data |
 
 ---
