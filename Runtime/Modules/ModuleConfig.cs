@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Strada.Core.Logging;
 using UnityEngine;
 
 namespace Strada.Core.Modules
@@ -38,10 +39,25 @@ namespace Strada.Core.Modules
         [Tooltip("Other modules this module depends on. Dependent modules will be initialized first.")]
         [SerializeField] protected List<ModuleConfig> _dependencies = new();
 
+        private LogModule? _logModule;
+
         /// <summary>
         /// Gets the module name. Falls back to asset name if not set.
         /// </summary>
         public string ModuleName => string.IsNullOrEmpty(_moduleName) ? name : _moduleName;
+
+        /// <summary>
+        /// Gets the LogModule for this game module. Auto-registers with the LogModuleRegistry
+        /// on first access using the ModuleName. Can be used with StradaLog.Log(msg, LogModule).
+        /// </summary>
+        public LogModule LogModule
+        {
+            get
+            {
+                _logModule ??= LogModuleRegistry.RegisterGameModule(ModuleName);
+                return _logModule.Value;
+            }
+        }
 
         /// <summary>
         /// Gets the initialization priority (lower values initialize first).

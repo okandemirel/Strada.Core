@@ -311,10 +311,11 @@ namespace Strada.Core.Editor.Windows
             _enabledModules.Clear();
             _enabledTypes.Clear();
 
-            var modules = Enum.GetValues(typeof(LogModule));
-            for (int i = 0; i < modules.Length; i++)
+            LogModuleRegistry.EnsureInitialized();
+            var allModules = LogModuleRegistry.GetAllModules();
+            foreach (var module in allModules)
             {
-                _enabledModules.Add((LogModule)modules.GetValue(i));
+                _enabledModules.Add(module);
             }
 
             _enabledTypes.Add(StradaLogType.Info);
@@ -501,12 +502,9 @@ namespace Strada.Core.Editor.Windows
 
             GUILayout.Space(4);
 
-            var modules = Enum.GetValues(typeof(LogModule));
-            for (int i = 0; i < modules.Length; i++)
-            {
-                var module = (LogModule)modules.GetValue(i);
-                DrawFilterModuleToggle(module);
-            }
+            DrawModuleTierSection("Core", LogModuleTier.StradaCore);
+            DrawModuleTierSection("Strada", LogModuleTier.StradaModule);
+            DrawModuleTierSection("Game", LogModuleTier.Game);
 
             GUILayout.Space(12);
 
@@ -567,6 +565,20 @@ namespace Strada.Core.Editor.Windows
             }
         }
 
+        private void DrawModuleTierSection(string tierLabel, LogModuleTier tier)
+        {
+            var modules = LogModuleRegistry.GetModulesByTier(tier);
+            if (modules.Count == 0) return;
+
+            GUILayout.Space(4);
+            GUILayout.Label(tierLabel, EditorStyles.miniBoldLabel);
+
+            foreach (var module in modules)
+            {
+                DrawFilterModuleToggle(module);
+            }
+        }
+
         private void DrawFilterModuleToggle(LogModule module)
         {
             var isActive = _enabledModules.Contains(module);
@@ -574,6 +586,7 @@ namespace Strada.Core.Editor.Windows
             _moduleCounts.TryGetValue(module, out count);
 
             var color = StradaLogSettings.Instance.GetModuleColor(module);
+            var displayName = LogModuleRegistry.GetDisplayName(module);
 
             GUILayout.BeginHorizontal();
 
@@ -582,7 +595,7 @@ namespace Strada.Core.Editor.Windows
             colorRect.height = 10;
             EditorGUI.DrawRect(colorRect, color);
 
-            var newActive = GUILayout.Toggle(isActive, $" {module}", Styles.FilterToggleStyle);
+            var newActive = GUILayout.Toggle(isActive, $" {displayName}", Styles.FilterToggleStyle);
             GUILayout.FlexibleSpace();
             GUILayout.Label($"({count})", EditorStyles.miniLabel);
             GUILayout.EndHorizontal();
@@ -666,9 +679,10 @@ namespace Strada.Core.Editor.Windows
             x += IconSize + 6;
 
             var moduleColor = StradaLogSettings.Instance.GetModuleColor(entry.Module);
+            var moduleDisplayName = LogModuleRegistry.GetDisplayName(entry.Module);
             var badgeRect = new Rect(x, rect.y + 3, ModuleBadgeWidth, rect.height - 6);
             EditorGUI.DrawRect(badgeRect, moduleColor);
-            GUI.Label(badgeRect, entry.Module.ToString(), Styles.ModuleBadgeStyle);
+            GUI.Label(badgeRect, moduleDisplayName, Styles.ModuleBadgeStyle);
             x += ModuleBadgeWidth + 8;
 
             if (entry.IsDeepLog)
@@ -798,7 +812,7 @@ namespace Strada.Core.Editor.Windows
             GUILayout.Space(4);
 
             DrawDetailRow("Time", _selectedEntry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff"));
-            DrawDetailRow("Module", _selectedEntry.Module.ToString());
+            DrawDetailRow("Module", LogModuleRegistry.GetDisplayName(_selectedEntry.Module));
             DrawDetailRow("Type", _selectedEntry.Type.ToString() + (_selectedEntry.IsDeepLog ? " (Deep)" : ""));
 
             if (!string.IsNullOrEmpty(_selectedEntry.FilePath))
@@ -927,7 +941,7 @@ namespace Strada.Core.Editor.Windows
 
             if (_selectedEntry != null)
             {
-                GUILayout.Label($"Selected: {_selectedEntry.Module} - {_selectedEntry.Type}", EditorStyles.miniLabel);
+                GUILayout.Label($"Selected: {LogModuleRegistry.GetDisplayName(_selectedEntry.Module)} - {_selectedEntry.Type}", EditorStyles.miniLabel);
             }
 
             GUILayout.Space(8);
@@ -1115,10 +1129,10 @@ namespace Strada.Core.Editor.Windows
         private void SelectAllModules()
         {
             _enabledModules.Clear();
-            var modules = Enum.GetValues(typeof(LogModule));
-            for (int i = 0; i < modules.Length; i++)
+            var allModules = LogModuleRegistry.GetAllModules();
+            foreach (var module in allModules)
             {
-                _enabledModules.Add((LogModule)modules.GetValue(i));
+                _enabledModules.Add(module);
             }
             RefreshFilteredEntries();
         }
@@ -1216,6 +1230,12 @@ namespace Strada.Core.Editor.Windows
         private void OnLogReceived(LogEntry entry)
         {
             _allEntries.Add(entry);
+
+            // Auto-enable newly discovered modules
+            if (!_enabledModules.Contains(entry.Module) && LogModuleRegistry.IsRegistered(entry.Module))
+            {
+                _enabledModules.Add(entry.Module);
+            }
 
             if (_moduleCounts.ContainsKey(entry.Module))
                 _moduleCounts[entry.Module]++;

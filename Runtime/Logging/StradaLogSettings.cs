@@ -126,7 +126,7 @@ namespace Strada.Core.Logging
         }
 
         /// <summary>
-        /// Sets the color for a specific module.
+        /// Sets the color for a specific module. Colors can be changed for all tiers.
         /// </summary>
         public void SetModuleColor(LogModule module, Color color)
         {
@@ -143,31 +143,47 @@ namespace Strada.Core.Logging
 
         /// <summary>
         /// Gets whether a module is visible in the log window tabs.
+        /// For locked tiers (Core/StradaModule), always returns the default visibility.
         /// </summary>
         public bool IsModuleVisible(LogModule module)
         {
+            // For locked modules, return default visibility from registry
+            if (LogModuleRegistry.IsVisibilityLocked(module))
+            {
+                return LogModuleRegistry.GetDefaultVisible(module);
+            }
+
             for (int i = 0; i < _moduleVisibility.Count; i++)
             {
                 if (_moduleVisibility[i].Module == module)
                     return _moduleVisibility[i].IsVisible;
             }
-            return true;
+            return LogModuleRegistry.GetDefaultVisible(module);
         }
 
         /// <summary>
         /// Sets whether a module is visible in the log window tabs.
+        /// Only works for Game tier modules; visibility for Core/StradaModule tiers is locked.
         /// </summary>
-        public void SetModuleVisible(LogModule module, bool visible)
+        /// <returns>True if the visibility was changed, false if the module is locked.</returns>
+        public bool SetModuleVisible(LogModule module, bool visible)
         {
+            // Reject changes for locked tiers
+            if (LogModuleRegistry.IsVisibilityLocked(module))
+            {
+                return false;
+            }
+
             for (int i = 0; i < _moduleVisibility.Count; i++)
             {
                 if (_moduleVisibility[i].Module == module)
                 {
                     _moduleVisibility[i] = new ModuleVisibilityEntry { Module = module, IsVisible = visible };
-                    return;
+                    return true;
                 }
             }
             _moduleVisibility.Add(new ModuleVisibilityEntry { Module = module, IsVisible = visible });
+            return true;
         }
 
         /// <summary>
@@ -207,6 +223,46 @@ namespace Strada.Core.Logging
             InitializeDefaults();
         }
 
+        /// <summary>
+        /// Registers any dynamically stored modules (from color/visibility entries)
+        /// with the LogModuleRegistry so they appear in the editor.
+        /// </summary>
+        public void RegisterStoredModules()
+        {
+            LogModuleRegistry.EnsureInitialized();
+
+            foreach (var entry in _moduleColors)
+            {
+                if (!LogModuleRegistry.IsRegistered(entry.Module))
+                {
+                    var tier = GetTierFromId((int)entry.Module);
+                    var name = Enum.IsDefined(typeof(LogModule), entry.Module)
+                        ? entry.Module.ToString()
+                        : $"Module_{(int)entry.Module}";
+                    LogModuleRegistry.RegisterModule(entry.Module, tier, name);
+                }
+            }
+
+            foreach (var entry in _moduleVisibility)
+            {
+                if (!LogModuleRegistry.IsRegistered(entry.Module))
+                {
+                    var tier = GetTierFromId((int)entry.Module);
+                    var name = Enum.IsDefined(typeof(LogModule), entry.Module)
+                        ? entry.Module.ToString()
+                        : $"Module_{(int)entry.Module}";
+                    LogModuleRegistry.RegisterModule(entry.Module, tier, name);
+                }
+            }
+        }
+
+        private LogModuleTier GetTierFromId(int moduleId)
+        {
+            if (moduleId < 100) return LogModuleTier.StradaCore;
+            if (moduleId < 1000) return LogModuleTier.StradaModule;
+            return LogModuleTier.Game;
+        }
+
         private void InitializeDefaults()
         {
             if (_moduleColors.Count == 0)
@@ -219,6 +275,7 @@ namespace Strada.Core.Logging
                 _moduleColors.Add(new ModuleColorEntry { Module = LogModule.Sync, Color = new Color(0.3f, 0.8f, 0.8f) });
                 _moduleColors.Add(new ModuleColorEntry { Module = LogModule.Bootstrap, Color = new Color(0.8f, 0.4f, 0.6f) });
                 _moduleColors.Add(new ModuleColorEntry { Module = LogModule.Modules, Color = new Color(0.6f, 0.8f, 0.4f) });
+                _moduleColors.Add(new ModuleColorEntry { Module = LogModule.Screen, Color = new Color(0.5f, 0.7f, 0.9f) });
             }
         }
 
