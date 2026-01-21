@@ -67,7 +67,7 @@ namespace Strada.Core.Editor.Windows
         public static void ShowWindow()
         {
             var window = GetWindow<BusDebuggerWindow>("Bus Debugger");
-            window.minSize = new Vector2(700, 400);
+            window.minSize = new Vector2(600, 400);
         }
 
         private void OnEnable()

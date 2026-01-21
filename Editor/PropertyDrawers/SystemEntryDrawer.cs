@@ -233,6 +233,101 @@ namespace Strada.Core.Editor.PropertyDrawers
             });
             menu.AddSeparator("");
 
+            var types = new System.Collections.Generic.List<System.Type>();
+            foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+            {
+                if (assembly.IsDynamic)
+                    continue;
+
+                var assemblyName = assembly.GetName().Name;
+                if (assemblyName.StartsWith("System", System.StringComparison.Ordinal) ||
+                    assemblyName.StartsWith("Microsoft", System.StringComparison.Ordinal) ||
+                    assemblyName.StartsWith("Unity.", System.StringComparison.Ordinal) ||
+                    assemblyName.StartsWith("UnityEngine", System.StringComparison.Ordinal) ||
+                    assemblyName.StartsWith("UnityEditor", System.StringComparison.Ordinal) ||
+                    assemblyName.StartsWith("mscorlib", System.StringComparison.Ordinal) ||
+                    assemblyName.StartsWith("netstandard", System.StringComparison.Ordinal) ||
+                    assemblyName.StartsWith("Mono.", System.StringComparison.Ordinal))
+                    continue;
+
+                try
+                {
+                    foreach (var type in assembly.GetTypes())
+                    {
+                        if (type.IsClass && !type.IsAbstract && baseType.IsAssignableFrom(type))
+                        {
+                            types.Add(type);
+                        }
+                        else if (type.IsInterface && type.Namespace != null && !type.Namespace.StartsWith("System"))
+                        {
+                            types.Add(type);
+                        }
+                    }
+                }
+                catch (System.Reflection.ReflectionTypeLoadException ex)
+                {
+                    foreach (var type in ex.Types)
+                    {
+                        if (type == null) continue;
+                        if (type.IsClass && !type.IsAbstract && baseType.IsAssignableFrom(type))
+                        {
+                            types.Add(type);
+                        }
+                        else if (type.IsInterface && type.Namespace != null && !type.Namespace.StartsWith("System"))
+                        {
+                            types.Add(type);
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            var grouped = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<System.Type>>();
+            foreach (var type in types)
+            {
+                var ns = type.Namespace ?? "Global";
+                if (!grouped.TryGetValue(ns, out var list))
+                {
+                    list = new System.Collections.Generic.List<System.Type>();
+                    grouped[ns] = list;
+                }
+                list.Add(type);
+            }
+
+            menu.AddDisabledItem(new GUIContent("--- Interfaces ---"));
+            foreach (var kvp in grouped)
+            {
+                foreach (var type in kvp.Value)
+                {
+                    if (!type.IsInterface) continue;
+                    var menuPath = string.IsNullOrEmpty(kvp.Key) ? type.Name : $"{kvp.Key}/{type.Name}";
+                    var isSelected = property.stringValue == type.AssemblyQualifiedName;
+                    menu.AddItem(new GUIContent(menuPath), isSelected, () =>
+                    {
+                        property.stringValue = type.AssemblyQualifiedName;
+                        property.serializedObject.ApplyModifiedProperties();
+                    });
+                }
+            }
+
+            menu.AddSeparator("");
+            menu.AddDisabledItem(new GUIContent("--- Classes ---"));
+
+            foreach (var kvp in grouped)
+            {
+                foreach (var type in kvp.Value)
+                {
+                    if (type.IsInterface) continue;
+                    var menuPath = string.IsNullOrEmpty(kvp.Key) ? type.Name : $"{kvp.Key}/{type.Name}";
+                    var isSelected = property.stringValue == type.AssemblyQualifiedName;
+                    menu.AddItem(new GUIContent(menuPath), isSelected, () =>
+                    {
+                        property.stringValue = type.AssemblyQualifiedName;
+                        property.serializedObject.ApplyModifiedProperties();
+                    });
+                }
+            }
+
             menu.DropDown(position);
         }
     }

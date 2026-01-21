@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
+using System.Reflection;
 using Strada.Core.Editor.ModuleGenerator.Models;
 using Strada.Core.Modules;
 using UnityEditor;
@@ -21,10 +21,15 @@ namespace Strada.Core.Editor.ModuleGenerator
             EnrichFromInstallers(allModules);
             EnrichFromModuleConfigs(allModules);
 
-            var rootModules = allModules.Values
-                .Where(m => m.Parent == null)
-                .OrderBy(m => m.Name)
-                .ToList();
+            var rootModules = new List<ModuleInfoData>();
+            foreach (var module in allModules.Values)
+            {
+                if (module.Parent == null)
+                {
+                    rootModules.Add(module);
+                }
+            }
+            rootModules.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.Ordinal));
 
             return rootModules;
         }
@@ -45,7 +50,9 @@ namespace Strada.Core.Editor.ModuleGenerator
         private static void AddToFlatList(List<ModuleInfoData> list, ModuleInfoData module)
         {
             list.Add(module);
-            foreach (var child in module.SubModules.OrderBy(m => m.Name))
+            var sortedChildren = new List<ModuleInfoData>(module.SubModules);
+            sortedChildren.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.Ordinal));
+            foreach (var child in sortedChildren)
             {
                 AddToFlatList(list, child);
             }
@@ -100,9 +107,15 @@ namespace Strada.Core.Editor.ModuleGenerator
 
         private static bool IsModuleFolder(string folderName)
         {
-            return folderName.EndsWith("Module") ||
-                   folderName.Contains("Module") ||
-                   ScreenPatterns.Any(p => folderName.Contains(p) && !folderName.StartsWith("-"));
+            if (folderName.EndsWith("Module") || folderName.Contains("Module"))
+                return true;
+
+            for (int i = 0; i < ScreenPatterns.Length; i++)
+            {
+                if (folderName.Contains(ScreenPatterns[i]) && !folderName.StartsWith("-"))
+                    return true;
+            }
+            return false;
         }
 
         private static string ExtractModuleName(string folderName)
@@ -117,11 +130,17 @@ namespace Strada.Core.Editor.ModuleGenerator
 
         private static ModuleType DetermineModuleType(string folderName, ModuleInfoData parent)
         {
-            if (TestPatterns.Any(p => folderName.Contains(p)))
-                return ModuleType.Test;
+            for (int i = 0; i < TestPatterns.Length; i++)
+            {
+                if (folderName.Contains(TestPatterns[i]))
+                    return ModuleType.Test;
+            }
 
-            if (ScreenPatterns.Any(p => folderName.Contains(p)))
-                return ModuleType.Screen;
+            for (int i = 0; i < ScreenPatterns.Length; i++)
+            {
+                if (folderName.Contains(ScreenPatterns[i]))
+                    return ModuleType.Screen;
+            }
 
             if (parent != null)
                 return ModuleType.Sub;
@@ -136,17 +155,27 @@ namespace Strada.Core.Editor.ModuleGenerator
 
             foreach (var assembly in assemblies)
             {
+                if (assembly.IsDynamic)
+                    continue;
+
                 try
                 {
-                    var types = assembly.GetTypes()
-                        .Where(t => moduleConfigType.IsAssignableFrom(t) && t.IsClass && !t.IsAbstract);
-
-                    foreach (var type in types)
+                    foreach (var type in assembly.GetTypes())
                     {
+                        if (!type.IsClass || type.IsAbstract || !moduleConfigType.IsAssignableFrom(type))
+                            continue;
+
                         var name = type.Name.Replace("ModuleConfig", "").Replace("Module", "");
 
-                        var module = allModules.Values.FirstOrDefault(m =>
-                            string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase));
+                        ModuleInfoData module = null;
+                        foreach (var m in allModules.Values)
+                        {
+                            if (string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase))
+                            {
+                                module = m;
+                                break;
+                            }
+                        }
 
                         if (module != null)
                         {
@@ -155,7 +184,35 @@ namespace Strada.Core.Editor.ModuleGenerator
                         }
                     }
                 }
-                catch { }
+                catch (ReflectionTypeLoadException ex)
+                {
+                    foreach (var type in ex.Types)
+                    {
+                        if (type == null || !type.IsClass || type.IsAbstract || !moduleConfigType.IsAssignableFrom(type))
+                            continue;
+
+                        var name = type.Name.Replace("ModuleConfig", "").Replace("Module", "");
+
+                        ModuleInfoData module = null;
+                        foreach (var m in allModules.Values)
+                        {
+                            if (string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase))
+                            {
+                                module = m;
+                                break;
+                            }
+                        }
+
+                        if (module != null)
+                        {
+                            module.HasInstaller = true;
+                            module.Namespace = type.Namespace;
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                }
             }
         }
 
@@ -173,9 +230,16 @@ namespace Strada.Core.Editor.ModuleGenerator
                     var name = config.name.Replace("ModuleConfig", "").Replace("Module", "");
                     var modulePath = Path.GetDirectoryName(path);
 
-                    var module = allModules.Values.FirstOrDefault(m =>
-                        string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase) ||
-                        (m.Path != null && modulePath != null && m.Path.Contains(modulePath)));
+                    ModuleInfoData module = null;
+                    foreach (var m in allModules.Values)
+                    {
+                        if (string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase) ||
+                            (m.Path != null && modulePath != null && m.Path.Contains(modulePath)))
+                        {
+                            module = m;
+                            break;
+                        }
+                    }
 
                     if (module != null)
                     {
@@ -188,9 +252,16 @@ namespace Strada.Core.Editor.ModuleGenerator
         public static bool ModuleExists(string moduleName)
         {
             var modules = GetFlatList();
-            return modules.Any(m =>
-                string.Equals(m.Name, moduleName, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(m.Name + "Module", moduleName + "Module", StringComparison.OrdinalIgnoreCase));
+            for (int i = 0; i < modules.Count; i++)
+            {
+                var m = modules[i];
+                if (string.Equals(m.Name, moduleName, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(m.Name + "Module", moduleName + "Module", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         public static string FindAssemblyForModule(string moduleName)
@@ -200,18 +271,51 @@ namespace Strada.Core.Editor.ModuleGenerator
 
             foreach (var assembly in assemblies)
             {
+                if (assembly.IsDynamic)
+                    continue;
+
                 try
                 {
-                    var type = assembly.GetTypes()
-                        .FirstOrDefault(t => (t.Name == moduleName ||
-                                              t.Name == moduleName + "Module" ||
-                                              t.Name == moduleName + "ModuleConfig") &&
-                                            moduleConfigType.IsAssignableFrom(t));
+                    Type matchedType = null;
+                    foreach (var t in assembly.GetTypes())
+                    {
+                        if ((t.Name == moduleName ||
+                             t.Name == moduleName + "Module" ||
+                             t.Name == moduleName + "ModuleConfig") &&
+                            moduleConfigType.IsAssignableFrom(t))
+                        {
+                            matchedType = t;
+                            break;
+                        }
+                    }
 
-                    if (type != null)
+                    if (matchedType != null)
                         return assembly.GetName().Name;
                 }
-                catch { }
+                catch (ReflectionTypeLoadException ex)
+                {
+                    Type matchedType = null;
+                    foreach (var t in ex.Types)
+                    {
+                        if (t == null)
+                            continue;
+
+                        if ((t.Name == moduleName ||
+                             t.Name == moduleName + "Module" ||
+                             t.Name == moduleName + "ModuleConfig") &&
+                            moduleConfigType.IsAssignableFrom(t))
+                        {
+                            matchedType = t;
+                            break;
+                        }
+                    }
+
+                    if (matchedType != null)
+                        return assembly.GetName().Name;
+                }
+                catch (Exception)
+                {
+                }
             }
 
             return null;

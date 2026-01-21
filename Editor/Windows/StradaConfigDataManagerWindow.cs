@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using Strada.Core.Data;
 using UnityEditor;
@@ -68,7 +67,7 @@ namespace Strada.Core.Editor.Windows
         public static void ShowWindow()
         {
             var window = GetWindow<StradaConfigDataManagerWindow>("Config Data Manager");
-            window.minSize = new Vector2(800, 600);
+            window.minSize = new Vector2(900, 600);
             window.Show();
         }
 
@@ -94,9 +93,12 @@ namespace Strada.Core.Editor.Windows
         {
             var configDataType = typeof(ConfigData);
             var types = new List<Type>();
-            
+
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
+                if (assembly.IsDynamic)
+                    continue;
+
                 try
                 {
                     foreach (var type in assembly.GetTypes())
@@ -107,11 +109,30 @@ namespace Strada.Core.Editor.Windows
                         }
                     }
                 }
-                catch { }
+                catch (ReflectionTypeLoadException ex)
+                {
+                    foreach (var type in ex.Types)
+                    {
+                        if (type == null)
+                            continue;
+
+                        if (type.IsClass && !type.IsAbstract && configDataType.IsAssignableFrom(type))
+                        {
+                            types.Add(type);
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                }
             }
 
             _configTypeList = types.ToArray();
-            _availableConfigTypes = types.Select(t => t.Name).ToArray();
+            _availableConfigTypes = new string[types.Count];
+            for (int i = 0; i < types.Count; i++)
+            {
+                _availableConfigTypes[i] = types[i].Name;
+            }
         }
 
 
@@ -199,18 +220,23 @@ namespace Strada.Core.Editor.Windows
         private void DrawConfigStats()
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
-            
+
             var totalConfigs = _cachedConfigs?.Count ?? 0;
             var filteredCount = GetFilteredConfigs().Count;
             var selectedCount = _selectedConfigs.Count;
-            var errorCount = _validationResults.Count(v => !v.Value.IsValid);
+            int errorCount = 0;
+            foreach (var kvp in _validationResults)
+            {
+                if (!kvp.Value.IsValid)
+                    errorCount++;
+            }
 
             GUILayout.Label($"Total: {totalConfigs}", EditorStyles.boldLabel);
             GUILayout.Space(20);
             GUILayout.Label($"Showing: {filteredCount}", EditorStyles.boldLabel);
             GUILayout.Space(20);
             GUILayout.Label($"Selected: {selectedCount}", EditorStyles.boldLabel);
-            
+
             if (errorCount > 0)
             {
                 GUILayout.Space(20);
@@ -380,18 +406,30 @@ namespace Strada.Core.Editor.Windows
             if (filteredConfigs.Count == 0)
             {
                 EditorGUILayout.HelpBox(
-                    _cachedConfigs?.Count > 0 
+                    _cachedConfigs?.Count > 0
                         ? "No configs match the current filter."
                         : "No CD_ configs found.\n\nCreate configs using the 'Create New' button above or Assets > Create > Strada menu.",
                     MessageType.Info);
             }
             else
             {
-                var grouped = filteredConfigs.GroupBy(c => c.Category).OrderBy(g => g.Key);
-
-                foreach (var group in grouped)
+                var grouped = new Dictionary<ConfigCategory, List<ConfigAsset>>();
+                foreach (var config in filteredConfigs)
                 {
-                    DrawCategoryGroup(group.Key, group.ToList());
+                    if (!grouped.TryGetValue(config.Category, out var list))
+                    {
+                        list = new List<ConfigAsset>();
+                        grouped[config.Category] = list;
+                    }
+                    list.Add(config);
+                }
+
+                var sortedCategories = new List<ConfigCategory>(grouped.Keys);
+                sortedCategories.Sort((a, b) => ((int)a).CompareTo((int)b));
+
+                foreach (var category in sortedCategories)
+                {
+                    DrawCategoryGroup(category, grouped[category]);
                 }
             }
 
@@ -439,7 +477,9 @@ namespace Strada.Core.Editor.Windows
             if (_categoryFoldouts[category])
             {
                 EditorGUI.indentLevel++;
-                foreach (var config in configs.OrderBy(c => c.Name))
+                var sortedConfigs = new List<ConfigAsset>(configs);
+                sortedConfigs.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.Ordinal));
+                foreach (var config in sortedConfigs)
                 {
                     DrawConfigItem(config);
                 }
@@ -619,35 +659,36 @@ namespace Strada.Core.Editor.Windows
         /// Filters configs by name, type, and category.
         /// </summary>
         public static List<ConfigAsset> FilterConfigs(
-            List<ConfigAsset> configs, 
-            string nameFilter, 
-            string typeFilter, 
+            List<ConfigAsset> configs,
+            string nameFilter,
+            string typeFilter,
             ConfigCategory categoryFilter)
         {
             if (configs == null)
                 return new List<ConfigAsset>();
 
-            var filtered = configs.AsEnumerable();
+            var result = new List<ConfigAsset>();
 
-            if (categoryFilter != ConfigCategory.All)
+            for (int i = 0; i < configs.Count; i++)
             {
-                filtered = filtered.Where(c => c.Category == categoryFilter);
+                var c = configs[i];
+
+                if (categoryFilter != ConfigCategory.All && c.Category != categoryFilter)
+                    continue;
+
+                if (!string.IsNullOrEmpty(nameFilter) &&
+                    c.Name.IndexOf(nameFilter, StringComparison.OrdinalIgnoreCase) < 0)
+                    continue;
+
+                if (!string.IsNullOrEmpty(typeFilter) &&
+                    (c.AssetType == null ||
+                     c.AssetType.Name.IndexOf(typeFilter, StringComparison.OrdinalIgnoreCase) < 0))
+                    continue;
+
+                result.Add(c);
             }
 
-            if (!string.IsNullOrEmpty(nameFilter))
-            {
-                filtered = filtered.Where(c => 
-                    c.Name.IndexOf(nameFilter, StringComparison.OrdinalIgnoreCase) >= 0);
-            }
-
-            if (!string.IsNullOrEmpty(typeFilter))
-            {
-                filtered = filtered.Where(c => 
-                    c.AssetType != null && 
-                    c.AssetType.Name.IndexOf(typeFilter, StringComparison.OrdinalIgnoreCase) >= 0);
-            }
-
-            return filtered.ToList();
+            return result;
         }
 
         /// <summary>
@@ -754,7 +795,7 @@ namespace Strada.Core.Editor.Windows
         /// </summary>
         public void ValidateSelectedConfigs()
         {
-            var configs = _selectedConfigs.ToList();
+            var configs = new List<ConfigAsset>(_selectedConfigs);
             ValidateConfigs(configs);
         }
 

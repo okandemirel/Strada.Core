@@ -367,6 +367,17 @@ namespace Strada.Core.Editor.PropertyDrawers
 
             var collection = field.GetValue(targetObject);
             if (collection == null) return;
+
+            var clearMethod = collection.GetType().GetMethod("Clear", BindingFlags.Public | BindingFlags.Instance);
+            if (clearMethod != null)
+            {
+                clearMethod.Invoke(collection, null);
+            }
+            else
+            {
+                var notifyResetMethod = collection.GetType().GetMethod("NotifyReset", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                notifyResetMethod?.Invoke(collection, null);
+            }
         }
 
         private FieldInfo GetFieldByPath(Type type, string path)

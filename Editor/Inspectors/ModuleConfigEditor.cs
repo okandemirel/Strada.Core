@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
@@ -171,7 +170,7 @@ namespace Strada.Core.Editor.Inspectors
         private void DrawCustomConfiguration()
         {
             var iterator = serializedObject.GetIterator();
-            iterator.NextVisible(true); // Skip script reference
+            iterator.NextVisible(true);
 
             var knownProperties = new HashSet<string>
             {
@@ -270,11 +269,19 @@ namespace Strada.Core.Editor.Inspectors
 
             RuntimeSystemDiscovery.Refresh();
 
-            var discoveredSystems = RuntimeSystemDiscovery.DiscoverSystems(moduleName).ToList();
+            var discoveredSystems = new List<Strada.Core.Modules.SystemInfo>();
+            foreach (var system in RuntimeSystemDiscovery.DiscoverSystems(moduleName))
+            {
+                discoveredSystems.Add(system);
+            }
 
             if (discoveredSystems.Count == 0)
             {
-                discoveredSystems = RuntimeSystemDiscovery.DiscoverSystems().ToList();
+                discoveredSystems.Clear();
+                foreach (var system in RuntimeSystemDiscovery.DiscoverSystems())
+                {
+                    discoveredSystems.Add(system);
+                }
             }
 
             if (discoveredSystems.Count == 0)
@@ -338,15 +345,17 @@ namespace Strada.Core.Editor.Inspectors
 
         private void AddDiscoveredSystems(List<Strada.Core.Modules.SystemInfo> systems)
         {
+            Undo.RecordObject(target, "Add Discovered Systems");
             int added = 0;
             foreach (var system in systems)
             {
                 if (!HasSystem(system.Type))
                 {
-                    AddDiscoveredSystem(system);
+                    AddDiscoveredSystemInternal(system);
                     added++;
                 }
             }
+            serializedObject.ApplyModifiedProperties();
 
             EditorUtility.DisplayDialog("Systems Added",
                 $"Added {added} systems to the module configuration.",
@@ -354,6 +363,13 @@ namespace Strada.Core.Editor.Inspectors
         }
 
         private void AddDiscoveredSystem(Strada.Core.Modules.SystemInfo system)
+        {
+            Undo.RecordObject(target, "Add Discovered System");
+            AddDiscoveredSystemInternal(system);
+            serializedObject.ApplyModifiedProperties();
+        }
+
+        private void AddDiscoveredSystemInternal(Strada.Core.Modules.SystemInfo system)
         {
             _systemsProp.arraySize++;
             var newElement = _systemsProp.GetArrayElementAtIndex(_systemsProp.arraySize - 1);
@@ -366,8 +382,6 @@ namespace Strada.Core.Editor.Inspectors
             newElement.FindPropertyRelative("_category").stringValue = system.Category;
             newElement.FindPropertyRelative("_description").stringValue = system.Description;
             newElement.FindPropertyRelative("_enabled").boolValue = true;
-
-            serializedObject.ApplyModifiedProperties();
         }
     }
 }

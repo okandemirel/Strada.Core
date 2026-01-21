@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.CompilerServices;
 using Strada.Core.ECS.Core;
 using Strada.Core.ECS.Storage;
@@ -128,15 +129,39 @@ namespace Strada.Core.ECS.Query
             return new FilteredQueryBuilder<T1, T2, T3>(_manager, s1, s2, s3);
         }
 
+        /// <summary>
+        /// Alias for Select. Adds a component type to the query.
+        /// </summary>
+        /// <remarks>
+        /// DEPRECATED: Use Select&lt;T&gt;() instead for consistency.
+        /// This method will be removed in v2.0.
+        /// </remarks>
+        [Obsolete("Use Select<T>() instead. This method will be removed in v2.0.")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQuery<T1> With<T1>() where T1 : unmanaged, IComponent => Select<T1>();
 
+        /// <summary>
+        /// Alias for Select. Adds component types to the query.
+        /// </summary>
+        /// <remarks>
+        /// DEPRECATED: Use Select&lt;T1, T2&gt;() instead for consistency.
+        /// This method will be removed in v2.0.
+        /// </remarks>
+        [Obsolete("Use Select<T1, T2>() instead. This method will be removed in v2.0.")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQuery<T1, T2> With<T1, T2>()
             where T1 : unmanaged, IComponent
             where T2 : unmanaged, IComponent
             => Select<T1, T2>();
 
+        /// <summary>
+        /// Alias for Select. Adds component types to the query.
+        /// </summary>
+        /// <remarks>
+        /// DEPRECATED: Use Select&lt;T1, T2, T3&gt;() instead for consistency.
+        /// This method will be removed in v2.0.
+        /// </remarks>
+        [Obsolete("Use Select<T1, T2, T3>() instead. This method will be removed in v2.0.")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQuery<T1, T2, T3> With<T1, T2, T3>()
             where T1 : unmanaged, IComponent

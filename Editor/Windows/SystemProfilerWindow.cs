@@ -48,7 +48,7 @@ namespace Strada.Core.Editor.Windows
         public static void ShowWindow()
         {
             var window = GetWindow<SystemProfilerWindow>("System Profiler");
-            window.minSize = new Vector2(500, 400);
+            window.minSize = new Vector2(600, 400);
         }
         
         private void OnEnable()

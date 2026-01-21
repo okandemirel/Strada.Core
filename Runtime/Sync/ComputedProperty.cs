@@ -82,6 +82,95 @@ namespace Strada.Core.Sync
             return computed;
         }
 
+        public static ComputedProperty<T> From<T1, T2, T3, T4, T5>(
+            IReadOnlyReactiveProperty<T1> dep1,
+            IReadOnlyReactiveProperty<T2> dep2,
+            IReadOnlyReactiveProperty<T3> dep3,
+            IReadOnlyReactiveProperty<T4> dep4,
+            IReadOnlyReactiveProperty<T5> dep5,
+            Func<T1, T2, T3, T4, T5, T> computation)
+        {
+            var computed = new ComputedProperty<T>(() => computation(dep1.Value, dep2.Value, dep3.Value, dep4.Value, dep5.Value));
+            computed.WatchDependency(dep1);
+            computed.WatchDependency(dep2);
+            computed.WatchDependency(dep3);
+            computed.WatchDependency(dep4);
+            computed.WatchDependency(dep5);
+            return computed;
+        }
+
+        public static ComputedProperty<T> From<T1, T2, T3, T4, T5, T6>(
+            IReadOnlyReactiveProperty<T1> dep1,
+            IReadOnlyReactiveProperty<T2> dep2,
+            IReadOnlyReactiveProperty<T3> dep3,
+            IReadOnlyReactiveProperty<T4> dep4,
+            IReadOnlyReactiveProperty<T5> dep5,
+            IReadOnlyReactiveProperty<T6> dep6,
+            Func<T1, T2, T3, T4, T5, T6, T> computation)
+        {
+            var computed = new ComputedProperty<T>(() => computation(dep1.Value, dep2.Value, dep3.Value, dep4.Value, dep5.Value, dep6.Value));
+            computed.WatchDependency(dep1);
+            computed.WatchDependency(dep2);
+            computed.WatchDependency(dep3);
+            computed.WatchDependency(dep4);
+            computed.WatchDependency(dep5);
+            computed.WatchDependency(dep6);
+            return computed;
+        }
+
+        /// <summary>
+        /// Creates a computed property from a computation function and multiple dependencies.
+        /// Use this when you need more than 6 dependencies.
+        /// </summary>
+        /// <param name="computation">The computation function that calculates the property value.</param>
+        /// <param name="dependencies">The reactive properties this computation depends on (untyped).</param>
+        /// <returns>A new computed property.</returns>
+        public static ComputedProperty<T> FromMany(Func<T> computation, params object[] dependencies)
+        {
+            var computed = new ComputedProperty<T>(computation);
+            foreach (var dep in dependencies)
+            {
+                computed.WatchUntypedDependency(dep);
+            }
+            return computed;
+        }
+
+        private void WatchUntypedDependency(object dependency)
+        {
+            // Use reflection to subscribe to the dependency
+            var type = dependency.GetType();
+            var interfaces = type.GetInterfaces();
+
+            foreach (var iface in interfaces)
+            {
+                if (iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IReadOnlyReactiveProperty<>))
+                {
+                    var depType = iface.GetGenericArguments()[0];
+                    var subscribeMethod = type.GetMethod("Subscribe");
+                    var handlerType = typeof(Action<>).MakeGenericType(depType);
+
+                    // Create a handler that invalidates this computed property
+                    var invalidateMethod = typeof(ComputedProperty<T>).GetMethod("Invalidate",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                    var handler = Delegate.CreateDelegate(handlerType,
+                        this,
+                        typeof(ComputedProperty<T>).GetMethod("InvalidateIgnoreParam",
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                            .MakeGenericMethod(depType));
+
+                    subscribeMethod.Invoke(dependency, new object[] { handler });
+
+                    // Store the subscription for cleanup
+                    var unsubscribeMethod = type.GetMethod("Unsubscribe");
+                    _subscriptions.Add(new UntypedDependencySubscription(dependency, unsubscribeMethod, handler));
+                    return;
+                }
+            }
+        }
+
+        private void InvalidateIgnoreParam<TIgnored>(TIgnored _) => Invalidate();
+
         private void WatchDependency<TDep>(IReadOnlyReactiveProperty<TDep> dependency)
         {
             Action<TDep> handler = _ => Invalidate();
@@ -141,6 +230,22 @@ namespace Strada.Core.Sync
             }
 
             public void Dispose() => _property.Unsubscribe(_handler);
+        }
+
+        private sealed class UntypedDependencySubscription : IDisposable
+        {
+            private readonly object _property;
+            private readonly System.Reflection.MethodInfo _unsubscribeMethod;
+            private readonly Delegate _handler;
+
+            public UntypedDependencySubscription(object property, System.Reflection.MethodInfo unsubscribeMethod, Delegate handler)
+            {
+                _property = property;
+                _unsubscribeMethod = unsubscribeMethod;
+                _handler = handler;
+            }
+
+            public void Dispose() => _unsubscribeMethod.Invoke(_property, new object[] { _handler });
         }
     }
 }

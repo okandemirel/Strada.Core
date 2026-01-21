@@ -17,6 +17,7 @@ namespace Strada.Core.Sync
         private readonly List<Action<T>> _handlers = new(4);
         private readonly EqualityComparer<T> _comparer = EqualityComparer<T>.Default;
         private bool _disposed;
+        private bool _notifying; // Tracks if we're currently notifying to prevent concurrent modification
 
         public ReactiveProperty() => _value = default;
 
@@ -79,13 +80,41 @@ namespace Strada.Core.Sync
             }
         }
 
+        /// <summary>
+        /// Notifies all subscribers of the current value.
+        /// </summary>
+        /// <remarks>
+        /// Uses a snapshot approach to safely handle cases where handlers modify the subscriber list.
+        /// If a handler calls Subscribe/Unsubscribe during notification, the changes will take effect
+        /// on the next notification cycle.
+        /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Notify()
         {
-            int count = _handlers.Count;
-            for (int i = 0; i < count; i++)
+            if (_notifying || _handlers.Count == 0) return;
+
+            _notifying = true;
+            try
             {
-                _handlers[i](_value);
+                // Take a snapshot to avoid issues if handlers modify the list
+                int count = _handlers.Count;
+                var snapshot = System.Buffers.ArrayPool<Action<T>>.Shared.Rent(count);
+                try
+                {
+                    for (int i = 0; i < count; i++)
+                        snapshot[i] = _handlers[i];
+
+                    for (int i = 0; i < count; i++)
+                        snapshot[i](_value);
+                }
+                finally
+                {
+                    System.Buffers.ArrayPool<Action<T>>.Shared.Return(snapshot, clearArray: true);
+                }
+            }
+            finally
+            {
+                _notifying = false;
             }
         }
 

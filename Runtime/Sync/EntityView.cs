@@ -142,7 +142,7 @@ namespace Strada.Core.Sync
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected T GetComponent<T>() where T : unmanaged, IComponent
+        protected new T GetComponent<T>() where T : unmanaged, IComponent
         {
             return _entityManager.GetComponent<T>(_entity);
         }

@@ -1,5 +1,5 @@
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
@@ -117,7 +117,11 @@ namespace Strada.Core.Editor.Inspectors
         private void DrawInitializationOrder()
         {
             var config = target as GameBootstrapperConfig;
-            var enabledModules = config.GetEnabledModules().ToList();
+            var enabledModules = new List<ModuleConfig>();
+            foreach (var module in config.GetEnabledModules())
+            {
+                enabledModules.Add(module);
+            }
 
             if (enabledModules.Count > 0)
             {
@@ -274,6 +278,8 @@ namespace Strada.Core.Editor.Inspectors
                 return;
             }
 
+            configs.Sort((a, b) => a.Priority.CompareTo(b.Priority));
+
             var menu = new GenericMenu();
 
             menu.AddItem(new GUIContent("Add All"), false, () =>
@@ -283,7 +289,7 @@ namespace Strada.Core.Editor.Inspectors
 
             menu.AddSeparator("");
 
-            foreach (var config in configs.OrderBy(c => c.Priority))
+            foreach (var config in configs)
             {
                 var configCopy = config;
                 var existing = HasModule(config);
@@ -323,16 +329,18 @@ namespace Strada.Core.Editor.Inspectors
 
         private void AddModuleConfigs(List<ModuleConfig> configs)
         {
+            Undo.RecordObject(target, "Add Module Configs");
             int added = 0;
             foreach (var config in configs)
             {
                 if (!HasModule(config))
                 {
-                    AddModuleConfig(config);
+                    AddModuleConfigInternal(config);
                     added++;
                 }
             }
 
+            serializedObject.ApplyModifiedProperties();
             SortModulesByPriority();
             ValidateConfiguration();
 
@@ -343,30 +351,35 @@ namespace Strada.Core.Editor.Inspectors
 
         private void AddModuleConfig(ModuleConfig config)
         {
+            Undo.RecordObject(target, "Add Module Config");
+            AddModuleConfigInternal(config);
+            serializedObject.ApplyModifiedProperties();
+        }
+
+        private void AddModuleConfigInternal(ModuleConfig config)
+        {
             _modulesProp.arraySize++;
             var newElement = _modulesProp.GetArrayElementAtIndex(_modulesProp.arraySize - 1);
 
             newElement.FindPropertyRelative("_config").objectReferenceValue = config;
             newElement.FindPropertyRelative("_enabled").boolValue = true;
-
-            serializedObject.ApplyModifiedProperties();
         }
 
         private void SortModulesByPriority()
         {
-            var config = target as GameBootstrapperConfig;
+            Undo.RecordObject(target, "Sort Modules By Priority");
 
-            var entries = new List<(int index, int priority, SerializedProperty element)>();
+            var entries = new List<(int index, int priority)>();
             for (int i = 0; i < _modulesProp.arraySize; i++)
             {
                 var element = _modulesProp.GetArrayElementAtIndex(i);
                 var configProp = element.FindPropertyRelative("_config");
                 var moduleConfig = configProp.objectReferenceValue as ModuleConfig;
                 var priority = moduleConfig?.Priority ?? int.MaxValue;
-                entries.Add((i, priority, element));
+                entries.Add((i, priority));
             }
 
-            entries = entries.OrderBy(e => e.priority).ToList();
+            entries.Sort((a, b) => a.priority.CompareTo(b.priority));
 
             for (int i = 0; i < entries.Count; i++)
             {
@@ -377,7 +390,7 @@ namespace Strada.Core.Editor.Inspectors
                     {
                         if (entries[j].index < entries[i].index && entries[j].index >= i)
                         {
-                            entries[j] = (entries[j].index + 1, entries[j].priority, entries[j].element);
+                            entries[j] = (entries[j].index + 1, entries[j].priority);
                         }
                     }
                 }

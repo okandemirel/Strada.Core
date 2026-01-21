@@ -75,6 +75,48 @@ namespace Strada.Core.ECS.Systems
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected void ForEach<T1, T2, T3, T4>(QueryDelegate<T1, T2, T3, T4> action)
+            where T1 : unmanaged, IComponent where T2 : unmanaged, IComponent
+            where T3 : unmanaged, IComponent where T4 : unmanaged, IComponent
+        {
+            EntityManager.ForEach(action);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected void ForEach<T1, T2, T3, T4, T5>(QueryDelegate<T1, T2, T3, T4, T5> action)
+            where T1 : unmanaged, IComponent where T2 : unmanaged, IComponent where T3 : unmanaged, IComponent
+            where T4 : unmanaged, IComponent where T5 : unmanaged, IComponent
+        {
+            EntityManager.ForEach(action);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected void ForEach<T1, T2, T3, T4, T5, T6>(QueryDelegate<T1, T2, T3, T4, T5, T6> action)
+            where T1 : unmanaged, IComponent where T2 : unmanaged, IComponent where T3 : unmanaged, IComponent
+            where T4 : unmanaged, IComponent where T5 : unmanaged, IComponent where T6 : unmanaged, IComponent
+        {
+            EntityManager.ForEach(action);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected void ForEach<T1, T2, T3, T4, T5, T6, T7>(QueryDelegate<T1, T2, T3, T4, T5, T6, T7> action)
+            where T1 : unmanaged, IComponent where T2 : unmanaged, IComponent where T3 : unmanaged, IComponent
+            where T4 : unmanaged, IComponent where T5 : unmanaged, IComponent where T6 : unmanaged, IComponent
+            where T7 : unmanaged, IComponent
+        {
+            EntityManager.ForEach(action);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected void ForEach<T1, T2, T3, T4, T5, T6, T7, T8>(QueryDelegate<T1, T2, T3, T4, T5, T6, T7, T8> action)
+            where T1 : unmanaged, IComponent where T2 : unmanaged, IComponent where T3 : unmanaged, IComponent
+            where T4 : unmanaged, IComponent where T5 : unmanaged, IComponent where T6 : unmanaged, IComponent
+            where T7 : unmanaged, IComponent where T8 : unmanaged, IComponent
+        {
+            EntityManager.ForEach(action);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected Entity CreateEntity() => EntityManager.CreateEntity();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -102,9 +144,17 @@ namespace Strada.Core.ECS.Systems
     public abstract class SystemBase<T1> : SystemBase
         where T1 : unmanaged, IComponent
     {
+        private EntityQuery<T1> _cachedQuery;
+        private bool _queryInitialized;
+
         protected sealed override void OnUpdate(float deltaTime)
         {
-            ForEach<T1>((int entity, ref T1 c1) => OnUpdateEntity(entity, ref c1, deltaTime));
+            if (!_queryInitialized)
+            {
+                _cachedQuery = EntityManager.Query().Select<T1>();
+                _queryInitialized = true;
+            }
+            _cachedQuery.ForEach((int entity, ref T1 c1) => OnUpdateEntity(entity, ref c1, deltaTime));
         }
 
         protected abstract void OnUpdateEntity(int entityIndex, ref T1 c1, float deltaTime);
@@ -114,9 +164,17 @@ namespace Strada.Core.ECS.Systems
         where T1 : unmanaged, IComponent
         where T2 : unmanaged, IComponent
     {
+        private EntityQuery<T1, T2> _cachedQuery;
+        private bool _queryInitialized;
+
         protected sealed override void OnUpdate(float deltaTime)
         {
-            ForEach<T1, T2>((int entity, ref T1 c1, ref T2 c2) => OnUpdateEntity(entity, ref c1, ref c2, deltaTime));
+            if (!_queryInitialized)
+            {
+                _cachedQuery = EntityManager.Query().Select<T1, T2>();
+                _queryInitialized = true;
+            }
+            _cachedQuery.ForEach((int entity, ref T1 c1, ref T2 c2) => OnUpdateEntity(entity, ref c1, ref c2, deltaTime));
         }
 
         protected abstract void OnUpdateEntity(int entityIndex, ref T1 c1, ref T2 c2, float deltaTime);
@@ -127,12 +185,127 @@ namespace Strada.Core.ECS.Systems
         where T2 : unmanaged, IComponent
         where T3 : unmanaged, IComponent
     {
+        private EntityQuery<T1, T2, T3> _cachedQuery;
+        private bool _queryInitialized;
+
         protected sealed override void OnUpdate(float deltaTime)
         {
-            ForEach<T1, T2, T3>((int entity, ref T1 c1, ref T2 c2, ref T3 c3) =>
+            if (!_queryInitialized)
+            {
+                _cachedQuery = EntityManager.Query().Select<T1, T2, T3>();
+                _queryInitialized = true;
+            }
+            _cachedQuery.ForEach((int entity, ref T1 c1, ref T2 c2, ref T3 c3) =>
                 OnUpdateEntity(entity, ref c1, ref c2, ref c3, deltaTime));
         }
 
         protected abstract void OnUpdateEntity(int entityIndex, ref T1 c1, ref T2 c2, ref T3 c3, float deltaTime);
+    }
+
+    public abstract class SystemBase<T1, T2, T3, T4> : SystemBase
+        where T1 : unmanaged, IComponent where T2 : unmanaged, IComponent
+        where T3 : unmanaged, IComponent where T4 : unmanaged, IComponent
+    {
+        private EntityQuery<T1, T2, T3, T4> _cachedQuery;
+        private bool _queryInitialized;
+
+        protected sealed override void OnUpdate(float deltaTime)
+        {
+            if (!_queryInitialized)
+            {
+                _cachedQuery = EntityManager.Query().Select<T1, T2, T3, T4>();
+                _queryInitialized = true;
+            }
+            _cachedQuery.ForEach((int entity, ref T1 c1, ref T2 c2, ref T3 c3, ref T4 c4) =>
+                OnUpdateEntity(entity, ref c1, ref c2, ref c3, ref c4, deltaTime));
+        }
+
+        protected abstract void OnUpdateEntity(int entityIndex, ref T1 c1, ref T2 c2, ref T3 c3, ref T4 c4, float deltaTime);
+    }
+
+    public abstract class SystemBase<T1, T2, T3, T4, T5> : SystemBase
+        where T1 : unmanaged, IComponent where T2 : unmanaged, IComponent where T3 : unmanaged, IComponent
+        where T4 : unmanaged, IComponent where T5 : unmanaged, IComponent
+    {
+        private EntityQuery<T1, T2, T3, T4, T5> _cachedQuery;
+        private bool _queryInitialized;
+
+        protected sealed override void OnUpdate(float deltaTime)
+        {
+            if (!_queryInitialized)
+            {
+                _cachedQuery = EntityManager.Query().Select<T1, T2, T3, T4, T5>();
+                _queryInitialized = true;
+            }
+            _cachedQuery.ForEach((int entity, ref T1 c1, ref T2 c2, ref T3 c3, ref T4 c4, ref T5 c5) =>
+                OnUpdateEntity(entity, ref c1, ref c2, ref c3, ref c4, ref c5, deltaTime));
+        }
+
+        protected abstract void OnUpdateEntity(int entityIndex, ref T1 c1, ref T2 c2, ref T3 c3, ref T4 c4, ref T5 c5, float deltaTime);
+    }
+
+    public abstract class SystemBase<T1, T2, T3, T4, T5, T6> : SystemBase
+        where T1 : unmanaged, IComponent where T2 : unmanaged, IComponent where T3 : unmanaged, IComponent
+        where T4 : unmanaged, IComponent where T5 : unmanaged, IComponent where T6 : unmanaged, IComponent
+    {
+        private EntityQuery<T1, T2, T3, T4, T5, T6> _cachedQuery;
+        private bool _queryInitialized;
+
+        protected sealed override void OnUpdate(float deltaTime)
+        {
+            if (!_queryInitialized)
+            {
+                _cachedQuery = EntityManager.Query().Select<T1, T2, T3, T4, T5, T6>();
+                _queryInitialized = true;
+            }
+            _cachedQuery.ForEach((int entity, ref T1 c1, ref T2 c2, ref T3 c3, ref T4 c4, ref T5 c5, ref T6 c6) =>
+                OnUpdateEntity(entity, ref c1, ref c2, ref c3, ref c4, ref c5, ref c6, deltaTime));
+        }
+
+        protected abstract void OnUpdateEntity(int entityIndex, ref T1 c1, ref T2 c2, ref T3 c3, ref T4 c4, ref T5 c5, ref T6 c6, float deltaTime);
+    }
+
+    public abstract class SystemBase<T1, T2, T3, T4, T5, T6, T7> : SystemBase
+        where T1 : unmanaged, IComponent where T2 : unmanaged, IComponent where T3 : unmanaged, IComponent
+        where T4 : unmanaged, IComponent where T5 : unmanaged, IComponent where T6 : unmanaged, IComponent
+        where T7 : unmanaged, IComponent
+    {
+        private EntityQuery<T1, T2, T3, T4, T5, T6, T7> _cachedQuery;
+        private bool _queryInitialized;
+
+        protected sealed override void OnUpdate(float deltaTime)
+        {
+            if (!_queryInitialized)
+            {
+                _cachedQuery = EntityManager.Query().Select<T1, T2, T3, T4, T5, T6, T7>();
+                _queryInitialized = true;
+            }
+            _cachedQuery.ForEach((int entity, ref T1 c1, ref T2 c2, ref T3 c3, ref T4 c4, ref T5 c5, ref T6 c6, ref T7 c7) =>
+                OnUpdateEntity(entity, ref c1, ref c2, ref c3, ref c4, ref c5, ref c6, ref c7, deltaTime));
+        }
+
+        protected abstract void OnUpdateEntity(int entityIndex, ref T1 c1, ref T2 c2, ref T3 c3, ref T4 c4, ref T5 c5, ref T6 c6, ref T7 c7, float deltaTime);
+    }
+
+    public abstract class SystemBase<T1, T2, T3, T4, T5, T6, T7, T8> : SystemBase
+        where T1 : unmanaged, IComponent where T2 : unmanaged, IComponent where T3 : unmanaged, IComponent
+        where T4 : unmanaged, IComponent where T5 : unmanaged, IComponent where T6 : unmanaged, IComponent
+        where T7 : unmanaged, IComponent where T8 : unmanaged, IComponent
+    {
+        private EntityQuery<T1, T2, T3, T4, T5, T6, T7, T8> _cachedQuery;
+        private bool _queryInitialized;
+
+        protected sealed override void OnUpdate(float deltaTime)
+        {
+            if (!_queryInitialized)
+            {
+                _cachedQuery = EntityManager.Query().Select<T1, T2, T3, T4, T5, T6, T7, T8>();
+                _queryInitialized = true;
+            }
+            _cachedQuery.ForEach((int entity, ref T1 c1, ref T2 c2, ref T3 c3, ref T4 c4, ref T5 c5, ref T6 c6, ref T7 c7, ref T8 c8) =>
+                OnUpdateEntity(entity, ref c1, ref c2, ref c3, ref c4, ref c5, ref c6, ref c7, ref c8, deltaTime));
+        }
+
+        protected abstract void OnUpdateEntity(int entityIndex, ref T1 c1, ref T2 c2, ref T3 c3, ref T4 c4, ref T5 c5, ref T6 c6, ref T7 c7, ref T8 c8, float deltaTime);
     }
 }

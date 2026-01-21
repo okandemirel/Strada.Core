@@ -37,6 +37,8 @@ namespace Strada.Core.Communication
         void Publish<TEvent>(TEvent message) where TEvent : struct;
         void RegisterSignalHandler<TSignal>(Action<TSignal> handler) where TSignal : struct;
         void RegisterSignalHandler<TSignal>(ISignalHandler<TSignal> handler) where TSignal : struct;
+        void UnregisterSignalHandler<TSignal>() where TSignal : struct;
+        bool HasSignalHandler<TSignal>() where TSignal : struct;
         void RegisterQueryHandler<TQuery, TResult>(IQueryHandler<TQuery, TResult> handler) where TQuery : struct, IQuery<TResult>;
         void RegisterQueryHandler<TQuery, TResult>(Func<TQuery, TResult> handler) where TQuery : struct, IQuery<TResult>;
         void Subscribe<TEvent>(Action<TEvent> handler) where TEvent : struct;
@@ -135,6 +137,17 @@ namespace Strada.Core.Communication
             {
                 var id = SignalTypeId<TSignal>.Id;
                 EnsureCapacity(ref _signalHandlers, id);
+
+                // Warn if overwriting an existing handler
+                if (_signalHandlers[id] != null)
+                {
+#if UNITY_EDITOR || DEBUG
+                    UnityEngine.Debug.LogWarning(
+                        $"[EventBus] Warning: Signal handler for '{typeof(TSignal).Name}' already registered. " +
+                        "Previous handler will be replaced. Consider using UnregisterSignalHandler first or use Events for multiple subscribers.");
+#endif
+                }
+
                 _signalHandlers[id] = handler;
                 if (id > _maxSignalId) _maxSignalId = id;
             }
@@ -143,6 +156,25 @@ namespace Strada.Core.Communication
         public void RegisterSignalHandler<TSignal>(ISignalHandler<TSignal> handler) where TSignal : struct
         {
             RegisterSignalHandler<TSignal>(handler.Handle);
+        }
+
+        public void UnregisterSignalHandler<TSignal>() where TSignal : struct
+        {
+            lock (_lock)
+            {
+                var id = SignalTypeId<TSignal>.Id;
+                if (id < _signalHandlers.Length)
+                {
+                    _signalHandlers[id] = null;
+                }
+            }
+        }
+
+        public bool HasSignalHandler<TSignal>() where TSignal : struct
+        {
+            var id = SignalTypeId<TSignal>.Id;
+            var handlers = _signalHandlers;
+            return id < handlers.Length && handlers[id] != null;
         }
 
         public void RegisterQueryHandler<TQuery, TResult>(IQueryHandler<TQuery, TResult> handler)

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.Text;
 using Strada.Core.ECS;
@@ -61,10 +60,49 @@ namespace Strada.Core.Editor.CodeGen
                         result.Add(new SystemInfo(type, order));
                     }
                 }
-                catch { }
+                catch (ReflectionTypeLoadException ex)
+                {
+                    foreach (var type in ex.Types)
+                    {
+                        if (type == null)
+                            continue;
+
+                        if (type.IsAbstract || type.IsInterface)
+                            continue;
+
+                        if (!typeof(ISystem).IsAssignableFrom(type))
+                            continue;
+
+                        var attr = type.GetCustomAttribute<SystemOrderAttribute>();
+                        int order = attr?.Order ?? 0;
+                        result.Add(new SystemInfo(type, order));
+                    }
+
+                    if (StradaCodeGenSettings.VerboseLogging)
+                    {
+                        string firstExceptionMessage = null;
+                        foreach (var loaderEx in ex.LoaderExceptions)
+                        {
+                            if (loaderEx != null)
+                            {
+                                firstExceptionMessage = loaderEx.Message;
+                                break;
+                            }
+                        }
+                        Debug.LogWarning($"[Strada] Partial type load from assembly '{assembly.GetName().Name}': {firstExceptionMessage}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (StradaCodeGenSettings.VerboseLogging)
+                    {
+                        Debug.LogWarning($"[Strada] Failed to scan assembly '{assembly.GetName().Name}': {ex.Message}");
+                    }
+                }
             }
 
-            return result.OrderBy(x => x.Order).ToList();
+            result.Sort((a, b) => a.Order.CompareTo(b.Order));
+            return result;
         }
 
         private static string GenerateRegistryCode(List<SystemInfo> systems)
@@ -138,7 +176,12 @@ namespace Strada.Core.Editor.CodeGen
                 baseName = baseName.Substring(0, tickIndex);
 
             var args = type.GetGenericArguments();
-            var argNames = string.Join(", ", args.Select(GetFullTypeName));
+            var argNamesList = new string[args.Length];
+            for (int i = 0; i < args.Length; i++)
+            {
+                argNamesList[i] = GetFullTypeName(args[i]);
+            }
+            var argNames = string.Join(", ", argNamesList);
 
             return $"{baseName.Replace("+", ".")}<{argNames}>";
         }

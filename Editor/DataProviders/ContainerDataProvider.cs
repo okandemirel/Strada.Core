@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using Strada.Core.Bootstrap;
 using Strada.Core.DI;
@@ -16,7 +15,8 @@ namespace Strada.Core.Editor.DataProviders
     public class ContainerDataProvider : EditorDataProviderBase<ContainerSnapshot>, IContainerDataProvider
     {
         private static ContainerDataProvider _instance;
-        
+        private static readonly Dictionary<Type, Type[]> _constructorDependencyCache = new(64);
+
         /// <summary>
         /// Gets the singleton instance of the ContainerDataProvider.
         /// </summary>
@@ -76,9 +76,20 @@ namespace Strada.Core.Editor.DataProviders
             };
 
             snapshot.RegistrationCount = snapshot.Registrations.Count;
-            snapshot.SingletonCount = snapshot.Registrations.Count(r => r.Lifetime == Lifetime.Singleton);
-            snapshot.TransientCount = snapshot.Registrations.Count(r => r.Lifetime == Lifetime.Transient);
-            snapshot.ScopedCount = snapshot.Registrations.Count(r => r.Lifetime == Lifetime.Scoped);
+
+            int singletonCount = 0;
+            int transientCount = 0;
+            int scopedCount = 0;
+            for (int i = 0; i < snapshot.Registrations.Count; i++)
+            {
+                var reg = snapshot.Registrations[i];
+                if (reg.Lifetime == Lifetime.Singleton) singletonCount++;
+                else if (reg.Lifetime == Lifetime.Transient) transientCount++;
+                else if (reg.Lifetime == Lifetime.Scoped) scopedCount++;
+            }
+            snapshot.SingletonCount = singletonCount;
+            snapshot.TransientCount = transientCount;
+            snapshot.ScopedCount = scopedCount;
 
             return snapshot;
         }
@@ -143,20 +154,49 @@ namespace Strada.Core.Editor.DataProviders
 
         private Type[] GetConstructorDependencies(Type type)
         {
+            if (_constructorDependencyCache.TryGetValue(type, out var cached))
+                return cached;
+
             try
             {
                 if (type.IsInterface || type.IsAbstract)
+                {
+                    _constructorDependencyCache[type] = Array.Empty<Type>();
                     return Array.Empty<Type>();
+                }
 
                 var constructors = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
                 if (constructors.Length == 0)
+                {
+                    _constructorDependencyCache[type] = Array.Empty<Type>();
                     return Array.Empty<Type>();
+                }
 
-                var bestCtor = constructors.OrderByDescending(c => c.GetParameters().Length).First();
-                return bestCtor.GetParameters().Select(p => p.ParameterType).ToArray();
+                ConstructorInfo bestCtor = constructors[0];
+                int maxParams = bestCtor.GetParameters().Length;
+                for (int i = 1; i < constructors.Length; i++)
+                {
+                    int paramCount = constructors[i].GetParameters().Length;
+                    if (paramCount > maxParams)
+                    {
+                        maxParams = paramCount;
+                        bestCtor = constructors[i];
+                    }
+                }
+
+                var parameters = bestCtor.GetParameters();
+                var result = new Type[parameters.Length];
+                for (int i = 0; i < parameters.Length; i++)
+                {
+                    result[i] = parameters[i].ParameterType;
+                }
+
+                _constructorDependencyCache[type] = result;
+                return result;
             }
             catch
             {
+                _constructorDependencyCache[type] = Array.Empty<Type>();
                 return Array.Empty<Type>();
             }
         }
@@ -216,8 +256,15 @@ namespace Strada.Core.Editor.DataProviders
 
                         for (int i = 0; i < path.Count - 1; i++)
                         {
-                            var edge = graph.Edges.FirstOrDefault(e => 
-                                e.Source == path[i] && e.Target == path[i + 1]);
+                            DependencyEdge edge = null;
+                            foreach (var e in graph.Edges)
+                            {
+                                if (e.Source == path[i] && e.Target == path[i + 1])
+                                {
+                                    edge = e;
+                                    break;
+                                }
+                            }
                             if (edge != null)
                                 edge.IsCircular = true;
                         }
@@ -227,16 +274,18 @@ namespace Strada.Core.Editor.DataProviders
             }
         }
 
-        private bool DetectCyclesDFS(Type current, DependencyGraph graph, 
+        private bool DetectCyclesDFS(Type current, DependencyGraph graph,
             HashSet<Type> visited, HashSet<Type> recursionStack, List<Type> path)
         {
             visited.Add(current);
             recursionStack.Add(current);
             path.Add(current);
 
-            var outgoingEdges = graph.Edges.Where(e => e.Source == current);
-            foreach (var edge in outgoingEdges)
+            foreach (var edge in graph.Edges)
             {
+                if (edge.Source != current)
+                    continue;
+
                 if (!visited.Contains(edge.Target))
                 {
                     if (DetectCyclesDFS(edge.Target, graph, visited, recursionStack, path))

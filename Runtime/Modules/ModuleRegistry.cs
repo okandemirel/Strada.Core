@@ -9,6 +9,12 @@ namespace Strada.Core.Modules
     /// Registry for discovering and managing module installers.
     /// Automatically finds all IModuleInstaller implementations and determines initialization order.
     /// </summary>
+    /// <remarks>
+    /// <para>DEPRECATED: This class is part of the legacy module system.</para>
+    /// <para>Please use ModuleConfig ScriptableObjects with GameBootstrapperConfig instead.</para>
+    /// <para>This class will be removed in v2.0.</para>
+    /// </remarks>
+    [Obsolete("Use ModuleConfig ScriptableObjects with GameBootstrapperConfig instead. This class will be removed in v2.0.")]
     public class ModuleRegistry
     {
         private readonly List<ModuleInfo> _modules = new List<ModuleInfo>();
@@ -278,6 +284,8 @@ namespace Strada.Core.Modules
     /// <summary>
     /// Contains information about a registered module.
     /// </summary>
+    /// <remarks>DEPRECATED: Part of the legacy module system. This class will be removed in v2.0.</remarks>
+    [Obsolete("Part of the legacy module system. This class will be removed in v2.0.")]
     public class ModuleInfo
     {
         /// <summary>

@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using Strada.Core.DI;
 using Strada.Core.Modules;
@@ -9,6 +10,7 @@ using Strada.Core.Communication;
 using Strada.Core.ECS.Core;
 using Strada.Core.ECS.World;
 using Strada.Core.Sync;
+using Strada.Core.Services;
 
 namespace Strada.Core.Bootstrap
 {
@@ -27,10 +29,12 @@ namespace Strada.Core.Bootstrap
         [SerializeField] private bool _isInitialized;
 
         private readonly List<ModuleConfig> _initializedModuleConfigs = new List<ModuleConfig>();
+        private List<ModuleConfig> _sortedModules;
         private SystemRunner _systemRunner;
         private ECS.World.World _world;
         private EventBus _sharedEventBus;
         private EntityHandleRegistry _sharedHandleRegistry;
+        private TimerService _timerService;
 
         private IContainer _container;
         private IServiceLocator _serviceLocator;
@@ -39,21 +43,42 @@ namespace Strada.Core.Bootstrap
         /// <summary>
         /// Gets the global DI container instance.
         /// </summary>
+        /// <remarks>
+        /// <para>WARNING: This static reference is NOT thread-safe.</para>
+        /// <para>The framework currently supports only a single World instance at a time.</para>
+        /// <para>Do not access this property from background threads.</para>
+        /// </remarks>
         public static IContainer Container { get; private set; }
 
         /// <summary>
         /// Gets the global service locator instance.
         /// </summary>
+        /// <remarks>
+        /// <para>WARNING: This static reference is NOT thread-safe.</para>
+        /// <para>The framework currently supports only a single World instance at a time.</para>
+        /// <para>Do not access this property from background threads.</para>
+        /// </remarks>
         public static IServiceLocator Services { get; private set; }
 
         /// <summary>
         /// Gets the ECS World instance.
         /// </summary>
+        /// <remarks>
+        /// <para>WARNING: This static reference is NOT thread-safe.</para>
+        /// <para>The framework currently supports only a single World instance at a time.</para>
+        /// <para>Do not access this property from background threads.</para>
+        /// <para>For multi-world support in the future, use container-scoped World resolution instead.</para>
+        /// </remarks>
         public static ECS.World.World World { get; private set; }
 
         /// <summary>
         /// Gets the SystemRunner instance.
         /// </summary>
+        /// <remarks>
+        /// <para>WARNING: This static reference is NOT thread-safe.</para>
+        /// <para>The framework currently supports only a single World instance at a time.</para>
+        /// <para>Do not access this property from background threads.</para>
+        /// </remarks>
         public static SystemRunner Systems { get; private set; }
 
         /// <summary>
@@ -86,6 +111,7 @@ namespace Strada.Core.Bootstrap
         private void Update()
         {
             if (!_isInitialized) return;
+            _timerService?.Update(Time.deltaTime);
             _systemRunner?.Update(Time.deltaTime);
         }
 
@@ -174,10 +200,15 @@ namespace Strada.Core.Bootstrap
 
             _sharedEventBus = new EventBus();
             _sharedHandleRegistry = new EntityHandleRegistry();
+            _timerService = new TimerService();
             builder.RegisterInstance(_sharedEventBus);
             builder.RegisterInstance(_sharedHandleRegistry);
+            builder.RegisterInstance(_timerService);
 
-            foreach (var module in _gameConfig.GetEnabledModules())
+            // Topologically sort modules to ensure dependencies are initialized first
+            _sortedModules = TopologicalSortModules(_gameConfig.GetEnabledModules().ToList());
+
+            foreach (var module in _sortedModules)
             {
                 Log($"Installing module: {module.ModuleName}");
                 module.Install(moduleBuilder);
@@ -188,7 +219,77 @@ namespace Strada.Core.Bootstrap
             Container = _container;
             Services = _serviceLocator;
 
-            Log($"Container built with {_gameConfig.EnabledModuleCount} modules");
+            Log($"Container built with {_sortedModules.Count} modules");
+        }
+
+        /// <summary>
+        /// Performs topological sort on modules based on their dependencies.
+        /// Ensures dependencies are initialized before dependents.
+        /// </summary>
+        private List<ModuleConfig> TopologicalSortModules(List<ModuleConfig> modules)
+        {
+            var enabledSet = new HashSet<ModuleConfig>(modules);
+            var sorted = new List<ModuleConfig>();
+            var visited = new HashSet<ModuleConfig>();
+            var visiting = new HashSet<ModuleConfig>();
+
+            // Validate all dependencies are enabled
+            foreach (var module in modules)
+            {
+                foreach (var dep in module.Dependencies)
+                {
+                    if (dep != null && !enabledSet.Contains(dep))
+                    {
+                        throw new InvalidOperationException(
+                            $"Module '{module.ModuleName}' depends on '{dep.ModuleName}' which is not enabled. " +
+                            "Enable the dependency or remove it from the dependency list.");
+                    }
+                }
+            }
+
+            // Topological sort using DFS
+            foreach (var module in modules.OrderBy(m => m.Priority))
+            {
+                if (!visited.Contains(module))
+                {
+                    TopologicalSortVisit(module, visited, visiting, sorted, enabledSet);
+                }
+            }
+
+            return sorted;
+        }
+
+        private void TopologicalSortVisit(
+            ModuleConfig module,
+            HashSet<ModuleConfig> visited,
+            HashSet<ModuleConfig> visiting,
+            List<ModuleConfig> sorted,
+            HashSet<ModuleConfig> enabledSet)
+        {
+            if (visiting.Contains(module))
+            {
+                throw new InvalidOperationException(
+                    $"Circular dependency detected involving module '{module.ModuleName}'. " +
+                    "Check module dependencies for cycles.");
+            }
+
+            if (visited.Contains(module))
+                return;
+
+            visiting.Add(module);
+
+            // Visit dependencies first (they should be initialized before this module)
+            foreach (var dep in module.Dependencies)
+            {
+                if (dep != null && enabledSet.Contains(dep))
+                {
+                    TopologicalSortVisit(dep, visited, visiting, sorted, enabledSet);
+                }
+            }
+
+            visiting.Remove(module);
+            visited.Add(module);
+            sorted.Add(module);
         }
 
         private void CreateWorld()
@@ -209,7 +310,8 @@ namespace Strada.Core.Bootstrap
         {
             _initializationError = null;
 
-            foreach (var module in _gameConfig.GetEnabledModules())
+            // Use topologically sorted modules to ensure dependencies are initialized first
+            foreach (var module in _sortedModules)
             {
                 try
                 {
@@ -301,6 +403,9 @@ namespace Strada.Core.Bootstrap
 
             _systemRunner?.Dispose();
             _systemRunner = null;
+
+            _timerService?.Dispose();
+            _timerService = null;
 
             _world?.Dispose();
             _world = null;

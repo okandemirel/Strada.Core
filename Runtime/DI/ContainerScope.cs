@@ -41,27 +41,27 @@ namespace Strada.Core.DI
         public T Resolve<T>() where T : class
         {
             int typeId = TypeRegistry.GetId<T>();
-            return (T)ResolveById(typeId);
+            return (T)ResolveById(typeId, typeof(T));
         }
 
         public object Resolve(Type type)
         {
             int typeId = TypeRegistry.GetId(type);
-            return ResolveById(typeId);
+            return ResolveById(typeId, type);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private object ResolveById(int typeId)
+        private object ResolveById(int typeId, Type requestedType)
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(ContainerScope));
 
             if (typeId > _maxTypeId)
-                throw new InvalidOperationException($"Type with ID '{typeId}' is not registered");
+                throw new InvalidOperationException($"Type '{requestedType.FullName}' is not registered in the container");
 
             int index = _typeIdToIndex[typeId];
             if (index < 0)
-                throw new InvalidOperationException($"Type with ID '{typeId}' is not registered");
+                throw new InvalidOperationException($"Type '{requestedType.FullName}' is not registered in the container");
 
             return ResolveByIndex(index);
         }
@@ -117,7 +117,7 @@ namespace Strada.Core.DI
                 return false;
             }
 
-            instance = (T)ResolveById(typeId);
+            instance = (T)ResolveById(typeId, typeof(T));
             return true;
         }
 
