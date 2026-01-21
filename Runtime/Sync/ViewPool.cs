@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using Strada.Core.DI;
 using Strada.Core.ECS;
 using Strada.Core.ECS.Core;
+using Strada.Core.Logging;
 using UnityEngine;
 
 namespace Strada.Core.Sync
@@ -123,7 +124,7 @@ namespace Strada.Core.Sync
                     return;
                 }
             }
-            UnityEngine.Debug.LogWarning($"[ViewPool<{typeof(TView).Name}>] No match for Entity({entity.Index},{entity.Version}) in {_active.Count} active views");
+            StradaLog.LogWarning($"[ViewPool<{typeof(TView).Name}>] No match for Entity({entity.Index},{entity.Version}) in {_active.Count} active views", LogModule.Sync);
         }
 
         public void DespawnAll()

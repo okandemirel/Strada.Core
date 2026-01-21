@@ -4,6 +4,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using Strada.Core.Logging;
 
 namespace Strada.Core.DI
 {
@@ -140,7 +141,7 @@ namespace Strada.Core.DI
                     }
                     catch (Exception e)
                     {
-                        UnityEngine.Debug.LogError($"Error disposing service: {e}");
+                        StradaLog.LogError($"Error disposing service: {e}", LogModule.DI);
                     }
                 }
             }

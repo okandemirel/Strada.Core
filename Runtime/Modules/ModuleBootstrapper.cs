@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using Strada.Core.DI;
 using Strada.Core.Data;
+using Strada.Core.Logging;
 
 namespace Strada.Core.Modules
 {
@@ -56,7 +57,7 @@ namespace Strada.Core.Modules
         {
             if (_initialized)
             {
-                Debug.LogWarning($"[{GetType().Name}] Module already initialized.");
+                StradaLog.LogWarning($"[{GetType().Name}] Module already initialized.", LogModule.Modules);
                 return;
             }
 
@@ -69,11 +70,11 @@ namespace Strada.Core.Modules
                 _initialized = true;
                 OnModuleInitialized?.Invoke();
 
-                Debug.Log($"[{GetType().Name}] Module initialized successfully.");
+                StradaLog.LogDeep($"[{GetType().Name}] Module initialized successfully.", LogModule.Modules);
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[{GetType().Name}] Module initialization failed: {ex.Message}\n{ex.StackTrace}");
+                StradaLog.LogError($"[{GetType().Name}] Module initialization failed: {ex.Message}\n{ex.StackTrace}", LogModule.Modules);
                 throw;
             }
         }

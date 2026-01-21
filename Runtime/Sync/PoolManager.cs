@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Strada.Core.DI;
 using Strada.Core.ECS;
 using Strada.Core.ECS.Core;
+using Strada.Core.Logging;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -76,7 +77,7 @@ namespace Strada.Core.Sync
             var viewType = typeof(TView);
             if (_pools.ContainsKey(viewType))
             {
-                Debug.LogWarning($"[PoolManager] Pool for {viewType.Name} already registered. Returning existing pool.");
+                StradaLog.LogWarning($"Pool for {viewType.Name} already registered. Returning existing pool.", LogModule.Sync);
                 return _pools[viewType] as ViewPool<TView>;
             }
 
@@ -126,7 +127,7 @@ namespace Strada.Core.Sync
             var pool = GetPool<TView>();
             if (pool == null)
             {
-                Debug.LogError($"[PoolManager] No pool registered for {typeof(TView).Name}");
+                StradaLog.LogError($"No pool registered for {typeof(TView).Name}", LogModule.Sync);
                 return null;
             }
             return pool.Spawn(entity, parent);
@@ -140,7 +141,7 @@ namespace Strada.Core.Sync
             var pool = GetPool<TView>();
             if (pool == null)
             {
-                Debug.LogError($"[PoolManager] No pool registered for {typeof(TView).Name}");
+                StradaLog.LogError($"No pool registered for {typeof(TView).Name}", LogModule.Sync);
                 return null;
             }
             return pool.Spawn(entity, position, rotation, parent);

@@ -7,6 +7,7 @@ using Strada.Core.ECS;
 using Strada.Core.ECS.Core;
 using Strada.Core.ECS.Systems;
 using Strada.Core.ECS.World;
+using Strada.Core.Logging;
 using Strada.Core.Sync;
 using UnityEngine;
 
@@ -127,7 +128,7 @@ namespace Strada.Core.Modules
         {
             if (_initialized)
             {
-                Debug.LogWarning("[SystemRunner] Adding system after initialization. System will be initialized immediately.");
+                StradaLog.LogWarning("Adding system after initialization. System will be initialized immediately.", LogModule.Modules);
                 InjectSystem(system);
                 system.Initialize();
             }
@@ -253,7 +254,7 @@ namespace Strada.Core.Modules
             var systemType = entry.GetSystemType();
             if (systemType == null)
             {
-                Debug.LogWarning($"[SystemRunner] System type is null for entry: {entry.DisplayName}");
+                StradaLog.LogWarning($"System type is null for entry: {entry.DisplayName}", LogModule.Modules);
                 return null;
             }
 

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Strada.Core.DI;
+using Strada.Core.Logging;
 using Strada.Core.Modules;
 using Strada.Core.Core;
 using Strada.Core.Communication;
@@ -100,7 +101,7 @@ namespace Strada.Core.Bootstrap
         {
             if (_gameConfig == null)
             {
-                Debug.LogError("[GameBootstrapper] No configuration assigned! Please assign a GameBootstrapperConfig.");
+                StradaLog.LogError("No configuration assigned! Please assign a GameBootstrapperConfig.", LogModule.Bootstrap);
                 return;
             }
 
@@ -151,7 +152,7 @@ namespace Strada.Core.Bootstrap
                     }
                     else
                     {
-                        Debug.LogWarning($"[GameBootstrapper] Validation warnings:\n{errorMessage}");
+                        StradaLog.LogWarning($"Validation warnings:\n{errorMessage}", LogModule.Bootstrap);
                     }
                 }
                 else
@@ -321,7 +322,7 @@ namespace Strada.Core.Bootstrap
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"[GameBootstrapper] Failed to initialize module {module.ModuleName}: {ex.Message}");
+                    StradaLog.LogError($"Failed to initialize module {module.ModuleName}: {ex.Message}", LogModule.Bootstrap);
                     _initializationError = ex;
                     yield break;
                 }
@@ -365,14 +366,14 @@ namespace Strada.Core.Bootstrap
             catch (Exception ex)
             {
                 error = ex;
-                Debug.LogError($"[GameBootstrapper] {phaseName} failed: {ex.Message}\n{ex.StackTrace}");
+                StradaLog.LogError($"{phaseName} failed: {ex.Message}\n{ex.StackTrace}", LogModule.Bootstrap);
                 return false;
             }
         }
 
         private void HandleInitializationError(Exception ex)
         {
-            Debug.LogError($"[GameBootstrapper] Initialization failed: {ex.Message}\n{ex.StackTrace}");
+            StradaLog.LogError($"Initialization failed: {ex.Message}\n{ex.StackTrace}", LogModule.Bootstrap);
             OnInitializationFailed?.Invoke(ex);
             _isInitialized = false;
         }
@@ -396,7 +397,7 @@ namespace Strada.Core.Bootstrap
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"[GameBootstrapper] Error during module shutdown: {ex.Message}");
+                    StradaLog.LogError($"Error during module shutdown: {ex.Message}", LogModule.Bootstrap);
                 }
             }
             _initializedModuleConfigs.Clear();
@@ -431,7 +432,7 @@ namespace Strada.Core.Bootstrap
         {
             if (_gameConfig != null && _gameConfig.VerboseLogging)
             {
-                Debug.Log($"[GameBootstrapper] {message}");
+                StradaLog.LogDeep(message, LogModule.Bootstrap);
             }
         }
 
@@ -442,7 +443,7 @@ namespace Strada.Core.Bootstrap
         {
             if (_isInitialized)
             {
-                Debug.LogWarning("[GameBootstrapper] Already initialized!");
+                StradaLog.LogWarning("Already initialized!", LogModule.Bootstrap);
                 return;
             }
 
