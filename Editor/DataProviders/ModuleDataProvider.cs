@@ -32,7 +32,7 @@ namespace Strada.Core.Editor.DataProviders
             get
             {
                 if (!Application.isPlaying) return false;
-                var bootstrapper = Object.FindObjectOfType<GameBootstrapper>();
+                var bootstrapper = Object.FindFirstObjectByType<GameBootstrapper>();
                 return bootstrapper != null && bootstrapper.IsInitialized;
             }
         }
@@ -140,7 +140,7 @@ namespace Strada.Core.Editor.DataProviders
 
         private GameBootstrapperConfig FindGameBootstrapperConfig()
         {
-            var bootstrapper = Object.FindObjectOfType<GameBootstrapper>();
+            var bootstrapper = Object.FindFirstObjectByType<GameBootstrapper>();
             if (bootstrapper != null)
             {
                 var configField = typeof(GameBootstrapper).GetField("_gameConfig",

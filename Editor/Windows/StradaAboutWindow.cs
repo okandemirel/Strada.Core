@@ -23,7 +23,6 @@ namespace Strada.Core.Editor.Windows
         private GUIStyle _featureStyle;
         private bool _stylesInitialized;
 
-        [MenuItem("Strada/About Strada", priority = 1000)]
         public static void ShowWindow()
         {
             var window = GetWindow<StradaAboutWindow>(true, "About Strada Framework", true);

@@ -62,7 +62,7 @@ namespace Strada.Core.Editor.Inspectors
             serializedObject.ApplyModifiedProperties();
         }
 
-        private void DrawHeader()
+        private new void DrawHeader()
         {
             var config = target as GameBootstrapperConfig;
 

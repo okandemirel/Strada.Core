@@ -131,7 +131,7 @@ namespace Strada.Core.Editor.ModuleGenerator
 
         private static void EnrichFromInstallers(Dictionary<string, ModuleInfoData> allModules)
         {
-            var installerType = typeof(IModuleInstaller);
+            var moduleConfigType = typeof(ModuleConfig);
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
 
             foreach (var assembly in assemblies)
@@ -139,11 +139,11 @@ namespace Strada.Core.Editor.ModuleGenerator
                 try
                 {
                     var types = assembly.GetTypes()
-                        .Where(t => installerType.IsAssignableFrom(t) && t.IsClass && !t.IsAbstract);
+                        .Where(t => moduleConfigType.IsAssignableFrom(t) && t.IsClass && !t.IsAbstract);
 
                     foreach (var type in types)
                     {
-                        var name = type.Name.Replace("Module", "");
+                        var name = type.Name.Replace("ModuleConfig", "").Replace("Module", "");
 
                         var module = allModules.Values.FirstOrDefault(m =>
                             string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase));
@@ -195,7 +195,7 @@ namespace Strada.Core.Editor.ModuleGenerator
 
         public static string FindAssemblyForModule(string moduleName)
         {
-            var installerType = typeof(IModuleInstaller);
+            var moduleConfigType = typeof(ModuleConfig);
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
 
             foreach (var assembly in assemblies)
@@ -203,8 +203,10 @@ namespace Strada.Core.Editor.ModuleGenerator
                 try
                 {
                     var type = assembly.GetTypes()
-                        .FirstOrDefault(t => (t.Name == moduleName || t.Name == moduleName + "Module") &&
-                                            installerType.IsAssignableFrom(t));
+                        .FirstOrDefault(t => (t.Name == moduleName ||
+                                              t.Name == moduleName + "Module" ||
+                                              t.Name == moduleName + "ModuleConfig") &&
+                                            moduleConfigType.IsAssignableFrom(t));
 
                     if (type != null)
                         return assembly.GetName().Name;

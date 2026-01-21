@@ -11,7 +11,7 @@ namespace Strada.Core.Editor.CodeGen
             Debug.Log("[Strada] Starting code generation...");
 
             SystemRegistryGenerator.GenerateSystemRegistry();
-            ModuleInitializerGenerator.GenerateModuleInitializer();
+            ModuleInitializerGenerator.GenerateModuleRegistry();
 
             Debug.Log("[Strada] Code generation complete!");
         }

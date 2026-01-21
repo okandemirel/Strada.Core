@@ -181,15 +181,15 @@ namespace Strada.Core.Editor.CodeGen
                 }
             }
 
-            var installerType = typeof(Modules.IModuleInstaller);
+            var moduleConfigType = typeof(Modules.ModuleConfig);
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
                 try
                 {
                     foreach (var type in assembly.GetTypes())
                     {
-                        if (installerType.IsAssignableFrom(type) && 
-                            type.IsClass && 
+                        if (moduleConfigType.IsAssignableFrom(type) &&
+                            type.IsClass &&
                             !type.IsAbstract)
                         {
                             names.Add(type.Name);

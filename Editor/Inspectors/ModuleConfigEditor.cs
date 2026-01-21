@@ -70,7 +70,7 @@ namespace Strada.Core.Editor.Inspectors
             serializedObject.ApplyModifiedProperties();
         }
 
-        private void DrawHeader()
+        private new void DrawHeader()
         {
             var moduleConfig = target as ModuleConfig;
 

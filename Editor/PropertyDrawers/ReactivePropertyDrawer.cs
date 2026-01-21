@@ -180,7 +180,6 @@ namespace Strada.Core.Editor.PropertyDrawers
             var parts = path.Split('.');
             FieldInfo field = null;
             var currentType = type;
-            object currentObject = null;
 
             foreach (var part in parts)
             {
