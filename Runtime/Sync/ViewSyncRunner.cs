@@ -35,7 +35,7 @@ namespace Strada.Core.Sync
     public class ViewSyncRunner : MonoBehaviour
     {
         [Tooltip("Sync mode: DirtyOnly (reactive), ForceAll (every frame), or Manual (disabled)")]
-        [SerializeField] private ViewSyncMode _syncMode = ViewSyncMode.DirtyOnly;
+        [SerializeField] private ViewSyncMode _syncMode = ViewSyncMode.ForceAll;
 
         private ViewRegistry _viewRegistry;
 
