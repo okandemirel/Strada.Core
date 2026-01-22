@@ -297,12 +297,6 @@ namespace Strada.Core.Sync
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Write()
-        {
-            _entityManager.SetComponent(_entity, _cachedValue);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Push()
         {
             _entityManager.SetComponent(_entity, _cachedValue);

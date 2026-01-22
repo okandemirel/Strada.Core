@@ -12,6 +12,7 @@ using Strada.Core.ECS.Core;
 using Strada.Core.ECS.World;
 using Strada.Core.Sync;
 using Strada.Core.Services;
+using Strada.Core.Utilities;
 
 namespace Strada.Core.Bootstrap
 {
@@ -230,9 +231,6 @@ namespace Strada.Core.Bootstrap
         private List<ModuleConfig> TopologicalSortModules(List<ModuleConfig> modules)
         {
             var enabledSet = new HashSet<ModuleConfig>(modules);
-            var sorted = new List<ModuleConfig>();
-            var visited = new HashSet<ModuleConfig>();
-            var visiting = new HashSet<ModuleConfig>();
 
             // Validate all dependencies are enabled
             foreach (var module in modules)
@@ -248,49 +246,12 @@ namespace Strada.Core.Bootstrap
                 }
             }
 
-            // Topological sort using DFS
-            foreach (var module in modules.OrderBy(m => m.Priority))
-            {
-                if (!visited.Contains(module))
-                {
-                    TopologicalSortVisit(module, visited, visiting, sorted, enabledSet);
-                }
-            }
-
-            return sorted;
-        }
-
-        private void TopologicalSortVisit(
-            ModuleConfig module,
-            HashSet<ModuleConfig> visited,
-            HashSet<ModuleConfig> visiting,
-            List<ModuleConfig> sorted,
-            HashSet<ModuleConfig> enabledSet)
-        {
-            if (visiting.Contains(module))
-            {
-                throw new InvalidOperationException(
-                    $"Circular dependency detected involving module '{module.ModuleName}'. " +
-                    "Check module dependencies for cycles.");
-            }
-
-            if (visited.Contains(module))
-                return;
-
-            visiting.Add(module);
-
-            // Visit dependencies first (they should be initialized before this module)
-            foreach (var dep in module.Dependencies)
-            {
-                if (dep != null && enabledSet.Contains(dep))
-                {
-                    TopologicalSortVisit(dep, visited, visiting, sorted, enabledSet);
-                }
-            }
-
-            visiting.Remove(module);
-            visited.Add(module);
-            sorted.Add(module);
+            // Sort by priority first, then topologically sort
+            var orderedByPriority = modules.OrderBy(m => m.Priority);
+            return TopologicalSorter<ModuleConfig>.Sort(
+                orderedByPriority,
+                m => m.Dependencies,
+                m => m.ModuleName);
         }
 
         private void CreateWorld()
