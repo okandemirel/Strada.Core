@@ -1,11 +1,10 @@
-using System;
 using System.Runtime.CompilerServices;
 using Strada.Core.ECS.Core;
 using Strada.Core.ECS.Storage;
 
 namespace Strada.Core.ECS.Query
 {
-    public readonly struct EntityQuery<T1> : IDisposable
+    public readonly struct EntityQuery<T1>
         where T1 : unmanaged, IComponent
     {
         private readonly ComponentStorage<T1> _storage1;
@@ -52,11 +51,9 @@ namespace Strada.Core.ECS.Query
                 }
             }
         }
-
-        public void Dispose() { }
     }
 
-    public readonly struct EntityQuery<T1, T2> : IDisposable
+    public readonly struct EntityQuery<T1, T2>
         where T1 : unmanaged, IComponent
         where T2 : unmanaged, IComponent
     {
@@ -99,11 +96,9 @@ namespace Strada.Core.ECS.Query
                 }
             }
         }
-
-        public void Dispose() { }
     }
 
-    public readonly struct EntityQuery<T1, T2, T3> : IDisposable
+    public readonly struct EntityQuery<T1, T2, T3>
         where T1 : unmanaged, IComponent
         where T2 : unmanaged, IComponent
         where T3 : unmanaged, IComponent
@@ -174,8 +169,6 @@ namespace Strada.Core.ECS.Query
                 }
             }
         }
-
-        public void Dispose() { }
     }
 
     public delegate void QueryDelegate<T1>(int entityIndex, ref T1 c1) where T1 : unmanaged;

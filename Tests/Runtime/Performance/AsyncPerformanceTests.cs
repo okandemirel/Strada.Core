@@ -1,9 +1,7 @@
-using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
-using Strada.Core.Commands;
 using Strada.Core.Communication;
 
 namespace Strada.Core.Tests.Tests.Runtime.Performance
@@ -137,31 +135,6 @@ namespace Strada.Core.Tests.Tests.Runtime.Performance
         }
 
         [Test]
-        public async Task Benchmark_AsyncCommand_Execution()
-        {
-            const int Iterations = 10000;
-            int counter = 0;
-
-            var command = new BenchmarkAsyncCommand(() => counter++);
-
-            var sw = Stopwatch.StartNew();
-            for (int i = 0; i < Iterations; i++)
-            {
-                await _bus.ExecuteAsync(command);
-            }
-            sw.Stop();
-
-            double avgMicroseconds = sw.Elapsed.TotalMilliseconds * 1000 / Iterations;
-
-            UnityEngine.Debug.Log($"[AsyncEventBus] ExecuteAsync Command ({Iterations} executions):");
-            UnityEngine.Debug.Log($"  Total Time: {sw.ElapsedMilliseconds}ms");
-            UnityEngine.Debug.Log($"  Avg: {avgMicroseconds:F2}us per execution");
-
-            Assert.AreEqual(Iterations, counter);
-            Assert.Less(sw.ElapsedMilliseconds, 100, "Async command execution too slow");
-        }
-
-        [Test]
         public async Task Benchmark_ParallelAsyncSignals()
         {
             const int Iterations = 1000;
@@ -246,22 +219,6 @@ namespace Strada.Core.Tests.Tests.Runtime.Performance
         private struct AsyncQuery : IAsyncQuery<int>
         {
             public int Input;
-        }
-
-        private class BenchmarkAsyncCommand : IAsyncAwaitCommand
-        {
-            private readonly Action _action;
-
-            public BenchmarkAsyncCommand(Action action)
-            {
-                _action = action;
-            }
-
-            public ValueTask ExecuteAsync(CancellationToken ct = default)
-            {
-                _action();
-                return default;
-            }
         }
     }
 }

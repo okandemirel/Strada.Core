@@ -1,9 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Strada.Core.Commands;
-using Strada.Core.DI;
 
 namespace Strada.Core.Communication
 {
@@ -27,32 +27,54 @@ namespace Strada.Core.Communication
         ValueTask<TResult> HandleAsync(TQuery query, CancellationToken ct = default);
     }
 
-    public interface IEventBus : IDisposable
+    /// <summary>
+    /// Signal bus for one-to-one command dispatching.
+    /// </summary>
+    public interface ISignalBus
     {
         void Send<TSignal>(ref TSignal signal) where TSignal : struct;
         void Send<TSignal>(TSignal signal) where TSignal : struct;
-        TResult Query<TQuery, TResult>(ref TQuery query) where TQuery : struct, IQuery<TResult>;
-        TResult Query<TQuery, TResult>(TQuery query) where TQuery : struct, IQuery<TResult>;
-        void Publish<TEvent>(ref TEvent message) where TEvent : struct;
-        void Publish<TEvent>(TEvent message) where TEvent : struct;
         void RegisterSignalHandler<TSignal>(Action<TSignal> handler) where TSignal : struct;
         void RegisterSignalHandler<TSignal>(ISignalHandler<TSignal> handler) where TSignal : struct;
         void UnregisterSignalHandler<TSignal>() where TSignal : struct;
         bool HasSignalHandler<TSignal>() where TSignal : struct;
-        void RegisterQueryHandler<TQuery, TResult>(IQueryHandler<TQuery, TResult> handler) where TQuery : struct, IQuery<TResult>;
-        void RegisterQueryHandler<TQuery, TResult>(Func<TQuery, TResult> handler) where TQuery : struct, IQuery<TResult>;
-        void Subscribe<TEvent>(Action<TEvent> handler) where TEvent : struct;
-        void Unsubscribe<TEvent>(Action<TEvent> handler) where TEvent : struct;
-        int GetSubscriberCount<TEvent>() where TEvent : struct;
-        void Clear();
-
         ValueTask SendAsync<TSignal>(TSignal signal, CancellationToken cancellationToken = default) where TSignal : struct;
         void RegisterAsyncSignalHandler<TSignal>(IAsyncSignalHandler<TSignal> handler) where TSignal : struct;
         void RegisterAsyncSignalHandler<TSignal>(Func<TSignal, CancellationToken, ValueTask> handler) where TSignal : struct;
+    }
+
+    /// <summary>
+    /// Query bus for request-response patterns.
+    /// </summary>
+    public interface IQueryBus
+    {
+        TResult Query<TQuery, TResult>(ref TQuery query) where TQuery : struct, IQuery<TResult>;
+        TResult Query<TQuery, TResult>(TQuery query) where TQuery : struct, IQuery<TResult>;
+        void RegisterQueryHandler<TQuery, TResult>(IQueryHandler<TQuery, TResult> handler) where TQuery : struct, IQuery<TResult>;
+        void RegisterQueryHandler<TQuery, TResult>(Func<TQuery, TResult> handler) where TQuery : struct, IQuery<TResult>;
         ValueTask<TResult> QueryAsync<TQuery, TResult>(TQuery query, CancellationToken cancellationToken = default) where TQuery : struct, IAsyncQuery<TResult>;
         void RegisterAsyncQueryHandler<TQuery, TResult>(IAsyncQueryHandler<TQuery, TResult> handler) where TQuery : struct, IAsyncQuery<TResult>;
         void RegisterAsyncQueryHandler<TQuery, TResult>(Func<TQuery, CancellationToken, ValueTask<TResult>> handler) where TQuery : struct, IAsyncQuery<TResult>;
-        ValueTask ExecuteAsync(IAsyncAwaitCommand command, CancellationToken cancellationToken = default);
+    }
+
+    /// <summary>
+    /// Event publisher for one-to-many event broadcasting.
+    /// </summary>
+    public interface IEventPublisher
+    {
+        void Publish<TEvent>(ref TEvent message) where TEvent : struct;
+        void Publish<TEvent>(TEvent message) where TEvent : struct;
+        void Subscribe<TEvent>(Action<TEvent> handler) where TEvent : struct;
+        void Unsubscribe<TEvent>(Action<TEvent> handler) where TEvent : struct;
+        int GetSubscriberCount<TEvent>() where TEvent : struct;
+    }
+
+    /// <summary>
+    /// Unified event bus combining signal, query, and event functionality.
+    /// </summary>
+    public interface IEventBus : ISignalBus, IQueryBus, IEventPublisher, IDisposable
+    {
+        void Clear();
     }
 
     public sealed class EventBus : IEventBus
@@ -318,11 +340,6 @@ namespace Strada.Core.Communication
             }
         }
 
-        public ValueTask ExecuteAsync(IAsyncAwaitCommand command, CancellationToken cancellationToken = default)
-        {
-            return command.ExecuteAsync(cancellationToken);
-        }
-
         private static class AsyncSignalTypeId<T>
         {
             public static readonly int Id = Interlocked.Increment(ref _nextAsyncSignalTypeId);
@@ -365,17 +382,17 @@ namespace Strada.Core.Communication
 
         private sealed class EventChannel<T>
         {
-
-            private Action<T>[] _handlers = new Action<T>[0];
+            private readonly List<Action<T>> _handlerList = new List<Action<T>>(4);
+            private Action<T>[] _handlersSnapshot = Array.Empty<Action<T>>();
             private readonly object _lock = new object();
+            private volatile bool _isDirty;
 
-            public int Count => _handlers.Length;
+            public int Count => _handlersSnapshot.Length;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Publish(ref T message)
             {
-
-                var handlers = _handlers;
+                var handlers = _handlersSnapshot;
                 for (int i = 0; i < handlers.Length; i++)
                     handlers[i](message);
             }
@@ -384,11 +401,8 @@ namespace Strada.Core.Communication
             {
                 lock (_lock)
                 {
-                    var oldHandlers = _handlers;
-                    var newHandlers = new Action<T>[oldHandlers.Length + 1];
-                    Array.Copy(oldHandlers, newHandlers, oldHandlers.Length);
-                    newHandlers[oldHandlers.Length] = handler;
-                    _handlers = newHandlers;
+                    _handlerList.Add(handler);
+                    RebuildSnapshot();
                 }
             }
 
@@ -396,19 +410,20 @@ namespace Strada.Core.Communication
             {
                 lock (_lock)
                 {
-                    var oldHandlers = _handlers;
-                    int index = Array.IndexOf(oldHandlers, handler);
+                    int index = _handlerList.IndexOf(handler);
                     if (index < 0) return;
 
-                    var newHandlers = new Action<T>[oldHandlers.Length - 1];
-                    if (index > 0)
-                        Array.Copy(oldHandlers, 0, newHandlers, 0, index);
-                    
-                    if (index < oldHandlers.Length - 1)
-                        Array.Copy(oldHandlers, index + 1, newHandlers, index, oldHandlers.Length - index - 1);
-                    
-                    _handlers = newHandlers;
+                    _handlerList.RemoveAt(index);
+                    RebuildSnapshot();
                 }
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private void RebuildSnapshot()
+            {
+                _handlersSnapshot = _handlerList.Count > 0
+                    ? _handlerList.ToArray()
+                    : Array.Empty<Action<T>>();
             }
         }
 

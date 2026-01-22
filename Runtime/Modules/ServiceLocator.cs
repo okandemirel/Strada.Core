@@ -1,5 +1,6 @@
 using System;
 using Strada.Core.DI;
+using Strada.Core.Logging;
 
 namespace Strada.Core.Modules
 {
@@ -55,8 +56,9 @@ namespace Strada.Core.Modules
                 service = _container.Resolve(serviceType);
                 return service != null;
             }
-            catch
+            catch (Exception ex)
             {
+                StradaLog.LogWarning($"[ServiceLocator] Failed to resolve '{serviceType.Name}': {ex.Message}", LogModule.DI);
                 service = null;
                 return false;
             }

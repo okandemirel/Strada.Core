@@ -67,15 +67,45 @@ namespace Strada.Core.ECS.Storage
         public IReadOnlyList<int> GetEntityIndices()
         {
             var indices = new List<int>(_sparseSet.Count);
+            GetEntityIndices(indices);
+            return indices;
+        }
+
+        /// <summary>
+        /// Non-allocating overload that fills the provided list with entity indices.
+        /// The list will be cleared before filling.
+        /// </summary>
+        public void GetEntityIndices(List<int> outputList)
+        {
+            outputList.Clear();
             unsafe
             {
                 int* densePtr = _sparseSet.GetDenseEntityReadOnlyPtr();
-                for (int i = 0; i < _sparseSet.Count; i++)
+                int count = _sparseSet.Count;
+                for (int i = 0; i < count; i++)
                 {
-                    indices.Add(densePtr[i]);
+                    outputList.Add(densePtr[i]);
                 }
             }
-            return indices;
+        }
+
+        /// <summary>
+        /// Copies entity indices to the provided array.
+        /// Returns the number of indices copied.
+        /// </summary>
+        public int GetEntityIndices(int[] outputArray, int startIndex = 0)
+        {
+            int count = _sparseSet.Count;
+            int copyCount = Math.Min(count, outputArray.Length - startIndex);
+            unsafe
+            {
+                int* densePtr = _sparseSet.GetDenseEntityReadOnlyPtr();
+                for (int i = 0; i < copyCount; i++)
+                {
+                    outputArray[startIndex + i] = densePtr[i];
+                }
+            }
+            return copyCount;
         }
 
         public void Clear()

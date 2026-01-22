@@ -13,6 +13,7 @@ namespace Strada.Core.Sync
     {
         private readonly Stack<TView> _available;
         private readonly List<TView> _active;
+        private readonly Dictionary<long, int> _entityToActiveIndex;
         private readonly GameObject _prefab;
         private readonly Transform _poolRoot;
         private readonly Transform _activeRoot;
@@ -46,9 +47,13 @@ namespace Strada.Core.Sync
             _maxSize = maxSize;
             _available = new Stack<TView>(Math.Max(initialSize, 16));
             _active = new List<TView>(Math.Max(initialSize, 16));
+            _entityToActiveIndex = new Dictionary<long, int>(Math.Max(initialSize, 16));
 
             Prewarm(initialSize);
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static long GetEntityKey(Entity entity) => ((long)entity.Index << 32) | (uint)entity.Version;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TView Spawn(Entity entity, Transform parent = null)
@@ -76,6 +81,9 @@ namespace Strada.Core.Sync
 
             view.Bind(_container, _entityManager, entity);
             _registry?.Register(view, entity);
+
+            var entityKey = GetEntityKey(entity);
+            _entityToActiveIndex[entityKey] = _active.Count;
             _active.Add(view);
 
             return view;
@@ -95,9 +103,27 @@ namespace Strada.Core.Sync
             if (view == null) return;
             if (_disposed) return;
 
+            var entity = view.Entity;
+            var entityKey = GetEntityKey(entity);
+
             _registry?.Unregister(view);
             view.Unbind();
-            _active.Remove(view);
+
+            // O(1) removal using swap-remove pattern
+            if (_entityToActiveIndex.TryGetValue(entityKey, out int index))
+            {
+                _entityToActiveIndex.Remove(entityKey);
+
+                int lastIndex = _active.Count - 1;
+                if (index < lastIndex)
+                {
+                    // Swap with last element
+                    var lastView = _active[lastIndex];
+                    _active[index] = lastView;
+                    _entityToActiveIndex[GetEntityKey(lastView.Entity)] = index;
+                }
+                _active.RemoveAt(lastIndex);
+            }
 
             if (_available.Count < _maxSize)
             {
@@ -115,14 +141,11 @@ namespace Strada.Core.Sync
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Despawn(Entity entity)
         {
-            for (int i = _active.Count - 1; i >= 0; i--)
+            var entityKey = GetEntityKey(entity);
+            if (_entityToActiveIndex.TryGetValue(entityKey, out int index))
             {
-                var viewEntity = _active[i].Entity;
-                if (viewEntity.Index == entity.Index && viewEntity.Version == entity.Version)
-                {
-                    Despawn(_active[i]);
-                    return;
-                }
+                Despawn(_active[index]);
+                return;
             }
             StradaLog.LogWarning($"[ViewPool<{typeof(TView).Name}>] No match for Entity({entity.Index},{entity.Version}) in {_active.Count} active views", LogModule.Sync);
         }
@@ -159,6 +182,7 @@ namespace Strada.Core.Sync
         public void Clear()
         {
             DespawnAll();
+            _entityToActiveIndex.Clear();
 
             while (_available.Count > 0)
             {

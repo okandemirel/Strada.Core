@@ -1,11 +1,19 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 
 namespace Strada.Core.Sync
 {
     public sealed class ComputedProperty<T> : IReadOnlyReactiveProperty<T>, IDisposable
     {
+        private static readonly ConcurrentDictionary<Type, MethodInfo> s_subscribeMethodCache = new();
+        private static readonly ConcurrentDictionary<Type, MethodInfo> s_unsubscribeMethodCache = new();
+        private static readonly ConcurrentDictionary<Type, MethodInfo> s_invalidateMethodCache = new();
+        private static readonly MethodInfo s_invalidateIgnoreParamMethod = typeof(ComputedProperty<T>)
+            .GetMethod("InvalidateIgnoreParam", BindingFlags.NonPublic | BindingFlags.Instance);
+
         private readonly Func<T> _computation;
         private readonly List<Action<T>> _handlers = new(4);
         private readonly List<IDisposable> _subscriptions = new(4);
@@ -137,7 +145,6 @@ namespace Strada.Core.Sync
 
         private void WatchUntypedDependency(object dependency)
         {
-            // Use reflection to subscribe to the dependency
             var type = dependency.GetType();
             var interfaces = type.GetInterfaces();
 
@@ -146,23 +153,22 @@ namespace Strada.Core.Sync
                 if (iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IReadOnlyReactiveProperty<>))
                 {
                     var depType = iface.GetGenericArguments()[0];
-                    var subscribeMethod = type.GetMethod("Subscribe");
+
+                    // Get or cache Subscribe method
+                    var subscribeMethod = s_subscribeMethodCache.GetOrAdd(type, t => t.GetMethod("Subscribe"));
+
+                    // Get or cache the generic InvalidateIgnoreParam method
+                    var invalidateMethod = s_invalidateMethodCache.GetOrAdd(depType,
+                        dt => s_invalidateIgnoreParamMethod.MakeGenericMethod(dt));
+
+                    // Create handler delegate
                     var handlerType = typeof(Action<>).MakeGenericType(depType);
-
-                    // Create a handler that invalidates this computed property
-                    var invalidateMethod = typeof(ComputedProperty<T>).GetMethod("Invalidate",
-                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-                    var handler = Delegate.CreateDelegate(handlerType,
-                        this,
-                        typeof(ComputedProperty<T>).GetMethod("InvalidateIgnoreParam",
-                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                            .MakeGenericMethod(depType));
+                    var handler = Delegate.CreateDelegate(handlerType, this, invalidateMethod);
 
                     subscribeMethod.Invoke(dependency, new object[] { handler });
 
-                    // Store the subscription for cleanup
-                    var unsubscribeMethod = type.GetMethod("Unsubscribe");
+                    // Get or cache Unsubscribe method
+                    var unsubscribeMethod = s_unsubscribeMethodCache.GetOrAdd(type, t => t.GetMethod("Unsubscribe"));
                     _subscriptions.Add(new UntypedDependencySubscription(dependency, unsubscribeMethod, handler));
                     return;
                 }
@@ -235,10 +241,10 @@ namespace Strada.Core.Sync
         private sealed class UntypedDependencySubscription : IDisposable
         {
             private readonly object _property;
-            private readonly System.Reflection.MethodInfo _unsubscribeMethod;
+            private readonly MethodInfo _unsubscribeMethod;
             private readonly Delegate _handler;
 
-            public UntypedDependencySubscription(object property, System.Reflection.MethodInfo unsubscribeMethod, Delegate handler)
+            public UntypedDependencySubscription(object property, MethodInfo unsubscribeMethod, Delegate handler)
             {
                 _property = property;
                 _unsubscribeMethod = unsubscribeMethod;

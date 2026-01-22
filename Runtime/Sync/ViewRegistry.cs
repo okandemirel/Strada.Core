@@ -10,13 +10,26 @@ namespace Strada.Core.Sync
     public sealed class ViewRegistry : IDisposable
     {
         private readonly Dictionary<long, EntityView> _entityToView = new(256);
-        private readonly List<EntityView> _allViews = new(256);
+        private readonly HashSet<EntityView> _allViews = new(256);
         private readonly EntityManager _entityManager;
         private readonly IContainer _container;
         private bool _disposed;
+        private List<EntityView> _allViewsCache;
+        private bool _cacheInvalid = true;
 
         public int ViewCount => _allViews.Count;
-        public IReadOnlyList<EntityView> AllViews => _allViews;
+        public IReadOnlyList<EntityView> AllViews
+        {
+            get
+            {
+                if (_cacheInvalid || _allViewsCache == null)
+                {
+                    _allViewsCache = new List<EntityView>(_allViews);
+                    _cacheInvalid = false;
+                }
+                return _allViewsCache;
+            }
+        }
 
         public ViewRegistry(EntityManager entityManager, IContainer container)
         {
@@ -40,6 +53,7 @@ namespace Strada.Core.Sync
 
             _entityToView[GetEntityKey(entity)] = view;
             _allViews.Add(view);
+            _cacheInvalid = true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -53,7 +67,10 @@ namespace Strada.Core.Sync
                 _entityToView.Remove(GetEntityKey(view.Entity));
             }
 
-            _allViews.Remove(view);
+            if (_allViews.Remove(view))
+            {
+                _cacheInvalid = true;
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -65,7 +82,10 @@ namespace Strada.Core.Sync
             if (_entityToView.TryGetValue(key, out var view))
             {
                 _entityToView.Remove(key);
-                _allViews.Remove(view);
+                if (_allViews.Remove(view))
+                {
+                    _cacheInvalid = true;
+                }
             }
         }
 
@@ -108,9 +128,9 @@ namespace Strada.Core.Sync
 
         public void SyncAll()
         {
-            for (int i = 0; i < _allViews.Count; i++)
+            foreach (var view in _allViews)
             {
-                _allViews[i].SyncBindings();
+                view.SyncBindings();
             }
         }
 
@@ -120,9 +140,9 @@ namespace Strada.Core.Sync
         /// </summary>
         public void ForceSyncAll()
         {
-            for (int i = 0; i < _allViews.Count; i++)
+            foreach (var view in _allViews)
             {
-                _allViews[i].ForceSyncBindings();
+                view.ForceSyncBindings();
             }
         }
 
@@ -135,6 +155,7 @@ namespace Strada.Core.Sync
 
             _entityToView.Clear();
             _allViews.Clear();
+            _cacheInvalid = true;
         }
 
         public void Dispose()

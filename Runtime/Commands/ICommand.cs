@@ -1,26 +1,8 @@
-using System;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Strada.Core.Commands
 {
-    /// <summary>
-    /// Async command that supports modern async/await with CancellationToken.
-    /// Used for standalone async operations (not struct signals).
-    /// </summary>
-    public interface IAsyncAwaitCommand
-    {
-        ValueTask ExecuteAsync(CancellationToken ct = default);
-    }
-
-    /// <summary>
-    /// Async command with parameter that supports modern async/await.
-    /// </summary>
-    public interface IAsyncAwaitCommand<in T>
-    {
-        ValueTask ExecuteAsync(T parameter, CancellationToken ct = default);
-    }
-
     /// <summary>
     /// Handler for struct-based signals (synchronous).
     /// </summary>

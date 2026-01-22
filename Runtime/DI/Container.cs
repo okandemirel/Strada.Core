@@ -8,6 +8,27 @@ using Strada.Core.Logging;
 
 namespace Strada.Core.DI
 {
+    /// <summary>
+    /// High-performance dependency injection container with support for Singleton, Transient, and Scoped lifetimes.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Container instances should be created using <see cref="ContainerBuilder"/> and typically live for the
+    /// duration of the application. The container is thread-safe for resolution operations.
+    /// </para>
+    /// <para>
+    /// Singleton resolution uses lock-free patterns with Interlocked.CompareExchange for optimal performance.
+    /// Scoped services require creating a scope via <see cref="CreateScope"/>.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// var builder = new ContainerBuilder();
+    /// builder.Register&lt;IMyService, MyService&gt;(Lifetime.Singleton);
+    /// using var container = builder.Build();
+    /// var service = container.Resolve&lt;IMyService&gt;();
+    /// </code>
+    /// </example>
     public sealed class Container : IContainer, IIndexResolver
     {
         private readonly Stack<IDisposable> _disposalStack = new Stack<IDisposable>();
@@ -42,6 +63,17 @@ namespace Strada.Core.DI
             BuildFactories(registrations, typeIdMap);
         }
 
+        /// <summary>
+        /// Resolves an instance of the specified service type.
+        /// </summary>
+        /// <typeparam name="T">The service type to resolve.</typeparam>
+        /// <returns>An instance of the requested service type.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when the type is not registered.</exception>
+        /// <exception cref="ObjectDisposedException">Thrown when the container has been disposed.</exception>
+        /// <remarks>
+        /// This method is optimized for high-frequency calls. Singleton resolution uses lock-free patterns.
+        /// For Scoped services, use <see cref="CreateScope"/> to create a scope first.
+        /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T Resolve<T>() where T : class
         {
@@ -52,15 +84,8 @@ namespace Strada.Core.DI
                 var index = _typeIdToIndex[typeId];
                 if (index >= 0)
                 {
-                    var lifetime = _lifetimes[index];
-                    if (lifetime == Lifetime.Singleton || lifetime == Lifetime.Scoped)
-                    {
-                        lock (_lock)
-                        {
-                            return (T)_factories[index](this);
-                        }
-                    }
-                    
+                    // Singleton uses lock-free Interlocked.CompareExchange internally
+                    // Only Scoped needs locking for scope-specific instance tracking
                     return (T)_factories[index](this);
                 }
             }
@@ -76,42 +101,59 @@ namespace Strada.Core.DI
         private void ThrowDisposed() =>
             throw new ObjectDisposedException(nameof(Container));
 
+        /// <summary>
+        /// Resolves an instance of the specified service type using a Type parameter.
+        /// </summary>
+        /// <param name="type">The service type to resolve.</param>
+        /// <returns>An instance of the requested service type.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when the type is not registered.</exception>
+        /// <exception cref="ObjectDisposedException">Thrown when the container has been disposed.</exception>
         public object Resolve(Type type)
         {
             if (_disposed) ThrowDisposed();
             return ResolveByType(type);
         }
 
+        /// <summary>
+        /// Attempts to resolve an instance of the specified service type without throwing an exception.
+        /// </summary>
+        /// <typeparam name="T">The service type to resolve.</typeparam>
+        /// <param name="instance">When this method returns, contains the resolved instance if successful; otherwise, null.</param>
+        /// <returns>true if the service was successfully resolved; otherwise, false.</returns>
         public bool TryResolve<T>(out T instance) where T : class
         {
             var typeId = TypeId<T>.Id;
             if (typeId <= _maxTypeId && _typeIdToIndex[typeId] >= 0)
             {
                 var index = _typeIdToIndex[typeId];
-                var lifetime = _lifetimes[index];
-                if (lifetime == Lifetime.Singleton || lifetime == Lifetime.Scoped)
-                {
-                    lock (_lock)
-                    {
-                        instance = (T)_factories[index](this);
-                    }
-                }
-                else
-                {
-                    instance = (T)_factories[index](this);
-                }
+                // Singleton uses lock-free Interlocked.CompareExchange internally
+                instance = (T)_factories[index](this);
                 return true;
             }
             instance = null;
             return false;
         }
 
+        /// <summary>
+        /// Creates a new scope for resolving scoped services.
+        /// </summary>
+        /// <returns>A new container scope that should be disposed when no longer needed.</returns>
+        /// <exception cref="ObjectDisposedException">Thrown when the container has been disposed.</exception>
+        /// <remarks>
+        /// Scoped services will return the same instance within a single scope but different instances
+        /// across different scopes. The scope must be disposed to properly clean up scoped instances.
+        /// </remarks>
         public IContainerScope CreateScope()
         {
             if (_disposed) ThrowDisposed();
             return new ContainerScope(this, _factories, _scopedFactories, _lifetimes, _typeIdToIndex, _maxTypeId, _singletons);
         }
 
+        /// <summary>
+        /// Checks whether a service type is registered in the container.
+        /// </summary>
+        /// <typeparam name="T">The service type to check.</typeparam>
+        /// <returns>true if the type is registered; otherwise, false.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsRegistered<T>() where T : class
         {
@@ -119,6 +161,11 @@ namespace Strada.Core.DI
             return typeId <= _maxTypeId && _typeIdToIndex[typeId] >= 0;
         }
 
+        /// <summary>
+        /// Checks whether a service type is registered in the container using a Type parameter.
+        /// </summary>
+        /// <param name="type">The service type to check.</param>
+        /// <returns>true if the type is registered; otherwise, false.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsRegistered(Type type)
         {

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 
 namespace Strada.Core.Logging
@@ -14,6 +15,10 @@ namespace Strada.Core.Logging
         private static readonly List<LogEntry> _logBuffer = new List<LogEntry>();
         private static int _bufferHead;
         private static int _totalCount;
+
+        [ThreadStatic]
+        private static StringBuilder t_stringBuilder;
+        private const int StringBuilderCapacity = 256;
 
         /// <summary>
         /// Event raised when a new log entry is added.
@@ -256,8 +261,28 @@ namespace Strada.Core.Logging
 
         private static string FormatMessage(string message, LogModule module, bool isDeepLog)
         {
-            var prefix = isDeepLog ? "[DEEP]" : "";
-            return $"[Strada][{module}]{prefix} {message}";
+            var sb = t_stringBuilder;
+            if (sb == null)
+            {
+                sb = new StringBuilder(StringBuilderCapacity);
+                t_stringBuilder = sb;
+            }
+            else
+            {
+                sb.Clear();
+            }
+
+            sb.Append("[Strada][");
+            sb.Append(module.ToString());
+            sb.Append(']');
+            if (isDeepLog)
+            {
+                sb.Append("[DEEP]");
+            }
+            sb.Append(' ');
+            sb.Append(message);
+
+            return sb.ToString();
         }
 
         private static void OutputToUnityConsole(string message, LogType type)
