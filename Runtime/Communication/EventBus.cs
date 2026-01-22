@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Strada.Core.Commands;
+using Strada.Core.Logging;
 
 namespace Strada.Core.Communication
 {
@@ -163,11 +164,10 @@ namespace Strada.Core.Communication
                 // Warn if overwriting an existing handler
                 if (_signalHandlers[id] != null)
                 {
-#if UNITY_EDITOR || DEBUG
-                    UnityEngine.Debug.LogWarning(
-                        $"[EventBus] Warning: Signal handler for '{typeof(TSignal).Name}' already registered. " +
-                        "Previous handler will be replaced. Consider using UnregisterSignalHandler first or use Events for multiple subscribers.");
-#endif
+                    StradaLog.LogWarning(
+                        $"Signal handler for '{typeof(TSignal).Name}' already registered. " +
+                        "Previous handler will be replaced. Consider using UnregisterSignalHandler first or use Events for multiple subscribers.",
+                        LogModule.Core);
                 }
 
                 _signalHandlers[id] = handler;
