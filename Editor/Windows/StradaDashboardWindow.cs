@@ -7,6 +7,8 @@ using Strada.Core.Editor.DataProviders;
 using Strada.Core.Editor.DataProviders.Models;
 using Strada.Core.Editor.Graph;
 using Strada.Core.Editor.Profiling;
+using Strada.Core.Editor.Validation;
+using Strada.Core.Modules;
 using UnityEditor;
 using UnityEngine;
 using EditorUpdatePhase = Strada.Core.Editor.DataProviders.Models.UpdatePhase;
@@ -519,6 +521,101 @@ namespace Strada.Core.Editor.Windows
             {
                 GUILayout.Label("No CD_ config assets found.", EditorStyles.miniLabel);
             }
+            EditorGUILayout.EndVertical();
+
+            EditorGUILayout.Space(10);
+
+            // ModuleConfig Assets Discovery
+            EditorGUILayout.BeginVertical(_statsBoxStyle);
+            EditorGUILayout.LabelField("ModuleConfig Assets", EditorStyles.boldLabel);
+
+            var moduleGuids = AssetDatabase.FindAssets("t:ModuleConfig");
+            if (moduleGuids.Length > 0)
+            {
+                foreach (var guid in moduleGuids)
+                {
+                    var assetPath = AssetDatabase.GUIDToAssetPath(guid);
+                    var moduleConfig = AssetDatabase.LoadAssetAtPath<ModuleConfig>(assetPath);
+                    if (moduleConfig != null)
+                    {
+                        EditorGUILayout.BeginHorizontal();
+                        var statusIcon = moduleConfig.Enabled ? "[ON]" : "[OFF]";
+                        var statusColor = moduleConfig.Enabled ? _normalColor : Color.gray;
+                        var prevColor = GUI.contentColor;
+                        GUI.contentColor = statusColor;
+                        GUILayout.Label(statusIcon, EditorStyles.miniLabel, GUILayout.Width(30));
+                        GUI.contentColor = prevColor;
+
+                        if (GUILayout.Button(moduleConfig.ModuleName, EditorStyles.miniLabel))
+                        {
+                            Selection.activeObject = moduleConfig;
+                            EditorGUIUtility.PingObject(moduleConfig);
+                        }
+
+                        GUILayout.Label($"P:{moduleConfig.Priority}", EditorStyles.miniLabel, GUILayout.Width(35));
+                        GUILayout.Label($"S:{moduleConfig.Systems.Count} Svc:{moduleConfig.Services.Count}", EditorStyles.miniLabel, GUILayout.Width(80));
+                        GUILayout.FlexibleSpace();
+                        EditorGUILayout.EndHorizontal();
+                    }
+                }
+                GUILayout.Label($"Total: {moduleGuids.Length} module configs found", EditorStyles.miniLabel);
+            }
+            else
+            {
+                GUILayout.Label("No ModuleConfig assets found in project.", EditorStyles.miniLabel);
+            }
+
+            EditorGUILayout.EndVertical();
+
+            EditorGUILayout.Space(10);
+
+            // Architecture Validation
+            EditorGUILayout.BeginVertical(_statsBoxStyle);
+            EditorGUILayout.LabelField("Architecture Validation", EditorStyles.boldLabel);
+
+            try
+            {
+                var validator = ArchitectureValidator.Instance;
+                GUILayout.Label($"Rules loaded: {validator.Rules.Count}", EditorStyles.miniLabel);
+
+                EditorGUILayout.BeginHorizontal();
+                if (GUILayout.Button("Run Validation", GUILayout.Height(24), GUILayout.Width(120)))
+                {
+                    var issues = validator.ValidateAll().ToList();
+                    if (issues.Count == 0)
+                    {
+                        AddAlert("Architecture validation passed - no issues found", _normalColor, 5f);
+                    }
+                    else
+                    {
+                        var errors = issues.Count(i => i.Severity == Validation.ValidationSeverity.Error);
+                        var warnings = issues.Count(i => i.Severity == Validation.ValidationSeverity.Warning);
+                        AddAlert($"Validation: {errors} errors, {warnings} warnings found", errors > 0 ? _criticalColor : _warningColor, 8f);
+
+                        foreach (var issue in issues.Take(20))
+                        {
+                            var prefix = issue.Severity == Validation.ValidationSeverity.Error ? "ERROR" : "WARN";
+                            Debug.Log($"[Strada Arch] [{prefix}] {issue.Message}" +
+                                (issue.RelatedType != null ? $" (Type: {issue.RelatedType.Name})" : "") +
+                                (issue.SuggestedFix != null ? $" Fix: {issue.SuggestedFix}" : ""));
+                        }
+                    }
+                }
+                GUILayout.FlexibleSpace();
+                EditorGUILayout.EndHorizontal();
+
+                EditorGUILayout.Space(3);
+                GUILayout.Label("Rules:", EditorStyles.miniLabel);
+                foreach (var rule in validator.Rules)
+                {
+                    GUILayout.Label($"  - {rule.RuleName}", EditorStyles.miniLabel);
+                }
+            }
+            catch (Exception ex)
+            {
+                EditorGUILayout.HelpBox($"Architecture validator unavailable: {ex.Message}", MessageType.Warning);
+            }
+
             EditorGUILayout.EndVertical();
 
             EditorGUILayout.Space(10);
@@ -1239,8 +1336,8 @@ namespace Strada.Core.Editor.Windows
             {
                 foreach (var issue in validation.Issues)
                 {
-                    var msgType = issue.Severity == ValidationSeverity.Error ? MessageType.Error :
-                                  issue.Severity == ValidationSeverity.Warning ? MessageType.Warning :
+                    var msgType = issue.Severity == DataProviders.ValidationSeverity.Error ? MessageType.Error :
+                                  issue.Severity == DataProviders.ValidationSeverity.Warning ? MessageType.Warning :
                                   MessageType.Info;
                     EditorGUILayout.HelpBox(issue.Message, msgType);
                 }
@@ -1797,8 +1894,58 @@ namespace Strada.Core.Editor.Windows
             RefreshEntityList();
             RefreshModuleList();
             RefreshMessageList();
+            CheckForAlerts();
 
             _lastRefreshTime = EditorApplication.timeSinceStartup;
+        }
+
+        private void CheckForAlerts()
+        {
+            // Check for circular dependency in DI container
+            if (_containerProvider.IsAvailable && _containerProvider.HasCircularDependency(out var cycle))
+            {
+                var cycleDesc = cycle != null ? string.Join(" -> ", cycle.Select(t => t.Name)) : "unknown";
+                if (!_alerts.Any(a => a.Message.Contains("Circular dependency in DI")))
+                {
+                    AddAlert($"Circular dependency in DI container: {cycleDesc}", _criticalColor);
+                }
+            }
+
+            // Check for module validation failures
+            if (_moduleProvider.IsAvailable)
+            {
+                var validation = _moduleProvider.ValidateModules();
+                if (!validation.IsValid)
+                {
+                    foreach (var issue in validation.Issues.Where(i => i.Severity == DataProviders.ValidationSeverity.Error))
+                    {
+                        if (!_alerts.Any(a => a.Message == issue.Message))
+                        {
+                            AddAlert(issue.Message, _criticalColor);
+                        }
+                    }
+                }
+            }
+
+            // Check for system execution threshold exceeded
+            if (_isRecording)
+            {
+                var metricsByPhase = _profiler.GetMetricsByPhase();
+                foreach (EditorUpdatePhase phase in Enum.GetValues(typeof(EditorUpdatePhase)))
+                {
+                    foreach (var metrics in metricsByPhase[phase])
+                    {
+                        if (metrics.LastExecutionMs >= _criticalThresholdMs)
+                        {
+                            var msg = $"System {metrics.SystemType.Name} exceeded threshold: {metrics.LastExecutionMs:F2}ms";
+                            if (!_alerts.Any(a => a.Message.Contains(metrics.SystemType.Name) && a.Message.Contains("exceeded")))
+                            {
+                                AddAlert(msg, _criticalColor);
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         private void RefreshCurrentTab()
@@ -1836,6 +1983,12 @@ namespace Strada.Core.Editor.Windows
             _selectedMessageIndex = -1;
             _hoveredNode = null;
             _hoveredModuleNode = null;
+
+            _serviceCountHistory.Clear();
+            _entityCountHistory.Clear();
+            _moduleCountHistory.Clear();
+            _messageCountHistory.Clear();
+            _alerts.Clear();
         }
 
         private void NavigateToSource(Type type)
