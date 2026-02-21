@@ -169,7 +169,6 @@ namespace Strada.Core.Editor.Windows
             }
 
             DrawToolbar();
-            DrawToolbar();
 
             if (_viewMode == ViewMode.Inspector)
             {
@@ -249,11 +248,6 @@ namespace Strada.Core.Editor.Windows
             if (_filteredEntityIds.Count != _allEntityIds.Count)
             {
                 GUILayout.Label($"Filtered: {_filteredEntityIds.Count}", EditorStyles.toolbarButton);
-            }
-
-            if (GUILayout.Button("Refresh", EditorStyles.toolbarButton, GUILayout.Width(55)))
-            {
-                RefreshEntityList();
             }
 
             if (GUILayout.Button("Refresh", EditorStyles.toolbarButton, GUILayout.Width(55)))
