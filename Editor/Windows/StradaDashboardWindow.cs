@@ -88,6 +88,34 @@ namespace Strada.Core.Editor.Windows
         private readonly Color _criticalColor = new Color(1.0f, 0.4f, 0.4f);
         private readonly Color _normalColor = new Color(0.7f, 0.9f, 0.7f);
 
+        // FPS tracking
+        private double _lastFpsTime;
+        private int _frameCount;
+        private float _currentFps;
+        private float _currentFrameTime;
+        private double _previousUpdateTime;
+
+        // Sparkline history
+        private const int SparklineHistorySize = 30;
+        private List<float> _serviceCountHistory = new List<float>();
+        private List<float> _entityCountHistory = new List<float>();
+        private List<float> _moduleCountHistory = new List<float>();
+        private List<float> _messageCountHistory = new List<float>();
+
+        // Quick Actions
+        private bool _showQuickActions = true;
+
+        // Alerts
+        private List<AlertInfo> _alerts = new List<AlertInfo>();
+
+        private struct AlertInfo
+        {
+            public string Message;
+            public Color Color;
+            public double CreatedTime;
+            public float DurationSeconds;
+        }
+
         public static void ShowWindow()
         {
             var window = GetWindow<StradaDashboardWindow>("Strada Dashboard");
@@ -143,14 +171,76 @@ namespace Strada.Core.Editor.Windows
 
         private void OnInspectorUpdate()
         {
+            // FPS tracking (works in both play and edit mode)
+            var currentTime = EditorApplication.timeSinceStartup;
+            if (_previousUpdateTime > 0)
+            {
+                _currentFrameTime = (float)(currentTime - _previousUpdateTime) * 1000f;
+            }
+            _previousUpdateTime = currentTime;
+            _frameCount++;
+
+            if (currentTime - _lastFpsTime >= 1.0)
+            {
+                _currentFps = _frameCount / (float)(currentTime - _lastFpsTime);
+                _frameCount = 0;
+                _lastFpsTime = currentTime;
+            }
+
             if (!Application.isPlaying || !_autoRefresh) return;
 
-            if (EditorApplication.timeSinceStartup - _lastRefreshTime > _refreshInterval)
+            if (currentTime - _lastRefreshTime > _refreshInterval)
             {
                 RefreshCurrentTab();
-                _lastRefreshTime = EditorApplication.timeSinceStartup;
+                UpdateSparklineHistory();
+                _lastRefreshTime = currentTime;
                 Repaint();
             }
+        }
+
+        private void UpdateSparklineHistory()
+        {
+            if (_containerProvider.IsAvailable)
+            {
+                var snapshot = _containerProvider.GetData();
+                AddToHistory(_serviceCountHistory, snapshot?.RegistrationCount ?? 0);
+            }
+
+            if (_worldProvider.IsAvailable)
+            {
+                var snapshot = _worldProvider.GetData();
+                AddToHistory(_entityCountHistory, snapshot?.EntityCount ?? 0);
+            }
+
+            if (_moduleProvider.IsAvailable)
+            {
+                var snapshot = _moduleProvider.GetData();
+                AddToHistory(_moduleCountHistory, snapshot?.ModuleCount ?? 0);
+            }
+
+            if (_busProvider.IsAvailable)
+            {
+                var entries = _busProvider.GetLogEntries();
+                AddToHistory(_messageCountHistory, entries.Count);
+            }
+        }
+
+        private void AddToHistory(List<float> history, float value)
+        {
+            history.Add(value);
+            while (history.Count > SparklineHistorySize)
+                history.RemoveAt(0);
+        }
+
+        private void AddAlert(string message, Color color, float duration = 10f)
+        {
+            _alerts.Add(new AlertInfo
+            {
+                Message = message,
+                Color = color,
+                CreatedTime = EditorApplication.timeSinceStartup,
+                DurationSeconds = duration
+            });
         }
 
         private void OnContainerDataChanged() => Repaint();
@@ -187,13 +277,16 @@ namespace Strada.Core.Editor.Windows
             InitStyles();
 
             DrawToolbar();
+            DrawAlerts();
             DrawStatusBar();
 
             if (!Application.isPlaying)
             {
-                DrawNotPlayingMessage();
+                DrawEditModeContent();
                 return;
             }
+
+            DrawQuickActionsPanel();
 
             var newTab = GUILayout.Toolbar(_selectedTab, _tabNames);
             if (newTab != _selectedTab)
@@ -278,6 +371,19 @@ namespace Strada.Core.Editor.Windows
 
             GUILayout.FlexibleSpace();
 
+            // FPS & Frame Time display
+            if (_currentFps > 0)
+            {
+                var fpsColor = _currentFps > 55 ? Color.green : _currentFps > 30 ? _warningColor : _criticalColor;
+                var prevFpsColor = GUI.contentColor;
+                GUI.contentColor = fpsColor;
+                GUILayout.Label($"FPS: {_currentFps:F0}", EditorStyles.miniLabel, GUILayout.Width(55));
+                GUILayout.Label($"Frame: {_currentFrameTime:F1}ms", EditorStyles.miniLabel, GUILayout.Width(85));
+                GUI.contentColor = prevFpsColor;
+            }
+
+            GUILayout.Space(10);
+
             if (_lastRefreshTime > 0)
             {
                 var elapsed = EditorApplication.timeSinceStartup - _lastRefreshTime;
@@ -295,6 +401,7 @@ namespace Strada.Core.Editor.Windows
                 if (snapshot != null)
                 {
                     GUILayout.Label($"Services: {snapshot.RegistrationCount}", EditorStyles.miniLabel);
+                    DrawInlineSparkline(_serviceCountHistory, _singletonColor);
                     GUILayout.Space(10);
                 }
             }
@@ -305,6 +412,7 @@ namespace Strada.Core.Editor.Windows
                 if (snapshot != null)
                 {
                     GUILayout.Label($"Entities: {snapshot.EntityCount}", EditorStyles.miniLabel);
+                    DrawInlineSparkline(_entityCountHistory, _scopedColor);
                     GUILayout.Space(10);
                 }
             }
@@ -315,6 +423,7 @@ namespace Strada.Core.Editor.Windows
                 if (snapshot != null)
                 {
                     GUILayout.Label($"Modules: {snapshot.ModuleCount}", EditorStyles.miniLabel);
+                    DrawInlineSparkline(_moduleCountHistory, _transientColor);
                     GUILayout.Space(10);
                 }
             }
@@ -323,39 +432,194 @@ namespace Strada.Core.Editor.Windows
             {
                 var entries = _busProvider.GetLogEntries();
                 GUILayout.Label($"Messages: {entries.Count}", EditorStyles.miniLabel);
+                DrawInlineSparkline(_messageCountHistory, _warningColor);
             }
         }
 
-        private void DrawNotPlayingMessage()
+        private void DrawInlineSparkline(List<float> values, Color color)
         {
-            GUILayout.Space(50);
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.FlexibleSpace();
+            if (values.Count < 2) return;
 
-            EditorGUILayout.BeginVertical(GUILayout.Width(500));
-            EditorGUILayout.HelpBox(
-                "STRADA DASHBOARD\n\n" +
-                "Unified view of the Strada Framework runtime state:\n\n" +
-                "• DI Container - Service registrations and dependency graph\n" +
-                "• ECS World - Entity inspection and component editing\n" +
-                "• Modules - Module dependencies and initialization order\n" +
-                "• Bus Activity - Message logging and debugging\n" +
-                "• Performance - System profiling and benchmarks\n\n" +
-                "Enter Play Mode to view runtime data.",
-                MessageType.Info);
+            var rect = GUILayoutUtility.GetRect(40, 12, GUILayout.Width(40), GUILayout.Height(12));
+            EditorGUI.DrawRect(rect, new Color(0.15f, 0.15f, 0.15f, 0.5f));
 
+            float min = float.MaxValue, max = float.MinValue;
+            foreach (var v in values)
+            {
+                if (v < min) min = v;
+                if (v > max) max = v;
+            }
+            float range = max - min;
+            if (range < 0.001f) range = 1f;
+
+            float stepX = rect.width / (values.Count - 1);
+            for (int i = 0; i < values.Count; i++)
+            {
+                float normalized = (values[i] - min) / range;
+                float height = Mathf.Max(1, normalized * (rect.height - 2));
+                float x = rect.x + i * stepX;
+                float y = rect.yMax - 1 - height;
+                EditorGUI.DrawRect(new Rect(x, y, Mathf.Max(1, stepX - 0.5f), height), color);
+            }
+        }
+
+        private void DrawEditModeContent()
+        {
             GUILayout.Space(10);
 
+            EditorGUILayout.BeginVertical(_statsBoxStyle);
+            EditorGUILayout.LabelField("STRADA DASHBOARD - Edit Mode", _headerStyle);
+            EditorGUILayout.Space(5);
+
+            // Quick Links to editor windows
+            EditorGUILayout.LabelField("Quick Links", EditorStyles.boldLabel);
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Entity Inspector", GUILayout.Height(28)))
+                StradaEntityInspectorWindow.ShowWindow();
+            if (GUILayout.Button("Bus Debugger", GUILayout.Height(28)))
+                BusDebuggerWindow.ShowWindow();
+            if (GUILayout.Button("System Profiler", GUILayout.Height(28)))
+                SystemProfilerWindow.ShowWindow();
+            if (GUILayout.Button("Time Machine", GUILayout.Height(28)))
+                TimeMachineWindow.ShowWindow();
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Dependency Graph", GUILayout.Height(28)))
+                DependencyGraphWindow.ShowWindow();
+            if (GUILayout.Button("Module Graph", GUILayout.Height(28)))
+                ModuleGraphWindow.ShowWindow();
+            if (GUILayout.Button("Config Manager", GUILayout.Height(28)))
+                StradaConfigDataManagerWindow.ShowWindow();
+            if (GUILayout.Button("Benchmark Runner", GUILayout.Height(28)))
+                BenchmarkRunnerWindow.ShowWindow();
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.EndVertical();
+
+            EditorGUILayout.Space(10);
+
+            // Config Assets Discovery
+            EditorGUILayout.BeginVertical(_statsBoxStyle);
+            EditorGUILayout.LabelField("Config Assets (CD_*)", EditorStyles.boldLabel);
+            var configAssets = StradaConfigDataManagerWindow.DiscoverConfigs();
+            if (configAssets.Count > 0)
+            {
+                var grouped = configAssets.GroupBy(c => c.Category).OrderBy(g => g.Key);
+                foreach (var group in grouped)
+                {
+                    EditorGUILayout.BeginHorizontal();
+                    GUILayout.Label($"  {group.Key}: {group.Count()}", EditorStyles.miniLabel);
+                    EditorGUILayout.EndHorizontal();
+                }
+                EditorGUILayout.Space(3);
+                GUILayout.Label($"Total: {configAssets.Count} config assets found", EditorStyles.miniLabel);
+            }
+            else
+            {
+                GUILayout.Label("No CD_ config assets found.", EditorStyles.miniLabel);
+            }
+            EditorGUILayout.EndVertical();
+
+            EditorGUILayout.Space(10);
+
+            // Enter Play Mode button
             EditorGUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
-            if (GUILayout.Button("Enter Play Mode", GUILayout.Height(30), GUILayout.Width(150)))
+            if (GUILayout.Button("Enter Play Mode", GUILayout.Height(35), GUILayout.Width(180)))
             {
                 EditorApplication.isPlaying = true;
             }
             GUILayout.FlexibleSpace();
             EditorGUILayout.EndHorizontal();
+        }
 
-            EditorGUILayout.EndVertical();
+        private void DrawAlerts()
+        {
+            // Remove expired alerts
+            var now = EditorApplication.timeSinceStartup;
+            _alerts.RemoveAll(a => now - a.CreatedTime > a.DurationSeconds);
+
+            if (_alerts.Count == 0) return;
+
+            foreach (var alert in _alerts.ToList())
+            {
+                var prevBg = GUI.backgroundColor;
+                GUI.backgroundColor = alert.Color;
+                EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
+                GUI.backgroundColor = prevBg;
+
+                var prevContent = GUI.contentColor;
+                GUI.contentColor = alert.Color;
+                GUILayout.Label("!", EditorStyles.boldLabel, GUILayout.Width(15));
+                GUI.contentColor = prevContent;
+
+                GUILayout.Label(alert.Message, EditorStyles.miniLabel);
+                GUILayout.FlexibleSpace();
+
+                if (GUILayout.Button("x", EditorStyles.miniButton, GUILayout.Width(18)))
+                {
+                    _alerts.Remove(alert);
+                }
+
+                EditorGUILayout.EndHorizontal();
+            }
+        }
+
+        private void DrawQuickActionsPanel()
+        {
+            EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
+            _showQuickActions = EditorGUILayout.Foldout(_showQuickActions, "Quick Actions", true);
+            EditorGUILayout.EndHorizontal();
+
+            if (!_showQuickActions) return;
+
+            EditorGUILayout.BeginHorizontal(_statsBoxStyle);
+
+            if (GUILayout.Button("Create Entity", EditorStyles.miniButton, GUILayout.Width(100)))
+            {
+                if (World.Current?.EntityManager != null)
+                {
+                    World.Current.EntityManager.CreateEntity();
+                    AddAlert("Entity created successfully", _normalColor, 3f);
+                }
+                else
+                {
+                    AddAlert("No active World found", _warningColor, 3f);
+                }
+            }
+
+            GUILayout.Space(5);
+
+            if (GUILayout.Button("Clear Bus Log", EditorStyles.miniButton, GUILayout.Width(100)))
+            {
+                _busProvider?.ClearLog();
+                AddAlert("Bus log cleared", _normalColor, 3f);
+            }
+
+            GUILayout.Space(5);
+
+            if (GUILayout.Button("Force GC", EditorStyles.miniButton, GUILayout.Width(80)))
+            {
+                var before = System.GC.GetTotalMemory(false);
+                System.GC.Collect();
+                System.GC.WaitForPendingFinalizers();
+                System.GC.Collect();
+                var after = System.GC.GetTotalMemory(true);
+                var freed = (before - after) / 1024f;
+                AddAlert($"GC collected: freed ~{freed:F0} KB", _normalColor, 5f);
+            }
+
+            GUILayout.Space(5);
+
+            if (GUILayout.Button("Take Snapshot", EditorStyles.miniButton, GUILayout.Width(100)))
+            {
+                var entityCount = _worldProvider.IsAvailable ? (_worldProvider.GetData()?.EntityCount ?? 0) : 0;
+                var serviceCount = _containerProvider.IsAvailable ? (_containerProvider.GetData()?.RegistrationCount ?? 0) : 0;
+                var msgCount = _busProvider.IsAvailable ? _busProvider.GetLogEntries().Count : 0;
+                Debug.Log($"[Strada Snapshot] Entities: {entityCount} | Services: {serviceCount} | Messages: {msgCount} | FPS: {_currentFps:F0}");
+                AddAlert("Snapshot logged to Console", _normalColor, 3f);
+            }
 
             GUILayout.FlexibleSpace();
             EditorGUILayout.EndHorizontal();
