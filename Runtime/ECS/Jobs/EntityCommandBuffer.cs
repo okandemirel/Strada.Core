@@ -240,6 +240,7 @@ namespace Strada.Core.ECS.Jobs
             private int _position;
 
             public bool HasRemaining => _position < _data.Length;
+            public int Remaining => _data.Length - _position;
 
             public CommandReader(NativeArray<byte> data)
             {
@@ -248,14 +249,26 @@ namespace Strada.Core.ECS.Jobs
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public EntityOperation ReadCommand() => (EntityOperation)_data[_position++];
+            public EntityOperation ReadCommand()
+            {
+                if (Remaining < 1)
+                    throw new InvalidOperationException("Command stream overflow: not enough bytes to read command");
+                return (EntityOperation)_data[_position++];
+            }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public byte ReadByte() => _data[_position++];
+            public byte ReadByte()
+            {
+                if (Remaining < 1)
+                    throw new InvalidOperationException("Command stream overflow: not enough bytes to read byte");
+                return _data[_position++];
+            }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public unsafe int ReadInt()
             {
+                if (Remaining < 4)
+                    throw new InvalidOperationException("Command stream overflow: not enough bytes to read int");
                 int value = 0;
                 var ptr = (byte*)&value;
                 ptr[0] = _data[_position++];
@@ -268,6 +281,8 @@ namespace Strada.Core.ECS.Jobs
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public unsafe ulong ReadULong()
             {
+                if (Remaining < 8)
+                    throw new InvalidOperationException("Command stream overflow: not enough bytes to read ulong");
                 ulong value = 0;
                 var ptr = (byte*)&value;
                 for (int i = 0; i < 8; i++)
@@ -278,6 +293,8 @@ namespace Strada.Core.ECS.Jobs
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public unsafe byte* ReadBytes(int count)
             {
+                if (count < 0 || Remaining < count)
+                    throw new InvalidOperationException($"Command stream overflow: requested {count} bytes but only {Remaining} remaining");
                 byte* result = (byte*)_data.GetUnsafeReadOnlyPtr() + _position;
                 _position += count;
                 return result;
@@ -346,8 +363,14 @@ namespace Strada.Core.ECS.Jobs
 
     internal class ComponentPlaybackHandler<T> : IComponentPlaybackHandler where T : unmanaged, IComponent
     {
+        private static readonly int ExpectedSize = sizeof(T);
+
         public unsafe void AddComponent(EntityManager em, Entity entity, byte* data, int size)
         {
+            if (size != ExpectedSize)
+                throw new InvalidOperationException(
+                    $"Component size mismatch for {typeof(T).Name}: expected {ExpectedSize} bytes but got {size} bytes");
+
             T component = *(T*)data;
             em.AddComponent(entity, component);
         }
@@ -359,6 +382,10 @@ namespace Strada.Core.ECS.Jobs
 
         public unsafe void SetComponent(EntityManager em, Entity entity, byte* data, int size)
         {
+            if (size != ExpectedSize)
+                throw new InvalidOperationException(
+                    $"Component size mismatch for {typeof(T).Name}: expected {ExpectedSize} bytes but got {size} bytes");
+
             T component = *(T*)data;
             em.SetComponent(entity, component);
         }

@@ -19,7 +19,7 @@ namespace Strada.Core.DI
         private readonly int _maxTypeId;
         private readonly Type[] _registeredTypes;
         private int _registeredCount;
-        private bool _disposed;
+        private volatile bool _disposed;
 
         internal Container(Dictionary<Type, Registration> registrations, bool autoRegisterSelf = false)
         {
@@ -50,18 +50,7 @@ namespace Strada.Core.DI
             {
                 var index = _typeIdToIndex[typeId];
                 if (index >= 0)
-                {
-                    var lifetime = _lifetimes[index];
-                    if (lifetime == Lifetime.Singleton || lifetime == Lifetime.Scoped)
-                    {
-                        lock (_lock)
-                        {
-                            return (T)_factories[index](this);
-                        }
-                    }
-                    
                     return (T)_factories[index](this);
-                }
             }
             ThrowNotRegistered<T>();
             return default;
@@ -87,18 +76,7 @@ namespace Strada.Core.DI
             if (typeId <= _maxTypeId && _typeIdToIndex[typeId] >= 0)
             {
                 var index = _typeIdToIndex[typeId];
-                var lifetime = _lifetimes[index];
-                if (lifetime == Lifetime.Singleton || lifetime == Lifetime.Scoped)
-                {
-                    lock (_lock)
-                    {
-                        instance = (T)_factories[index](this);
-                    }
-                }
-                else
-                {
-                    instance = (T)_factories[index](this);
-                }
+                instance = (T)_factories[index](this);
                 return true;
             }
             instance = null;
@@ -235,11 +213,11 @@ namespace Strada.Core.DI
                 {
                     _factories[index] = _ =>
                     {
-                        var instance = _singletons[index];
+                        var instance = Volatile.Read(ref _singletons[index]);
                         if (instance != null) return instance;
-                        
+
                         instance = rawFactory(this);
-                        
+
                         var prev = Interlocked.CompareExchange(ref _singletons[index], instance, null);
                         if (prev != null)
                         {
@@ -251,7 +229,7 @@ namespace Strada.Core.DI
                         {
                             lock (_lock) _disposalStack.Push(disposable);
                         }
-                        
+
                         return instance;
                     };
                 }
