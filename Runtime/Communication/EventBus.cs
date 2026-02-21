@@ -78,8 +78,9 @@ namespace Strada.Core.Communication
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Send<TSignal>(ref TSignal signal) where TSignal : struct
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(EventBus));
             var id = SignalTypeId<TSignal>.Id;
-            var handlers = _signalHandlers;
+            var handlers = Volatile.Read(ref _signalHandlers);
             if (id < handlers.Length && handlers[id] != null)
             {
                 ((Action<TSignal>)handlers[id])(signal);
@@ -98,7 +99,7 @@ namespace Strada.Core.Communication
         public TResult Query<TQuery, TResult>(ref TQuery query) where TQuery : struct, IQuery<TResult>
         {
             var id = QueryTypeId<TQuery>.Id;
-            var handlers = _queryHandlers;
+            var handlers = Volatile.Read(ref _queryHandlers);
             if (id < handlers.Length && handlers[id] != null)
                 return ((IQueryHandler<TQuery, TResult>)handlers[id]).Handle(ref query);
 
@@ -116,7 +117,7 @@ namespace Strada.Core.Communication
         public void Publish<TEvent>(ref TEvent message) where TEvent : struct
         {
             var id = EventTypeId<TEvent>.Id;
-            var channels = _eventChannels;
+            var channels = Volatile.Read(ref _eventChannels);
             if (id >= channels.Length) return;
 
             var channel = channels[id] as EventChannel<TEvent>;
@@ -230,7 +231,7 @@ namespace Strada.Core.Communication
         public async ValueTask SendAsync<TSignal>(TSignal signal, CancellationToken cancellationToken = default) where TSignal : struct
         {
             var id = AsyncSignalTypeId<TSignal>.Id;
-            var handlers = _asyncSignalHandlers;
+            var handlers = Volatile.Read(ref _asyncSignalHandlers);
             if (id < handlers.Length && handlers[id] != null)
             {
                 await ((Func<TSignal, CancellationToken, ValueTask>)handlers[id])(signal, cancellationToken);
@@ -259,10 +260,10 @@ namespace Strada.Core.Communication
             where TQuery : struct, IAsyncQuery<TResult>
         {
             var id = AsyncQueryTypeId<TQuery>.Id;
-            var handlers = _asyncQueryHandlers;
+            var handlers = Volatile.Read(ref _asyncQueryHandlers);
             if (id < handlers.Length && handlers[id] != null)
             {
-                return await ((Func<TQuery, CancellationToken, ValueTask<TResult>>)_asyncQueryHandlers[id])(query, cancellationToken);
+                return await ((Func<TQuery, CancellationToken, ValueTask<TResult>>)handlers[id])(query, cancellationToken);
             }
             ThrowHandlerNotFoundException<TQuery>("async query");
             return default;
@@ -333,8 +334,7 @@ namespace Strada.Core.Communication
 
         private sealed class EventChannel<T>
         {
-
-            private Action<T>[] _handlers = new Action<T>[0];
+            private volatile Action<T>[] _handlers = new Action<T>[0];
             private readonly object _lock = new object();
 
             public int Count => _handlers.Length;
@@ -342,7 +342,6 @@ namespace Strada.Core.Communication
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Publish(ref T message)
             {
-
                 var handlers = _handlers;
                 for (int i = 0; i < handlers.Length; i++)
                     handlers[i](message);
@@ -371,10 +370,10 @@ namespace Strada.Core.Communication
                     var newHandlers = new Action<T>[oldHandlers.Length - 1];
                     if (index > 0)
                         Array.Copy(oldHandlers, 0, newHandlers, 0, index);
-                    
+
                     if (index < oldHandlers.Length - 1)
                         Array.Copy(oldHandlers, index + 1, newHandlers, index, oldHandlers.Length - index - 1);
-                    
+
                     _handlers = newHandlers;
                 }
             }

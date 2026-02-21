@@ -176,8 +176,9 @@ namespace Strada.Core.ECS.Storage
             {
                 return method.Invoke(storage, new object[] { entityIndex });
             }
-            catch
+            catch (Exception e)
             {
+                UnityEngine.Debug.LogWarning($"[Strada] Failed to get component {componentType.Name} for entity {entityIndex}: {e.Message}");
                 return null;
             }
         }
@@ -194,8 +195,9 @@ namespace Strada.Core.ECS.Storage
             {
                 method.Invoke(storage, new object[] { entityIndex, value });
             }
-            catch
+            catch (Exception e)
             {
+                UnityEngine.Debug.LogWarning($"[Strada] Failed to set component {componentType.Name} for entity {entityIndex}: {e.Message}");
             }
         }
     }

@@ -325,7 +325,11 @@ namespace Strada.Core.ECS.Jobs
 
         public static void RegisterHandler<T>(IComponentPlaybackHandler handler) where T : unmanaged, IComponent
         {
-            _handlers[TypeHash<T>.Value] = handler;
+            ulong hash = TypeHash<T>.Value;
+            if (_handlers.TryGetValue(hash, out var existing) && existing.GetType() != handler.GetType())
+                throw new InvalidOperationException(
+                    $"TypeHash collision detected: hash {hash} is already registered for {existing.GetType().Name}, cannot register {handler.GetType().Name}");
+            _handlers[hash] = handler;
         }
 
         public static unsafe void AddComponent(EntityManager em, Entity entity, ulong typeHash, byte* data, int size)
@@ -349,8 +353,14 @@ namespace Strada.Core.ECS.Jobs
         public static void EnsureHandler<T>() where T : unmanaged, IComponent
         {
             ulong hash = TypeHash<T>.Value;
-            if (!_handlers.ContainsKey(hash))
-                _handlers[hash] = new ComponentPlaybackHandler<T>();
+            if (_handlers.TryGetValue(hash, out var existing))
+            {
+                if (existing is not ComponentPlaybackHandler<T>)
+                    throw new InvalidOperationException(
+                        $"TypeHash collision detected for {typeof(T).Name}: hash {hash} is already registered for {existing.GetType().Name}");
+                return;
+            }
+            _handlers[hash] = new ComponentPlaybackHandler<T>();
         }
     }
 

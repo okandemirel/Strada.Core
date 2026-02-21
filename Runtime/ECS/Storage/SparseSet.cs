@@ -192,11 +192,18 @@ namespace Strada.Core.ECS.Storage
             _count = 0;
         }
 
+        private const int MaxSparseCapacity = 1_048_576;
+
         private void EnsureSparseCapacity(int required)
         {
             if (required <= _sparse.Length) return;
 
+            if (required > MaxSparseCapacity)
+                throw new InvalidOperationException(
+                    $"Entity index requires sparse capacity {required} which exceeds maximum {MaxSparseCapacity}");
+
             int newCapacity = Math.Max(required, _sparse.Length * 3 / 2);
+            if (newCapacity > MaxSparseCapacity) newCapacity = MaxSparseCapacity;
             var newSparse = new NativeArray<int>(newCapacity, _allocator);
 
             NativeArray<int>.Copy(_sparse, newSparse, _sparse.Length);

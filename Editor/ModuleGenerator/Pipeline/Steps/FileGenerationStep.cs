@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 using Strada.Core.Editor.ModuleGenerator.Config;
 using Strada.Core.Editor.ModuleGenerator.Models;
 using UnityEditor;
@@ -21,6 +22,8 @@ namespace Strada.Core.Editor.ModuleGenerator.Pipeline.Steps
             return true;
         }
 
+        private static readonly Regex ValidNamespaceRegex = new Regex(@"^[A-Za-z_][\w]*(\.[A-Za-z_][\w]*)*$", RegexOptions.Compiled);
+
         public StepResult Execute(GenerationContext context)
         {
             _settings = StradaGeneratorSettings.GetOrCreateSettings();
@@ -29,6 +32,9 @@ namespace Strada.Core.Editor.ModuleGenerator.Pipeline.Steps
             var name = context.Definition.ModuleName;
             var ns = context.Definition.FullNamespace;
             var components = context.Definition.Components;
+
+            if (!ValidNamespaceRegex.IsMatch(ns))
+                return StepResult.Error($"Invalid namespace '{ns}': must contain only valid C# identifier characters");
 
             int filesCreated = 0;
 
