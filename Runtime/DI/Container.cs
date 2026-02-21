@@ -171,7 +171,18 @@ namespace Strada.Core.DI
             if (typeId <= _maxTypeId)
             {
                 var index = _typeIdToIndex[typeId];
-                if (index >= 0) return _factories[index](this);
+                if (index >= 0)
+                {
+                    var lifetime = _lifetimes[index];
+                    if (lifetime == Lifetime.Singleton || lifetime == Lifetime.Scoped)
+                    {
+                        lock (_lock)
+                        {
+                            return _factories[index](this);
+                        }
+                    }
+                    return _factories[index](this);
+                }
             }
             throw new InvalidOperationException($"Type '{type.Name}' is not registered");
         }
@@ -335,27 +346,10 @@ namespace Strada.Core.DI
             if (reg.Instance != null)
                 return Expression.Constant(reg.Instance, serviceType);
 
-            if (reg.Lifetime == Lifetime.Singleton)
-            {
-                int index = typeIdMap[TypeRegistry.GetId(serviceType)];
-                
-                return Expression.Convert(
-                    Expression.Call(resolverParam, typeof(IIndexResolver).GetMethod(nameof(IIndexResolver.ResolveByIndex)), Expression.Constant(index)),
-                    serviceType);
-            }
-            
-            if (reg.Factory != null || reg.Lifetime == Lifetime.Scoped || reg.Lifetime == Lifetime.Transient)
-            {
-                 int index = typeIdMap[TypeRegistry.GetId(serviceType)];
-                 return Expression.Convert(
-                    Expression.Call(resolverParam, typeof(IIndexResolver).GetMethod(nameof(IIndexResolver.ResolveByIndex)), Expression.Constant(index)),
-                    serviceType);
-            }
-            
-            int idx = typeIdMap[TypeRegistry.GetId(serviceType)];
+            int index = typeIdMap[TypeRegistry.GetId(serviceType)];
             return Expression.Convert(
-                    Expression.Call(resolverParam, typeof(IIndexResolver).GetMethod(nameof(IIndexResolver.ResolveByIndex)), Expression.Constant(idx)),
-                    serviceType);
+                Expression.Call(resolverParam, typeof(IIndexResolver).GetMethod(nameof(IIndexResolver.ResolveByIndex)), Expression.Constant(index)),
+                serviceType);
         }
 
         private static void ClearFactory(Type type) =>

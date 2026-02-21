@@ -78,6 +78,7 @@ namespace Strada.Core.Communication
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Send<TSignal>(ref TSignal signal) where TSignal : struct
         {
+            if (_disposed) ThrowDisposed();
             var id = SignalTypeId<TSignal>.Id;
             var handlers = _signalHandlers;
             if (id < handlers.Length && handlers[id] != null)
@@ -97,6 +98,7 @@ namespace Strada.Core.Communication
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TResult Query<TQuery, TResult>(ref TQuery query) where TQuery : struct, IQuery<TResult>
         {
+            if (_disposed) ThrowDisposed();
             var id = QueryTypeId<TQuery>.Id;
             var handlers = _queryHandlers;
             if (id < handlers.Length && handlers[id] != null)
@@ -115,6 +117,7 @@ namespace Strada.Core.Communication
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Publish<TEvent>(ref TEvent message) where TEvent : struct
         {
+            if (_disposed) ThrowDisposed();
             var id = EventTypeId<TEvent>.Id;
             var channels = _eventChannels;
             if (id >= channels.Length) return;
@@ -229,6 +232,7 @@ namespace Strada.Core.Communication
 
         public async ValueTask SendAsync<TSignal>(TSignal signal, CancellationToken cancellationToken = default) where TSignal : struct
         {
+            if (_disposed) ThrowDisposed();
             var id = AsyncSignalTypeId<TSignal>.Id;
             var handlers = _asyncSignalHandlers;
             if (id < handlers.Length && handlers[id] != null)
@@ -315,6 +319,10 @@ namespace Strada.Core.Communication
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static void ThrowHandlerNotFoundException<T>(string type) =>
             throw new InvalidOperationException($"No {type} handler registered for '{typeof(T).Name}'");
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void ThrowDisposed() =>
+            throw new ObjectDisposedException(nameof(EventBus));
 
         private static class SignalTypeId<T>
         {

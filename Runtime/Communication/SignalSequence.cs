@@ -304,7 +304,20 @@ namespace Strada.Core.Communication
 
             public void Execute(IEventBus defaultBus)
             {
-                _asyncAction?.Invoke(CancellationToken.None).AsTask().Wait();
+                if (_asyncAction == null) return;
+                var task = _asyncAction.Invoke(CancellationToken.None);
+                if (!task.IsCompleted)
+                {
+                    task.AsTask().ContinueWith(t =>
+                    {
+                        if (t.IsFaulted)
+                            UnityEngine.Debug.LogError($"[SignalSequence] Async action failed: {t.Exception?.InnerException?.Message}");
+                    }, TaskContinuationOptions.OnlyOnFaulted);
+                }
+                else if (task.IsFaulted)
+                {
+                    UnityEngine.Debug.LogError($"[SignalSequence] Async action failed: {task.AsTask().Exception?.InnerException?.Message}");
+                }
             }
 
             public ValueTask ExecuteAsync(IEventBus defaultBus, CancellationToken ct)

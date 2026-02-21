@@ -83,7 +83,8 @@ namespace Strada.Core.Sync
         public void Notify()
         {
             int count = _handlers.Count;
-            for (int i = 0; i < count; i++)
+            if (count == 0) return;
+            for (int i = 0; i < count && i < _handlers.Count; i++)
             {
                 _handlers[i](_value);
             }
@@ -154,19 +155,22 @@ namespace Strada.Core.Sync
 
         private void NotifyAdd(T item)
         {
-            for (int i = 0; i < _addHandlers.Count; i++)
+            int count = _addHandlers.Count;
+            for (int i = 0; i < count && i < _addHandlers.Count; i++)
                 _addHandlers[i](item);
         }
 
         private void NotifyRemove(T item)
         {
-            for (int i = 0; i < _removeHandlers.Count; i++)
+            int count = _removeHandlers.Count;
+            for (int i = 0; i < count && i < _removeHandlers.Count; i++)
                 _removeHandlers[i](item);
         }
 
         private void NotifyClear()
         {
-            for (int i = 0; i < _clearHandlers.Count; i++)
+            int count = _clearHandlers.Count;
+            for (int i = 0; i < count && i < _clearHandlers.Count; i++)
                 _clearHandlers[i]();
         }
 

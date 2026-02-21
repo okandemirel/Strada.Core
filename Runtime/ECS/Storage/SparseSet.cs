@@ -74,6 +74,8 @@ namespace Strada.Core.ECS.Storage
 
         public T Get(int entityIndex)
         {
+            if (entityIndex >= _sparse.Length || _sparse[entityIndex] < 0)
+                throw new InvalidOperationException($"Entity {entityIndex} does not exist in sparse set");
             return _data[_sparse[entityIndex]];
         }
 
@@ -101,6 +103,8 @@ namespace Strada.Core.ECS.Storage
 
         public void Set(int entityIndex, T component)
         {
+            if (entityIndex >= _sparse.Length || _sparse[entityIndex] < 0)
+                throw new InvalidOperationException($"Entity {entityIndex} does not exist in sparse set");
             _data[_sparse[entityIndex]] = component;
         }
 

@@ -140,7 +140,7 @@ namespace Strada.Core.ECS.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
-            if (!IsActiveIndex(entity.Index))
+            if (!Exists(entity))
                 return;
 
             var storage = _store.GetOrCreateStorage<T>();
@@ -150,7 +150,7 @@ namespace Strada.Core.ECS.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddComponent<T>(Entity entity, T component) where T : unmanaged, IComponent
         {
-            if (!IsActiveIndex(entity.Index))
+            if (!Exists(entity))
                 return;
 
             var storage = _store.GetOrCreateStorage<T>();
@@ -160,7 +160,7 @@ namespace Strada.Core.ECS.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
-            if (!IsActiveIndex(entity.Index))
+            if (!Exists(entity))
                 return;
 
             var storage = _store.GetOrCreateStorage<T>();
@@ -170,7 +170,7 @@ namespace Strada.Core.ECS.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool HasComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
-            if (!IsActiveIndex(entity.Index))
+            if (!Exists(entity))
                 return false;
 
             var storage = _store.GetOrCreateStorage<T>();
@@ -213,7 +213,7 @@ namespace Strada.Core.ECS.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetComponent<T>(Entity entity, T component) where T : unmanaged, IComponent
         {
-            if (!IsActiveIndex(entity.Index))
+            if (!Exists(entity))
                 return;
 
             var storage = _store.GetOrCreateStorage<T>();
