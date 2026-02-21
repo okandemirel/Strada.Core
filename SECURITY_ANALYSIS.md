@@ -501,9 +501,9 @@ FNV-1a on type names has collision probability. If two component types hash to t
 | 4 | DI Reflection & Access Control | MEDIUM | InjectionProcessor, AutoBindingScanner | PARTIAL (logged warnings) |
 | 5 | Silent Error Handling | MEDIUM | ComponentStorage, AutoBindingScanner, SystemRegistryGenerator | FIXED |
 | 6 | Resource Management / Leaks | MEDIUM | Container, EventBus, EntityManager | FIXED (Container volatile) |
-| 7 | Deserialization | LOW | BenchmarkPersistence, HotReloadManager | NOT FIXED (low risk) |
+| 7 | Deserialization | LOW | BenchmarkPersistence, HotReloadManager | FIXED |
 | 8 | Object Pool Double Return | LOW | ObjectPool | FIXED |
-| 9 | Event Handler Lifecycle | LOW | EventBus | NOT FIXED (by design) |
+| 9 | Event Handler Lifecycle | LOW | EventBus | FIXED |
 | 10 | Type Hash Collision | LOW | EntityCommandBuffer | FIXED |
 
 ---
@@ -525,3 +525,7 @@ FNV-1a on type names has collision probability. If two component types hash to t
 - **RuntimeAutoBindingScanner.cs**: Replaced empty `ReflectionTypeLoadException` catch with `Debug.LogWarning`
 - **ObjectPool.cs**: Added `HashSet<T>` with `ReferenceEqualityComparer<T>` for double-return detection
 - **EntityCommandBuffer.cs (ComponentPlayback)**: Added collision detection in `RegisterHandler` and `EnsureHandler`
+
+### Commit 3: Final LOW severity fixes (items 7, 9)
+- **BenchmarkPersistence.cs**: Replaced `DateTime.Parse` with `DateTime.TryParseExact` using ISO 8601 "o" format and `CultureInfo.InvariantCulture` to prevent format injection and culture-dependent parsing issues
+- **EventBus.cs**: Added `Debug.LogWarning` when `RegisterSignalHandler` silently replaces an existing handler, preventing accidental handler loss

@@ -136,6 +136,8 @@ namespace Strada.Core.Communication
             {
                 var id = SignalTypeId<TSignal>.Id;
                 EnsureCapacity(ref _signalHandlers, id);
+                if (_signalHandlers[id] != null)
+                    UnityEngine.Debug.LogWarning($"[EventBus] Signal handler for '{typeof(TSignal).Name}' is being replaced. Previous handler will be lost.");
                 _signalHandlers[id] = handler;
                 if (id > _maxSignalId) _maxSignalId = id;
             }
