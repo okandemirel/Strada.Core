@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using UnityEngine;
 
 namespace Strada.Core.StateMachine
 {
@@ -75,7 +76,11 @@ namespace Strada.Core.StateMachine
         private void SetState(Type stateType)
         {
             if (stateType == _currentStateType) return;
-            if (!_states.TryGetValue(stateType, out var newState)) return;
+            if (!_states.TryGetValue(stateType, out var newState))
+            {
+                Debug.LogWarning($"Attempted transition to unregistered state: {stateType}");
+                return;
+            }
 
             _isTransitioning = true;
 
@@ -86,9 +91,9 @@ namespace Strada.Core.StateMachine
             _currentStateType = stateType;
             _currentState.OnEnter();
 
-            _isTransitioning = false;
-
             OnStateChanged?.Invoke(previousState, _currentState);
+
+            _isTransitioning = false;
         }
 
         private void CheckTransitions()
@@ -195,7 +200,11 @@ namespace Strada.Core.StateMachine
         private void SetState(Type stateType)
         {
             if (stateType == _currentStateType) return;
-            if (!_states.TryGetValue(stateType, out var newState)) return;
+            if (!_states.TryGetValue(stateType, out var newState))
+            {
+                Debug.LogWarning($"Attempted transition to unregistered state: {stateType}");
+                return;
+            }
 
             _isTransitioning = true;
 
@@ -206,9 +215,9 @@ namespace Strada.Core.StateMachine
             _currentStateType = stateType;
             _currentState.OnEnter();
 
-            _isTransitioning = false;
-
             OnStateChanged?.Invoke(previousState, _currentState);
+
+            _isTransitioning = false;
         }
 
         private void CheckTransitions()
