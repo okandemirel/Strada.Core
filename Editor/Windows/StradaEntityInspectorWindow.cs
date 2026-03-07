@@ -57,6 +57,8 @@ namespace Strada.Core.Editor.Windows
         private GUIStyle _fieldLabelStyle;
         private bool _stylesInitialized;
 
+        private static readonly string[] ViewModeLabels = { "Inspector", "Memory" };
+
         private WorldDataProvider _worldDataProvider;
 
         public static void ShowWindow()
@@ -169,7 +171,6 @@ namespace Strada.Core.Editor.Windows
             }
 
             DrawToolbar();
-            DrawToolbar();
 
             if (_viewMode == ViewMode.Inspector)
             {
@@ -183,30 +184,25 @@ namespace Strada.Core.Editor.Windows
 
         private void DrawNotPlayingMessage()
         {
-            EditorGUILayout.BeginVertical();
-            GUILayout.FlexibleSpace();
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.FlexibleSpace();
-            EditorGUILayout.HelpBox(
+            DrawCenteredHelpBox(
                 "Entity Inspector is only available in Play Mode.\n\nEnter Play Mode to inspect ECS entities.",
-                MessageType.Info,
-                true);
-            GUILayout.FlexibleSpace();
-            EditorGUILayout.EndHorizontal();
-            GUILayout.FlexibleSpace();
-            EditorGUILayout.EndVertical();
+                MessageType.Info);
         }
 
         private void DrawNoWorldMessage()
+        {
+            DrawCenteredHelpBox(
+                "No active ECS World found.\n\nCreate a World using World.Create() to begin.",
+                MessageType.Warning);
+        }
+
+        private void DrawCenteredHelpBox(string message, MessageType type)
         {
             EditorGUILayout.BeginVertical();
             GUILayout.FlexibleSpace();
             EditorGUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
-            EditorGUILayout.HelpBox(
-                "No active ECS World found.\n\nCreate a World using World.Create() to begin.",
-                MessageType.Warning,
-                true);
+            EditorGUILayout.HelpBox(message, type, true);
             GUILayout.FlexibleSpace();
             EditorGUILayout.EndHorizontal();
             GUILayout.FlexibleSpace();
@@ -256,13 +252,8 @@ namespace Strada.Core.Editor.Windows
                 RefreshEntityList();
             }
 
-            if (GUILayout.Button("Refresh", EditorStyles.toolbarButton, GUILayout.Width(55)))
-            {
-                RefreshEntityList();
-            }
-
             GUILayout.Space(10);
-            _viewMode = (ViewMode)GUILayout.Toolbar((int)_viewMode, new[] { "Inspector", "Memory" }, EditorStyles.toolbarButton, GUILayout.Width(150));
+            _viewMode = (ViewMode)GUILayout.Toolbar((int)_viewMode, ViewModeLabels, EditorStyles.toolbarButton, GUILayout.Width(150));
 
             EditorGUILayout.EndHorizontal();
         }
@@ -728,12 +719,8 @@ namespace Strada.Core.Editor.Windows
 
         private void DetectDestroyedEntities()
         {
-            var destroyedEntities = _allEntityIds.Where(id => !EntityExists(id)).ToList();
-            foreach (var id in destroyedEntities)
-            {
-                _allEntityIds.Remove(id);
-                _filteredEntityIds.Remove(id);
-            }
+            _allEntityIds.RemoveAll(id => !EntityExists(id));
+            _filteredEntityIds.RemoveAll(id => !EntityExists(id));
 
             if (_selectedEntityId >= 0 && !EntityExists(_selectedEntityId))
             {

@@ -588,14 +588,15 @@ namespace Strada.Core.Editor.Windows
             _filteredRegistrations.Clear();
             var registrations = _containerProvider.GetRegistrations();
 
+            var searchLower = string.IsNullOrEmpty(_diSearchFilter) ? null : _diSearchFilter.ToLowerInvariant();
+
             foreach (var reg in registrations)
             {
                 if (_lifetimeFilter.HasValue && reg.Lifetime != _lifetimeFilter.Value)
                     continue;
 
-                if (!string.IsNullOrEmpty(_diSearchFilter))
+                if (searchLower != null)
                 {
-                    var searchLower = _diSearchFilter.ToLowerInvariant();
                     var typeName = reg.ServiceType.Name.ToLowerInvariant();
                     var implName = reg.ImplementationType.Name.ToLowerInvariant();
 
@@ -785,7 +786,7 @@ namespace Strada.Core.Editor.Windows
         private void RefreshEntityList()
         {
             _filteredEntityIds.Clear();
-            var entityIds = _worldProvider.GetEntityIds().ToList();
+            var entityIds = _worldProvider.GetEntityIds();
 
             if (string.IsNullOrEmpty(_ecsSearchFilter))
             {
@@ -990,11 +991,12 @@ namespace Strada.Core.Editor.Windows
             _filteredModules.Clear();
             var modules = _moduleProvider.GetModules();
 
+            var searchLower = string.IsNullOrEmpty(_moduleSearchFilter) ? null : _moduleSearchFilter.ToLowerInvariant();
+
             foreach (var module in modules)
             {
-                if (!string.IsNullOrEmpty(_moduleSearchFilter))
+                if (searchLower != null)
                 {
-                    var searchLower = _moduleSearchFilter.ToLowerInvariant();
                     if (!module.Name.ToLowerInvariant().Contains(searchLower))
                         continue;
                 }
@@ -1070,9 +1072,16 @@ namespace Strada.Core.Editor.Windows
             var entries = _busProvider.GetLogEntries();
             GUILayout.Label($"Total: {entries.Count}", EditorStyles.miniLabel);
 
-            var events = entries.Count(e => e.Kind == MessageKind.Event);
-            var commands = entries.Count(e => e.Kind == MessageKind.Command);
-            var queries = entries.Count(e => e.Kind == MessageKind.Query);
+            int events = 0, commands = 0, queries = 0;
+            foreach (var e in entries)
+            {
+                switch (e.Kind)
+                {
+                    case MessageKind.Event: events++; break;
+                    case MessageKind.Command: commands++; break;
+                    case MessageKind.Query: queries++; break;
+                }
+            }
 
             GUILayout.Label($"Events: {events}", EditorStyles.miniLabel);
             GUILayout.Label($"Commands: {commands}", EditorStyles.miniLabel);
@@ -1467,20 +1476,9 @@ namespace Strada.Core.Editor.Windows
             var reservedMemory = UnityEngine.Profiling.Profiler.GetTotalReservedMemoryLong();
             var unusedMemory = UnityEngine.Profiling.Profiler.GetTotalUnusedReservedMemoryLong();
 
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.Label("Allocated:", GUILayout.Width(80));
-            GUILayout.Label(FormatBytes(totalMemory));
-            EditorGUILayout.EndHorizontal();
-
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.Label("Reserved:", GUILayout.Width(80));
-            GUILayout.Label(FormatBytes(reservedMemory));
-            EditorGUILayout.EndHorizontal();
-
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.Label("Unused:", GUILayout.Width(80));
-            GUILayout.Label(FormatBytes(unusedMemory));
-            EditorGUILayout.EndHorizontal();
+            DrawMemoryStatRow("Allocated:", totalMemory);
+            DrawMemoryStatRow("Reserved:", reservedMemory);
+            DrawMemoryStatRow("Unused:", unusedMemory);
 
             GUILayout.Space(10);
 
@@ -1514,12 +1512,12 @@ namespace Strada.Core.Editor.Windows
             return _normalColor;
         }
 
-        private string FormatBytes(long bytes)
+        private void DrawMemoryStatRow(string label, long bytes)
         {
-            if (bytes < 1024) return $"{bytes} B";
-            if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
-            if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024.0):F1} MB";
-            return $"{bytes / (1024.0 * 1024.0 * 1024.0):F2} GB";
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Label(label, GUILayout.Width(80));
+            GUILayout.Label(EditorUtility.FormatBytes(bytes));
+            EditorGUILayout.EndHorizontal();
         }
 
         private void RefreshAllData()
