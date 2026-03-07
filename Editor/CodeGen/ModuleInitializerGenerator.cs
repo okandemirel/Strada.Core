@@ -12,7 +12,6 @@ namespace Strada.Core.Editor.CodeGen
 {
     public static class ModuleInitializerGenerator
     {
-        private const string GeneratedFolder = "Assets/Strada.Generated";
         private const string GeneratedFile = "GeneratedModuleInitializer.cs";
 
         [MenuItem("Strada/Generate Module Initializer")]
@@ -27,10 +26,9 @@ namespace Strada.Core.Editor.CodeGen
 
             var code = GenerateInitializerCode(modules);
 
-            if (!Directory.Exists(GeneratedFolder))
-                Directory.CreateDirectory(GeneratedFolder);
+            StradaCodeGenerator.EnsureGeneratedFolder();
 
-            var path = Path.Combine(GeneratedFolder, GeneratedFile);
+            var path = Path.Combine(StradaCodeGenerator.GeneratedFolder, GeneratedFile);
             File.WriteAllText(path, code);
             AssetDatabase.Refresh();
 
@@ -95,7 +93,7 @@ namespace Strada.Core.Editor.CodeGen
 
             foreach (var m in modules)
             {
-                var typeName = GetFullTypeName(m.Type);
+                var typeName = StradaCodeGenerator.GetFullTypeName(m.Type);
                 sb.AppendLine($"            typeof({typeName}),");
             }
 
@@ -106,7 +104,7 @@ namespace Strada.Core.Editor.CodeGen
 
             foreach (var m in modules)
             {
-                var typeName = GetFullTypeName(m.Type);
+                var typeName = StradaCodeGenerator.GetFullTypeName(m.Type);
                 sb.AppendLine($"            registry.RegisterModule(new {typeName}(), {m.Priority});");
             }
 
@@ -119,7 +117,7 @@ namespace Strada.Core.Editor.CodeGen
 
             foreach (var m in modules)
             {
-                var typeName = GetFullTypeName(m.Type);
+                var typeName = StradaCodeGenerator.GetFullTypeName(m.Type);
                 sb.AppendLine($"                new {typeName}(),");
             }
 
@@ -129,26 +127,6 @@ namespace Strada.Core.Editor.CodeGen
             sb.AppendLine("}");
 
             return sb.ToString();
-        }
-
-        private static string GetFullTypeName(Type type)
-        {
-            if (!type.IsGenericType)
-                return type.FullName?.Replace("+", ".") ?? type.Name;
-
-            var genericDef = type.GetGenericTypeDefinition();
-            var baseName = genericDef.FullName;
-            if (baseName == null)
-                return type.Name;
-
-            var tickIndex = baseName.IndexOf('`');
-            if (tickIndex > 0)
-                baseName = baseName.Substring(0, tickIndex);
-
-            var args = type.GetGenericArguments();
-            var argNames = string.Join(", ", args.Select(GetFullTypeName));
-
-            return $"{baseName.Replace("+", ".")}<{argNames}>";
         }
 
         private static bool IsTypeAccessible(Type type)

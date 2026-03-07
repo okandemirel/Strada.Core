@@ -257,33 +257,10 @@ namespace Strada.Core.Editor.Templates
         /// </summary>
         public static string GenerateCommand(string className, string namespaceName)
         {
-            if (!className.EndsWith("Command"))
-                className += "Command";
-
-            var usings = UsingStatementGenerator.GenerateUsingBlock(
-                TemplateContextDetector.TemplateType.Command);
-
-            var sb = new StringBuilder();
-            sb.AppendLine(usings);
-            sb.AppendLine();
-            sb.AppendLine($"namespace {namespaceName}");
-            sb.AppendLine("{");
-            sb.AppendLine("    /// <summary>");
-            sb.AppendLine("    /// Command message for MessageBus.");
-            sb.AppendLine("    /// Use with bus.Send() to dispatch commands.");
-            sb.AppendLine("    /// </summary>");
-            sb.AppendLine($"    public readonly struct {className}");
-            sb.AppendLine("    {");
-            sb.AppendLine("        public readonly int Value;");
-            sb.AppendLine();
-            sb.AppendLine($"        public {className}(int value)");
-            sb.AppendLine("        {");
-            sb.AppendLine("            Value = value;");
-            sb.AppendLine("        }");
-            sb.AppendLine("    }");
-            sb.AppendLine("}");
-
-            return sb.ToString();
+            return GenerateMessageStruct(className, namespaceName, "Command",
+                TemplateContextDetector.TemplateType.Command,
+                "Command message for MessageBus.",
+                "Use with bus.Send() to dispatch commands.");
         }
 
         /// <summary>
@@ -291,11 +268,24 @@ namespace Strada.Core.Editor.Templates
         /// </summary>
         public static string GenerateEvent(string className, string namespaceName)
         {
-            if (!className.EndsWith("Event"))
-                className += "Event";
+            return GenerateMessageStruct(className, namespaceName, "Event",
+                TemplateContextDetector.TemplateType.Event,
+                "Event message for MessageBus.",
+                "Use with bus.Publish() to broadcast events.");
+        }
 
-            var usings = UsingStatementGenerator.GenerateUsingBlock(
-                TemplateContextDetector.TemplateType.Event);
+        /// <summary>
+        /// Generates a readonly struct message template (shared by Command and Event).
+        /// </summary>
+        private static string GenerateMessageStruct(
+            string className, string namespaceName, string suffix,
+            TemplateContextDetector.TemplateType templateType,
+            string summaryLine1, string summaryLine2)
+        {
+            if (!className.EndsWith(suffix))
+                className += suffix;
+
+            var usings = UsingStatementGenerator.GenerateUsingBlock(templateType);
 
             var sb = new StringBuilder();
             sb.AppendLine(usings);
@@ -303,8 +293,8 @@ namespace Strada.Core.Editor.Templates
             sb.AppendLine($"namespace {namespaceName}");
             sb.AppendLine("{");
             sb.AppendLine("    /// <summary>");
-            sb.AppendLine("    /// Event message for MessageBus.");
-            sb.AppendLine("    /// Use with bus.Publish() to broadcast events.");
+            sb.AppendLine($"    /// {summaryLine1}");
+            sb.AppendLine($"    /// {summaryLine2}");
             sb.AppendLine("    /// </summary>");
             sb.AppendLine($"    public readonly struct {className}");
             sb.AppendLine("    {");

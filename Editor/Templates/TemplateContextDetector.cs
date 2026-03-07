@@ -13,6 +13,14 @@ namespace Strada.Core.Editor.Templates
     public static class TemplateContextDetector
     {
         /// <summary>
+        /// Normalizes a path and splits it into parts.
+        /// </summary>
+        private static string[] NormalizePath(string folderPath)
+        {
+            return folderPath.Replace('\\', '/').Split('/');
+        }
+
+        /// <summary>
         /// Represents a template that can be offered based on context.
         /// </summary>
         public class TemplateInfo
@@ -97,21 +105,13 @@ namespace Strada.Core.Editor.Templates
             if (string.IsNullOrEmpty(folderPath))
                 return GetAllTemplates();
 
-            var templates = new List<TemplateInfo>();
             var detectedTypes = new HashSet<TemplateType>();
 
-            folderPath = folderPath.Replace('\\', '/');
-
-            var pathParts = folderPath.Split('/');
+            var pathParts = NormalizePath(folderPath);
             foreach (var part in pathParts)
             {
                 if (FolderContextMap.TryGetValue(part, out var types))
-                {
-                    foreach (var type in types)
-                    {
-                        detectedTypes.Add(type);
-                    }
-                }
+                    detectedTypes.UnionWith(types);
             }
 
             var isInModule = pathParts.Any(p =>
@@ -134,19 +134,7 @@ namespace Strada.Core.Editor.Templates
                 }
             }
 
-            int priority = 0;
-            foreach (var type in detectedTypes.OrderBy(t => (int)t))
-            {
-                templates.Add(new TemplateInfo
-                {
-                    Name = type.ToString(),
-                    Description = TemplateDescriptions.TryGetValue(type, out var desc) ? desc : type.ToString(),
-                    Type = type,
-                    Priority = priority++
-                });
-            }
-
-            return templates;
+            return ToTemplateInfoList(detectedTypes.OrderBy(t => (int)t));
         }
 
         /// <summary>
@@ -155,10 +143,18 @@ namespace Strada.Core.Editor.Templates
         /// <returns>List of all template types.</returns>
         public static List<TemplateInfo> GetAllTemplates()
         {
+            return ToTemplateInfoList((TemplateType[])Enum.GetValues(typeof(TemplateType)));
+        }
+
+        /// <summary>
+        /// Converts an ordered sequence of template types into TemplateInfo objects.
+        /// </summary>
+        private static List<TemplateInfo> ToTemplateInfoList(IEnumerable<TemplateType> types)
+        {
             var templates = new List<TemplateInfo>();
             int priority = 0;
 
-            foreach (TemplateType type in Enum.GetValues(typeof(TemplateType)))
+            foreach (var type in types)
             {
                 templates.Add(new TemplateInfo
                 {
@@ -202,8 +198,7 @@ namespace Strada.Core.Editor.Templates
             if (string.IsNullOrEmpty(folderPath))
                 return null;
 
-            folderPath = folderPath.Replace('\\', '/');
-            var pathParts = folderPath.Split('/');
+            var pathParts = NormalizePath(folderPath);
 
             foreach (var part in pathParts)
             {
@@ -237,7 +232,7 @@ namespace Strada.Core.Editor.Templates
             if (string.IsNullOrEmpty(folderPath))
                 return "MyNamespace";
 
-            folderPath = folderPath.Replace('\\', '/');
+            folderPath = string.Join("/", NormalizePath(folderPath));
 
             var prefixes = new[] { "Assets/", "Packages/", "Scripts/" };
             foreach (var prefix in prefixes)
@@ -311,10 +306,10 @@ namespace Strada.Core.Editor.Templates
             if (string.IsNullOrEmpty(folderPath))
                 return false;
 
-            folderPath = folderPath.Replace('\\', '/').ToLowerInvariant();
-            return folderPath.Contains("/modules/") || 
-                   folderPath.Contains("module/") ||
-                   folderPath.EndsWith("module");
+            var pathParts = NormalizePath(folderPath);
+            return pathParts.Any(p =>
+                p.EndsWith("Module", StringComparison.OrdinalIgnoreCase) ||
+                p.Equals("Modules", StringComparison.OrdinalIgnoreCase));
         }
     }
 }
