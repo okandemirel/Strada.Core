@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -46,22 +47,24 @@ namespace Strada.Core.Editor.CodeGen
             {
                 var path = AssetDatabase.GUIDToAssetPath(guid);
                 var config = AssetDatabase.LoadAssetAtPath<ModuleConfig>(path);
-
-                if (config != null)
+                if (config == null)
                 {
-                    result.Add(new ModuleConfigInfo
-                    {
-                        GUID = guid,
-                        AssetPath = path,
-                        ModuleName = config.ModuleName,
-                        TypeName = config.GetType().FullName,
-                        Priority = config.Priority,
-                        Enabled = config.Enabled
-                    });
+                    continue;
                 }
+
+                result.Add(new ModuleConfigInfo(
+                    guid,
+                    path,
+                    config.ModuleName,
+                    config.GetType().FullName ?? config.GetType().Name,
+                    config.Priority,
+                    config.Enabled));
             }
 
-            return result.OrderBy(m => m.Priority).ThenBy(m => m.ModuleName).ToList();
+            return result
+                .OrderBy(module => module.Priority)
+                .ThenBy(module => module.ModuleName)
+                .ToList();
         }
 
         private static string GenerateRegistryCode(List<ModuleConfigInfo> modules)
@@ -73,19 +76,14 @@ namespace Strada.Core.Editor.CodeGen
             sb.AppendLine();
             sb.AppendLine("using System.Collections.Generic;");
             sb.AppendLine("using Strada.Core.Modules;");
-            sb.AppendLine("using UnityEngine;");
+            sb.AppendLine("#if UNITY_EDITOR");
+            sb.AppendLine("using UnityEditor;");
+            sb.AppendLine("#endif");
             sb.AppendLine();
             sb.AppendLine("namespace Strada.Generated");
             sb.AppendLine("{");
-            sb.AppendLine("    /// <summary>");
-            sb.AppendLine("    /// Registry of all ModuleConfig assets found in the project.");
-            sb.AppendLine("    /// Use this for validation, discovery, and debugging purposes.");
-            sb.AppendLine("    /// </summary>");
             sb.AppendLine("    public static class GeneratedModuleRegistry");
             sb.AppendLine("    {");
-            sb.AppendLine("        /// <summary>");
-            sb.AppendLine("        /// Information about a discovered module.");
-            sb.AppendLine("        /// </summary>");
             sb.AppendLine("        public readonly struct ModuleInfo");
             sb.AppendLine("        {");
             sb.AppendLine("            public readonly string GUID;");
@@ -93,64 +91,64 @@ namespace Strada.Core.Editor.CodeGen
             sb.AppendLine("            public readonly string ModuleName;");
             sb.AppendLine("            public readonly string TypeName;");
             sb.AppendLine("            public readonly int Priority;");
+            sb.AppendLine("            public readonly bool Enabled;");
             sb.AppendLine();
-            sb.AppendLine("            public ModuleInfo(string guid, string assetPath, string moduleName, string typeName, int priority)");
+            sb.AppendLine("            public ModuleInfo(string guid, string assetPath, string moduleName, string typeName, int priority, bool enabled)");
             sb.AppendLine("            {");
             sb.AppendLine("                GUID = guid;");
             sb.AppendLine("                AssetPath = assetPath;");
             sb.AppendLine("                ModuleName = moduleName;");
             sb.AppendLine("                TypeName = typeName;");
             sb.AppendLine("                Priority = priority;");
+            sb.AppendLine("                Enabled = enabled;");
             sb.AppendLine("            }");
             sb.AppendLine("        }");
             sb.AppendLine();
-            sb.AppendLine("        /// <summary>");
-            sb.AppendLine("        /// All discovered module configurations at generation time.");
-            sb.AppendLine("        /// </summary>");
             sb.AppendLine("        public static readonly ModuleInfo[] DiscoveredModules = new ModuleInfo[]");
             sb.AppendLine("        {");
 
             foreach (var module in modules)
             {
-                var typeName = StradaCodeGenerator.GetFullTypeName(m.Type);
-                sb.AppendLine($"            typeof({typeName}),");
+                sb.AppendLine(
+                    $"            new ModuleInfo({ToLiteral(module.GUID)}, {ToLiteral(module.AssetPath)}, {ToLiteral(module.ModuleName)}, {ToLiteral(module.TypeName)}, {module.Priority}, {(module.Enabled ? "true" : "false")}),");
             }
 
             sb.AppendLine("        };");
             sb.AppendLine();
             sb.AppendLine("#if UNITY_EDITOR");
-            sb.AppendLine("        /// <summary>");
-            sb.AppendLine("        /// Loads all discovered ModuleConfig assets from the AssetDatabase.");
-            sb.AppendLine("        /// Editor-only: Use for validation and tooling.");
-            sb.AppendLine("        /// </summary>");
             sb.AppendLine("        public static List<ModuleConfig> LoadAllFromAssetDatabase()");
             sb.AppendLine("        {");
-
-            foreach (var m in modules)
-            {
-                var typeName = StradaCodeGenerator.GetFullTypeName(m.Type);
-                sb.AppendLine($"            registry.RegisterModule(new {typeName}(), {m.Priority});");
-            }
-
+            sb.AppendLine("            var modules = new List<ModuleConfig>(DiscoveredModules.Length);");
+            sb.AppendLine("            foreach (var info in DiscoveredModules)");
+            sb.AppendLine("            {");
+            sb.AppendLine("                var module = AssetDatabase.LoadAssetAtPath<ModuleConfig>(info.AssetPath);");
+            sb.AppendLine("                if (module != null)");
+            sb.AppendLine("                {");
+            sb.AppendLine("                    modules.Add(module);");
+            sb.AppendLine("                }");
+            sb.AppendLine("            }");
+            sb.AppendLine("            return modules;");
             sb.AppendLine("        }");
             sb.AppendLine();
-            sb.AppendLine("        /// <summary>");
-            sb.AppendLine("        /// Validates that all discovered modules still exist and are properly configured.");
-            sb.AppendLine("        /// Returns a list of validation issues, if any.");
-            sb.AppendLine("        /// </summary>");
             sb.AppendLine("        public static List<string> ValidateModules()");
             sb.AppendLine("        {");
             sb.AppendLine("            var issues = new List<string>();");
             sb.AppendLine("            foreach (var info in DiscoveredModules)");
             sb.AppendLine("            {");
-
-            foreach (var m in modules)
-            {
-                var typeName = StradaCodeGenerator.GetFullTypeName(m.Type);
-                sb.AppendLine($"                new {typeName}(),");
-            }
-
-            sb.AppendLine("            };");
+            sb.AppendLine("                var module = AssetDatabase.LoadAssetAtPath<ModuleConfig>(info.AssetPath);");
+            sb.AppendLine("                if (module == null)");
+            sb.AppendLine("                {");
+            sb.AppendLine("                    issues.Add($\"Missing module asset: {info.ModuleName} ({info.AssetPath})\");");
+            sb.AppendLine("                    continue;");
+            sb.AppendLine("                }");
+            sb.AppendLine();
+            sb.AppendLine("                var currentTypeName = module.GetType().FullName ?? module.GetType().Name;");
+            sb.AppendLine("                if (currentTypeName != info.TypeName)");
+            sb.AppendLine("                {");
+            sb.AppendLine("                    issues.Add($\"Module type mismatch for {info.ModuleName}: expected {info.TypeName}, found {currentTypeName}\");");
+            sb.AppendLine("                }");
+            sb.AppendLine("            }");
+            sb.AppendLine("            return issues;");
             sb.AppendLine("        }");
             sb.AppendLine("#endif");
             sb.AppendLine("    }");
@@ -159,14 +157,39 @@ namespace Strada.Core.Editor.CodeGen
             return sb.ToString();
         }
 
-        private static bool IsTypeAccessible(Type type)
+        private static string ToLiteral(string value)
         {
-            public string GUID;
-            public string AssetPath;
-            public string ModuleName;
-            public string TypeName;
-            public int Priority;
-            public bool Enabled;
+            if (value == null)
+            {
+                return "null";
+            }
+
+            return "\"" + value
+                .Replace("\\", "\\\\")
+                .Replace("\"", "\\\"")
+                .Replace("\r", "\\r")
+                .Replace("\n", "\\n")
+                .Replace("\t", "\\t") + "\"";
+        }
+
+        private readonly struct ModuleConfigInfo
+        {
+            public readonly string GUID;
+            public readonly string AssetPath;
+            public readonly string ModuleName;
+            public readonly string TypeName;
+            public readonly int Priority;
+            public readonly bool Enabled;
+
+            public ModuleConfigInfo(string guid, string assetPath, string moduleName, string typeName, int priority, bool enabled)
+            {
+                GUID = guid;
+                AssetPath = assetPath;
+                ModuleName = moduleName;
+                TypeName = typeName;
+                Priority = priority;
+                Enabled = enabled;
+            }
         }
     }
 }

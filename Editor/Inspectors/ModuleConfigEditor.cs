@@ -69,7 +69,6 @@ namespace Strada.Core.Editor.Inspectors
             serializedObject.ApplyModifiedProperties();
         }
 
-        private new void DrawHeader()
         private static void DrawColoredBox(Color color)
         {
             var previousColor = GUI.color;
@@ -81,6 +80,11 @@ namespace Strada.Core.Editor.Inspectors
         private void DrawHeader()
         {
             var moduleConfig = target as ModuleConfig;
+            if (moduleConfig == null)
+            {
+                EditorGUILayout.HelpBox("Target is not a ModuleConfig.", MessageType.Error);
+                return;
+            }
 
             EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
 

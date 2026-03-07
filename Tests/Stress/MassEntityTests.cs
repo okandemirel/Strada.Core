@@ -19,14 +19,12 @@ namespace Strada.Core.Tests.Stress
         public void Setup()
         {
             _world = new ECSBuilder().Build();
-            World.Current = _world;
         }
 
         [TearDown]
         public void Teardown()
         {
             _world?.Dispose();
-            World.Current = null;
         }
 
         [Test]
