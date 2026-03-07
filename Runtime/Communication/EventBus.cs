@@ -3,7 +3,6 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Strada.Core.Commands;
-using Strada.Core.DI;
 using UnityEngine;
 
 namespace Strada.Core.Communication
@@ -71,11 +70,6 @@ namespace Strada.Core.Communication
         private object[] _eventChannels = new object[64];
         private object[] _asyncSignalHandlers = new object[64];
         private object[] _asyncQueryHandlers = new object[64];
-        private int _maxSignalId;
-        private int _maxQueryId;
-        private int _maxEventId;
-        private int _maxAsyncSignalId;
-        private int _maxAsyncQueryId;
         private bool _disposed;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -139,7 +133,6 @@ namespace Strada.Core.Communication
                 var id = SignalTypeId<TSignal>.Id;
                 EnsureCapacity(ref _signalHandlers, id);
                 Volatile.Write(ref _signalHandlers[id], handler);
-                if (id > _maxSignalId) _maxSignalId = id;
             }
         }
 
@@ -156,7 +149,6 @@ namespace Strada.Core.Communication
                 var id = QueryTypeId<TQuery>.Id;
                 EnsureCapacity(ref _queryHandlers, id);
                 Volatile.Write(ref _queryHandlers[id], handler);
-                if (id > _maxQueryId) _maxQueryId = id;
             }
         }
 
@@ -196,8 +188,6 @@ namespace Strada.Core.Communication
             lock (_lock)
             {
                 EnsureCapacity(ref _eventChannels, id);
-                if (id > _maxEventId) _maxEventId = id;
-
                 channel = _eventChannels[id] as EventChannel<TEvent>;
                 if (channel == null)
                 {
@@ -237,11 +227,6 @@ namespace Strada.Core.Communication
                 Array.Clear(_eventChannels, 0, _eventChannels.Length);
                 Array.Clear(_asyncSignalHandlers, 0, _asyncSignalHandlers.Length);
                 Array.Clear(_asyncQueryHandlers, 0, _asyncQueryHandlers.Length);
-                _maxSignalId = 0;
-                _maxQueryId = 0;
-                _maxEventId = 0;
-                _maxAsyncSignalId = 0;
-                _maxAsyncQueryId = 0;
             }
         }
 
@@ -276,7 +261,6 @@ namespace Strada.Core.Communication
                 var id = AsyncSignalTypeId<TSignal>.Id;
                 EnsureCapacity(ref _asyncSignalHandlers, id);
                 Volatile.Write(ref _asyncSignalHandlers[id], handler);
-                if (id > _maxAsyncSignalId) _maxAsyncSignalId = id;
             }
         }
 
@@ -307,7 +291,6 @@ namespace Strada.Core.Communication
                 var id = AsyncQueryTypeId<TQuery>.Id;
                 EnsureCapacity(ref _asyncQueryHandlers, id);
                 Volatile.Write(ref _asyncQueryHandlers[id], handler);
-                if (id > _maxAsyncQueryId) _maxAsyncQueryId = id;
             }
         }
 
@@ -358,7 +341,6 @@ namespace Strada.Core.Communication
 
         private sealed class EventChannel<T>
         {
-
             private Action<T>[] _handlers = new Action<T>[0];
             private readonly object _lock = new object();
 

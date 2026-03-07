@@ -285,14 +285,9 @@ namespace Strada.Core.Bootstrap
 #else
             Debug.LogError($"[GameBootstrapper] Initialization failed: {ex.Message}");
 #endif
-            CleanupPartialInitialization();
+            DisposeResources();
             OnInitializationFailed?.Invoke(ex);
             _isInitialized = false;
-        }
-
-        private void CleanupPartialInitialization()
-        {
-            DisposeResources();
         }
 
         private void Shutdown()

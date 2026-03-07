@@ -39,15 +39,6 @@ namespace Strada.Core.Modules
         /// </summary>
         public event Action OnModuleInitialized;
 
-        protected virtual void Awake()
-        {
-            if (_autoInitialize)
-            {
-                // Will be called by GameBootstrapper if using auto-discovery
-                // Otherwise can be manually triggered
-            }
-        }
-
         /// <summary>
         /// Initializes the module with the given parent container.
         /// Called by GameBootstrapper or can be called manually.

@@ -41,14 +41,7 @@ namespace Strada.Core.Patterns
             if (controller is IFixedTickController fixedController)
                 _fixedControllers.Add(fixedController);
 
-            if (controller is ITickable tickable)
-                _tickables.Add(tickable);
-
-            if (controller is IFixedTickable fixedTickable)
-                _fixedTickables.Add(fixedTickable);
-
-            if (controller is ILateTickable lateTickable)
-                _lateTickables.Add(lateTickable);
+            RegisterTickables(controller);
         }
 
         /// <summary>
@@ -57,14 +50,18 @@ namespace Strada.Core.Patterns
         public void RegisterService(IService service)
         {
             _services.Add(service);
+            RegisterTickables(service);
+        }
 
-            if (service is ITickable tickable)
+        private void RegisterTickables(object component)
+        {
+            if (component is ITickable tickable)
                 _tickables.Add(tickable);
 
-            if (service is IFixedTickable fixedTickable)
+            if (component is IFixedTickable fixedTickable)
                 _fixedTickables.Add(fixedTickable);
 
-            if (service is ILateTickable lateTickable)
+            if (component is ILateTickable lateTickable)
                 _lateTickables.Add(lateTickable);
         }
 
