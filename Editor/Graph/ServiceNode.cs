@@ -21,8 +21,6 @@ namespace Strada.Core.Editor.Graph
 
         private Port _inputPort;
         private Port _outputPort;
-        private Label _lifetimeBadge;
-        private Label _implementationLabel;
 
         /// <summary>
         /// Gets the service type this node represents.
@@ -106,37 +104,37 @@ namespace Strada.Core.Editor.Graph
 
         private void SetupContent()
         {
-            _lifetimeBadge = new Label(Lifetime.ToString())
+            var lifetimeBadge = new Label(Lifetime.ToString())
             {
                 name = "lifetime-badge"
             };
-            _lifetimeBadge.style.backgroundColor = GetLifetimeColor();
-            _lifetimeBadge.style.color = Color.white;
-            _lifetimeBadge.style.borderTopLeftRadius = 4;
-            _lifetimeBadge.style.borderTopRightRadius = 4;
-            _lifetimeBadge.style.borderBottomLeftRadius = 4;
-            _lifetimeBadge.style.borderBottomRightRadius = 4;
-            _lifetimeBadge.style.paddingLeft = 6;
-            _lifetimeBadge.style.paddingRight = 6;
-            _lifetimeBadge.style.paddingTop = 2;
-            _lifetimeBadge.style.paddingBottom = 2;
-            _lifetimeBadge.style.fontSize = 10;
-            _lifetimeBadge.style.marginTop = 4;
-            _lifetimeBadge.style.marginBottom = 4;
-            _lifetimeBadge.style.alignSelf = Align.FlexStart;
+            lifetimeBadge.style.backgroundColor = GetLifetimeColor();
+            lifetimeBadge.style.color = Color.white;
+            lifetimeBadge.style.borderTopLeftRadius = 4;
+            lifetimeBadge.style.borderTopRightRadius = 4;
+            lifetimeBadge.style.borderBottomLeftRadius = 4;
+            lifetimeBadge.style.borderBottomRightRadius = 4;
+            lifetimeBadge.style.paddingLeft = 6;
+            lifetimeBadge.style.paddingRight = 6;
+            lifetimeBadge.style.paddingTop = 2;
+            lifetimeBadge.style.paddingBottom = 2;
+            lifetimeBadge.style.fontSize = 10;
+            lifetimeBadge.style.marginTop = 4;
+            lifetimeBadge.style.marginBottom = 4;
+            lifetimeBadge.style.alignSelf = Align.FlexStart;
 
             var implTypeName = ImplementationType != ServiceType
                 ? $"→ {GetDisplayName(ImplementationType)}" 
                 : "";
             
-            _implementationLabel = new Label(implTypeName)
+            var implementationLabel = new Label(implTypeName)
             {
                 name = "implementation-label"
             };
-            _implementationLabel.style.fontSize = 10;
-            _implementationLabel.style.color = new Color(0.6f, 0.6f, 0.6f);
-            _implementationLabel.style.marginTop = 2;
-            _implementationLabel.style.unityFontStyleAndWeight = FontStyle.Italic;
+            implementationLabel.style.fontSize = 10;
+            implementationLabel.style.color = new Color(0.6f, 0.6f, 0.6f);
+            implementationLabel.style.marginTop = 2;
+            implementationLabel.style.unityFontStyleAndWeight = FontStyle.Italic;
 
             var fullNameLabel = new Label(ServiceType.FullName ?? ServiceType.Name)
             {
@@ -154,10 +152,10 @@ namespace Strada.Core.Editor.Graph
             contentContainer.style.paddingRight = 8;
             contentContainer.style.paddingBottom = 8;
             
-            contentContainer.Add(_lifetimeBadge);
+            contentContainer.Add(lifetimeBadge);
             if (!string.IsNullOrEmpty(implTypeName))
             {
-                contentContainer.Add(_implementationLabel);
+                contentContainer.Add(implementationLabel);
             }
             contentContainer.Add(fullNameLabel);
 
@@ -180,10 +178,10 @@ namespace Strada.Core.Editor.Graph
                 
                 evt.menu.AppendSeparator();
                 
-                evt.menu.AppendAction($"Copy Type Name", _ => CopyTypeName(),
+                evt.menu.AppendAction("Copy Type Name", _ => CopyTypeName(),
                     DropdownMenuAction.Status.Normal);
-                
-                evt.menu.AppendAction($"Copy Full Name", _ => CopyFullName(),
+
+                evt.menu.AppendAction("Copy Full Name", _ => CopyFullName(),
                     DropdownMenuAction.Status.Normal);
             });
             
@@ -219,33 +217,16 @@ namespace Strada.Core.Editor.Graph
 
         private bool CanNavigateToSource()
         {
-            var type = ImplementationType ?? ServiceType;
-            if (type == null) return false;
-
-            var guids = AssetDatabase.FindAssets($"t:Script {type.Name}");
-            return guids.Length > 0;
+            return NodeHelper.CanNavigateToSource(ImplementationType ?? ServiceType);
         }
 
         private void NavigateToSource()
         {
-            var type = ImplementationType ?? ServiceType;
-            if (type == null) return;
-
-            var guids = AssetDatabase.FindAssets($"t:Script {type.Name}");
-            if (guids.Length > 0)
-            {
-                var path = AssetDatabase.GUIDToAssetPath(guids[0]);
-                var asset = AssetDatabase.LoadAssetAtPath<MonoScript>(path);
-                if (asset != null)
-                {
-                    AssetDatabase.OpenAsset(asset);
-                }
-            }
+            NodeHelper.NavigateToSource(ImplementationType ?? ServiceType);
         }
 
         private void ViewUsages()
         {
-            var searchQuery = $"ref:{ServiceType.Name}";
             EditorApplication.ExecuteMenuItem("Edit/Find References In Scene");
         }
 

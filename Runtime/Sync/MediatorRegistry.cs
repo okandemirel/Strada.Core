@@ -4,7 +4,6 @@ using System.Runtime.CompilerServices;
 using Strada.Core.DI;
 using Strada.Core.ECS;
 using Strada.Core.Patterns;
-using Strada.Core.Pooling;
 
 namespace Strada.Core.Sync
 {
@@ -57,11 +56,6 @@ namespace Strada.Core.Sync
 
         public void SyncAll()
         {
-            for (int i = 0; i < _activeMediators.Count; i++)
-            {
-                if (_activeMediators[i] is ISyncable syncable)
-                    syncable.SyncBindings();
-            }
         }
 
         public void ReleaseAll()
@@ -80,10 +74,6 @@ namespace Strada.Core.Sync
             ReleaseAll();
         }
 
-        private interface ISyncable
-        {
-            void SyncBindings();
-        }
     }
 
     internal static class MediatorPool<TMediator, TView>

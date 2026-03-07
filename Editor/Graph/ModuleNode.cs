@@ -21,8 +21,6 @@ namespace Strada.Core.Editor.Graph
 
         private Port _inputPort;
         private Port _outputPort;
-        private Label _priorityBadge;
-        private Label _dependencyCountLabel;
 
         /// <summary>
         /// Gets the module type this node represents.
@@ -101,32 +99,32 @@ namespace Strada.Core.Editor.Graph
 
         private void SetupContent()
         {
-            _priorityBadge = new Label($"Priority: {Priority}")
+            var priorityBadge = new Label($"Priority: {Priority}")
             {
                 name = "priority-badge"
             };
-            _priorityBadge.style.backgroundColor = GetPriorityColor();
-            _priorityBadge.style.color = Color.white;
-            _priorityBadge.style.borderTopLeftRadius = 4;
-            _priorityBadge.style.borderTopRightRadius = 4;
-            _priorityBadge.style.borderBottomLeftRadius = 4;
-            _priorityBadge.style.borderBottomRightRadius = 4;
-            _priorityBadge.style.paddingLeft = 6;
-            _priorityBadge.style.paddingRight = 6;
-            _priorityBadge.style.paddingTop = 2;
-            _priorityBadge.style.paddingBottom = 2;
-            _priorityBadge.style.fontSize = 10;
-            _priorityBadge.style.marginTop = 4;
-            _priorityBadge.style.marginBottom = 4;
-            _priorityBadge.style.alignSelf = Align.FlexStart;
+            priorityBadge.style.backgroundColor = GetPriorityColor();
+            priorityBadge.style.color = Color.white;
+            priorityBadge.style.borderTopLeftRadius = 4;
+            priorityBadge.style.borderTopRightRadius = 4;
+            priorityBadge.style.borderBottomLeftRadius = 4;
+            priorityBadge.style.borderBottomRightRadius = 4;
+            priorityBadge.style.paddingLeft = 6;
+            priorityBadge.style.paddingRight = 6;
+            priorityBadge.style.paddingTop = 2;
+            priorityBadge.style.paddingBottom = 2;
+            priorityBadge.style.fontSize = 10;
+            priorityBadge.style.marginTop = 4;
+            priorityBadge.style.marginBottom = 4;
+            priorityBadge.style.alignSelf = Align.FlexStart;
 
-            _dependencyCountLabel = new Label($"Dependencies: {Dependencies.Count}")
+            var dependencyCountLabel = new Label($"Dependencies: {Dependencies.Count}")
             {
                 name = "dependency-count-label"
             };
-            _dependencyCountLabel.style.fontSize = 10;
-            _dependencyCountLabel.style.color = new Color(0.6f, 0.6f, 0.6f);
-            _dependencyCountLabel.style.marginTop = 2;
+            dependencyCountLabel.style.fontSize = 10;
+            dependencyCountLabel.style.color = new Color(0.6f, 0.6f, 0.6f);
+            dependencyCountLabel.style.marginTop = 2;
 
             var statusLabel = new Label(IsInitialized ? "✓ Initialized" : "○ Not Initialized")
             {
@@ -154,8 +152,8 @@ namespace Strada.Core.Editor.Graph
             contentContainer.style.paddingRight = 8;
             contentContainer.style.paddingBottom = 8;
 
-            contentContainer.Add(_priorityBadge);
-            contentContainer.Add(_dependencyCountLabel);
+            contentContainer.Add(priorityBadge);
+            contentContainer.Add(dependencyCountLabel);
             contentContainer.Add(statusLabel);
             contentContainer.Add(fullNameLabel);
 
@@ -210,25 +208,12 @@ namespace Strada.Core.Editor.Graph
 
         private bool CanNavigateToSource()
         {
-            if (ModuleType == null) return false;
-            var guids = AssetDatabase.FindAssets($"t:Script {ModuleType.Name}");
-            return guids.Length > 0;
+            return NodeHelper.CanNavigateToSource(ModuleType);
         }
 
         private void NavigateToSource()
         {
-            if (ModuleType == null) return;
-
-            var guids = AssetDatabase.FindAssets($"t:Script {ModuleType.Name}");
-            if (guids.Length > 0)
-            {
-                var path = AssetDatabase.GUIDToAssetPath(guids[0]);
-                var asset = AssetDatabase.LoadAssetAtPath<MonoScript>(path);
-                if (asset != null)
-                {
-                    AssetDatabase.OpenAsset(asset);
-                }
-            }
+            NodeHelper.NavigateToSource(ModuleType);
         }
 
         private void ViewDependencies()

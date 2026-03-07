@@ -331,6 +331,9 @@ namespace Strada.Core.DI
             return best;
         }
 
+        private static readonly MethodInfo ResolveByIndexMethod =
+            typeof(IIndexResolver).GetMethod(nameof(IIndexResolver.ResolveByIndex));
+
         private static Expression BuildDependencyExpr(Type serviceType, Registration reg, Dictionary<int, int> typeIdMap, ParameterExpression resolverParam)
         {
             if (reg.Instance != null)
@@ -338,7 +341,7 @@ namespace Strada.Core.DI
 
             int index = typeIdMap[TypeRegistry.GetId(serviceType)];
             return Expression.Convert(
-                Expression.Call(resolverParam, typeof(IIndexResolver).GetMethod(nameof(IIndexResolver.ResolveByIndex)), Expression.Constant(index)),
+                Expression.Call(resolverParam, ResolveByIndexMethod, Expression.Constant(index)),
                 serviceType);
         }
 

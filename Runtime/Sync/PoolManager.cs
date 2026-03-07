@@ -8,10 +8,6 @@ using Object = UnityEngine.Object;
 
 namespace Strada.Core.Sync
 {
-    /// <summary>
-    /// Central manager for all view pools. Creates persistent GameObjects that survive scene transitions.
-    /// Entities and pools live independently of Unity scenes.
-    /// </summary>
     public class PoolManager : IDisposable
     {
         private readonly Dictionary<Type, IViewPool> _pools = new();
@@ -60,13 +56,6 @@ namespace Strada.Core.Sync
             _syncRunner.Initialize(_viewRegistry);
         }
 
-        /// <summary>
-        /// Register a new view pool for the specified view type.
-        /// </summary>
-        /// <param name="prefab">The prefab to instantiate for this view type</param>
-        /// <param name="prewarmCount">Number of instances to create immediately</param>
-        /// <param name="maxSize">Maximum pool size (default 1000)</param>
-        /// <returns>The created pool</returns>
         public ViewPool<TView> RegisterPool<TView>(GameObject prefab, int prewarmCount = 0, int maxSize = 1000)
             where TView : EntityView
         {
@@ -100,9 +89,6 @@ namespace Strada.Core.Sync
             return pool;
         }
 
-        /// <summary>
-        /// Get the pool for a specific view type.
-        /// </summary>
         public ViewPool<TView> GetPool<TView>() where TView : EntityView
         {
             return _pools.TryGetValue(typeof(TView), out var pool)
@@ -110,17 +96,11 @@ namespace Strada.Core.Sync
                 : null;
         }
 
-        /// <summary>
-        /// Check if a pool exists for the specified view type.
-        /// </summary>
         public bool HasPool<TView>() where TView : EntityView
         {
             return _pools.ContainsKey(typeof(TView));
         }
 
-        /// <summary>
-        /// Spawn a view from the pool and bind it to the entity.
-        /// </summary>
         public TView Spawn<TView>(Entity entity, Transform parent = null) where TView : EntityView
         {
             var pool = GetPool<TView>();
@@ -132,9 +112,6 @@ namespace Strada.Core.Sync
             return pool.Spawn(entity, parent);
         }
 
-        /// <summary>
-        /// Spawn a view from the pool at a specific position and rotation.
-        /// </summary>
         public TView Spawn<TView>(Entity entity, Vector3 position, Quaternion rotation, Transform parent = null) where TView : EntityView
         {
             var pool = GetPool<TView>();
@@ -146,27 +123,18 @@ namespace Strada.Core.Sync
             return pool.Spawn(entity, position, rotation, parent);
         }
 
-        /// <summary>
-        /// Despawn a view and return it to the pool.
-        /// </summary>
         public void Despawn<TView>(TView view) where TView : EntityView
         {
             var pool = GetPool<TView>();
             pool?.Despawn(view);
         }
 
-        /// <summary>
-        /// Despawn a view by its bound entity.
-        /// </summary>
         public void DespawnByEntity<TView>(Entity entity) where TView : EntityView
         {
             var pool = GetPool<TView>();
             pool?.Despawn(entity);
         }
 
-        /// <summary>
-        /// Clear all pools but keep them registered.
-        /// </summary>
         public void ClearAllPools()
         {
             foreach (var pool in _pools.Values)
@@ -175,9 +143,6 @@ namespace Strada.Core.Sync
             }
         }
 
-        /// <summary>
-        /// Despawn all active views but keep pools intact.
-        /// </summary>
         public void DespawnAllViews()
         {
             foreach (var pool in _pools.Values)

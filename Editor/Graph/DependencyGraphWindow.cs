@@ -15,11 +15,8 @@ namespace Strada.Core.Editor.Graph
     public class DependencyGraphWindow : EditorWindow
     {
         private DependencyGraphView _graphView;
-        private VisualElement _toolbar;
         private VisualElement _cycleWarningBanner;
-        private VisualElement _statusBar;
         private DropdownField _lifetimeFilter;
-        private TextField _searchField;
         private Label _statusLabel;
         private Label _nodeCountLabel;
 
@@ -51,163 +48,60 @@ namespace Strada.Core.Editor.Graph
 
             CreateToolbar(root);
 
-            CreateCycleWarningBanner(root);
+            _cycleWarningBanner = GraphWindowHelper.CreateCycleWarningBanner("Circular Dependency Detected!");
+            root.Add(_cycleWarningBanner);
 
             _graphView = new DependencyGraphView();
             _graphView.style.flexGrow = 1;
             _graphView.OnNodeSelected += OnNodeSelected;
-            _graphView.OnNodeHovered += OnNodeHovered;
             _graphView.OnGraphRefreshed += OnGraphRefreshed;
             root.Add(_graphView);
 
-            CreateStatusBar(root);
+            var (statusBar, statusLabel, countLabel) = GraphWindowHelper.CreateStatusBar("Nodes: 0 | Edges: 0");
+            _statusLabel = statusLabel;
+            _nodeCountLabel = countLabel;
+            root.Add(statusBar);
 
             RefreshGraph();
         }
 
         private void CreateToolbar(VisualElement root)
         {
-            _toolbar = new VisualElement();
-            _toolbar.AddToClassList("graph-toolbar");
-            _toolbar.style.flexDirection = FlexDirection.Row;
-            _toolbar.style.alignItems = Align.Center;
-            _toolbar.style.paddingLeft = 8;
-            _toolbar.style.paddingRight = 8;
-            _toolbar.style.paddingTop = 4;
-            _toolbar.style.paddingBottom = 4;
-            _toolbar.style.backgroundColor = new Color(0.18f, 0.18f, 0.18f);
-            _toolbar.style.borderBottomWidth = 1;
-            _toolbar.style.borderBottomColor = new Color(0.1f, 0.1f, 0.1f);
+            var toolbar = GraphWindowHelper.CreateToolbarBase();
 
-            var refreshButton = new Button(RefreshGraph) { text = "Refresh" };
-            refreshButton.style.marginRight = 8;
-            _toolbar.Add(refreshButton);
+            toolbar.Add(GraphWindowHelper.CreateToolbarButton("Refresh", RefreshGraph));
 
             var filterLabel = new Label("Filter:");
             filterLabel.style.marginRight = 4;
-            _toolbar.Add(filterLabel);
+            toolbar.Add(filterLabel);
 
-            _lifetimeFilter = new DropdownField(new List<string> 
-            { 
-                "All", 
-                "Singleton", 
-                "Transient", 
-                "Scoped" 
+            _lifetimeFilter = new DropdownField(new List<string>
+            {
+                "All",
+                "Singleton",
+                "Transient",
+                "Scoped"
             }, 0);
             _lifetimeFilter.style.minWidth = 100;
             _lifetimeFilter.style.marginRight = 16;
             _lifetimeFilter.RegisterValueChangedCallback(OnLifetimeFilterChanged);
-            _toolbar.Add(_lifetimeFilter);
+            toolbar.Add(_lifetimeFilter);
 
-            var frameAllButton = new Button(() => _graphView?.FrameAll()) { text = "Frame All" };
-            frameAllButton.style.marginRight = 8;
-            _toolbar.Add(frameAllButton);
+            toolbar.Add(GraphWindowHelper.CreateToolbarButton("Frame All", () => _graphView?.FrameAll()));
+            toolbar.Add(GraphWindowHelper.CreateToolbarButton("Clear Highlights", () => _graphView?.ClearHighlights()));
+            toolbar.Add(GraphWindowHelper.CreateToolbarSpacer());
 
-            var clearHighlightsButton = new Button(() => _graphView?.ClearHighlights()) { text = "Clear Highlights" };
-            clearHighlightsButton.style.marginRight = 8;
-            _toolbar.Add(clearHighlightsButton);
+            var (searchContainer, searchField) = GraphWindowHelper.CreateSearchSection();
+            searchField.RegisterValueChangedCallback(OnSearchChanged);
+            toolbar.Add(searchContainer);
 
-            var spacer = new VisualElement();
-            spacer.style.flexGrow = 1;
-            _toolbar.Add(spacer);
-
-            var searchContainer = new VisualElement();
-            searchContainer.style.flexDirection = FlexDirection.Row;
-            searchContainer.style.alignItems = Align.Center;
-
-            var searchLabel = new Label("Search:");
-            searchLabel.style.marginRight = 4;
-            searchContainer.Add(searchLabel);
-
-            _searchField = new TextField();
-            _searchField.style.minWidth = 180;
-            _searchField.RegisterValueChangedCallback(OnSearchChanged);
-            searchContainer.Add(_searchField);
-
-            _toolbar.Add(searchContainer);
-
-            root.Add(_toolbar);
-        }
-
-        private void CreateCycleWarningBanner(VisualElement root)
-        {
-            _cycleWarningBanner = new VisualElement();
-            _cycleWarningBanner.AddToClassList("cycle-warning");
-            _cycleWarningBanner.style.backgroundColor = new Color(0.3f, 0.15f, 0.15f);
-            _cycleWarningBanner.style.borderTopWidth = 2;
-            _cycleWarningBanner.style.borderBottomWidth = 2;
-            _cycleWarningBanner.style.borderLeftWidth = 2;
-            _cycleWarningBanner.style.borderRightWidth = 2;
-            _cycleWarningBanner.style.borderTopColor = new Color(0.8f, 0.2f, 0.2f);
-            _cycleWarningBanner.style.borderBottomColor = new Color(0.8f, 0.2f, 0.2f);
-            _cycleWarningBanner.style.borderLeftColor = new Color(0.8f, 0.2f, 0.2f);
-            _cycleWarningBanner.style.borderRightColor = new Color(0.8f, 0.2f, 0.2f);
-            _cycleWarningBanner.style.paddingLeft = 12;
-            _cycleWarningBanner.style.paddingRight = 12;
-            _cycleWarningBanner.style.paddingTop = 8;
-            _cycleWarningBanner.style.paddingBottom = 8;
-            _cycleWarningBanner.style.display = DisplayStyle.None;
-
-            var warningIcon = new Label("⚠");
-            warningIcon.style.fontSize = 16;
-            warningIcon.style.color = new Color(1f, 0.4f, 0.4f);
-            warningIcon.style.marginRight = 8;
-
-            var warningText = new Label("Circular Dependency Detected!");
-            warningText.name = "cycle-warning-text";
-            warningText.style.color = new Color(1f, 0.6f, 0.6f);
-            warningText.style.unityFontStyleAndWeight = FontStyle.Bold;
-
-            var cyclePathLabel = new Label();
-            cyclePathLabel.name = "cycle-path-label";
-            cyclePathLabel.style.color = new Color(0.8f, 0.8f, 0.8f);
-            cyclePathLabel.style.marginTop = 4;
-            cyclePathLabel.style.fontSize = 11;
-
-            var headerRow = new VisualElement();
-            headerRow.style.flexDirection = FlexDirection.Row;
-            headerRow.style.alignItems = Align.Center;
-            headerRow.Add(warningIcon);
-            headerRow.Add(warningText);
-
-            _cycleWarningBanner.Add(headerRow);
-            _cycleWarningBanner.Add(cyclePathLabel);
-
-            root.Add(_cycleWarningBanner);
-        }
-
-        private void CreateStatusBar(VisualElement root)
-        {
-            _statusBar = new VisualElement();
-            _statusBar.AddToClassList("status-bar");
-            _statusBar.style.flexDirection = FlexDirection.Row;
-            _statusBar.style.justifyContent = Justify.SpaceBetween;
-            _statusBar.style.paddingLeft = 8;
-            _statusBar.style.paddingRight = 8;
-            _statusBar.style.paddingTop = 4;
-            _statusBar.style.paddingBottom = 4;
-            _statusBar.style.backgroundColor = new Color(0.15f, 0.15f, 0.15f);
-            _statusBar.style.borderTopWidth = 1;
-            _statusBar.style.borderTopColor = new Color(0.1f, 0.1f, 0.1f);
-
-            _statusLabel = new Label("Ready");
-            _statusLabel.style.color = new Color(0.6f, 0.6f, 0.6f);
-            _statusLabel.style.fontSize = 11;
-
-            _nodeCountLabel = new Label("Nodes: 0 | Edges: 0");
-            _nodeCountLabel.style.color = new Color(0.6f, 0.6f, 0.6f);
-            _nodeCountLabel.style.fontSize = 11;
-
-            _statusBar.Add(_statusLabel);
-            _statusBar.Add(_nodeCountLabel);
-
-            root.Add(_statusBar);
+            root.Add(toolbar);
         }
 
         private void RefreshGraph()
         {
             var provider = ContainerDataProvider.Instance;
-            
+
             if (!provider.IsAvailable)
             {
                 _statusLabel.text = "Container not available - Enter Play Mode";
@@ -227,7 +121,7 @@ namespace Strada.Core.Editor.Graph
                 var pathLabel = _cycleWarningBanner.Q<Label>("cycle-path-label");
                 if (pathLabel != null)
                 {
-                    var pathStr = string.Join(" → ", 
+                    var pathStr = string.Join(" \u2192 ",
                         System.Linq.Enumerable.Select(_graphView.CyclePath, t => t.Name));
                     pathLabel.text = $"Cycle: {pathStr}";
                 }
@@ -263,7 +157,7 @@ namespace Strada.Core.Editor.Graph
         private void OnSearchChanged(ChangeEvent<string> evt)
         {
             var results = _graphView.SearchNodes(evt.newValue);
-            
+
             if (results.Count == 1)
             {
                 _graphView.FocusOnNode(results[0]);
@@ -282,8 +176,8 @@ namespace Strada.Core.Editor.Graph
                 _graphView.ClearHighlights();
             }
 
-            _statusLabel.text = string.IsNullOrEmpty(evt.newValue) 
-                ? "Ready" 
+            _statusLabel.text = string.IsNullOrEmpty(evt.newValue)
+                ? "Ready"
                 : $"Found {results.Count} matching node(s)";
         }
 
@@ -294,10 +188,6 @@ namespace Strada.Core.Editor.Graph
                 _statusLabel.text = $"Selected: {node.ServiceType.Name} ({node.Lifetime})";
                 _graphView.HighlightNodeDependencies(node);
             }
-        }
-
-        private void OnNodeHovered(ServiceNode node)
-        {
         }
 
         private void OnPlayModeStateChanged(PlayModeStateChange state)

@@ -27,8 +27,10 @@ namespace Strada.Core.DI.AutoBinding
             IReadOnlyList<string> excludePatterns = null)
         {
             var entries = ScanAssemblies(includePatterns, excludePatterns);
+            var sorted = new List<AutoBindingEntry>(entries);
+            sorted.Sort((a, b) => a.Priority.CompareTo(b.Priority));
 
-            foreach (var entry in entries.OrderBy(e => e.Priority))
+            foreach (var entry in sorted)
             {
                 RegisterEntry(builder, entry);
             }
@@ -120,42 +122,16 @@ namespace Strada.Core.DI.AutoBinding
                 };
             }
 
-            var singleton = type.GetCustomAttribute<AutoRegisterSingletonAttribute>();
-            if (singleton != null)
+            var baseAttr = type.GetCustomAttribute<AutoRegisterBaseAttribute>(inherit: false);
+            if (baseAttr != null)
             {
                 return new AutoBindingEntry
                 {
                     ImplementationType = type,
-                    ServiceType = singleton.As ?? type,
-                    Lifetime = Lifetime.Singleton,
-                    Priority = singleton.Priority,
-                    RegisterSelf = singleton.RegisterSelf
-                };
-            }
-
-            var transient = type.GetCustomAttribute<AutoRegisterTransientAttribute>();
-            if (transient != null)
-            {
-                return new AutoBindingEntry
-                {
-                    ImplementationType = type,
-                    ServiceType = transient.As ?? type,
-                    Lifetime = Lifetime.Transient,
-                    Priority = transient.Priority,
-                    RegisterSelf = transient.RegisterSelf
-                };
-            }
-
-            var scoped = type.GetCustomAttribute<AutoRegisterScopedAttribute>();
-            if (scoped != null)
-            {
-                return new AutoBindingEntry
-                {
-                    ImplementationType = type,
-                    ServiceType = scoped.As ?? type,
-                    Lifetime = Lifetime.Scoped,
-                    Priority = scoped.Priority,
-                    RegisterSelf = scoped.RegisterSelf
+                    ServiceType = baseAttr.As ?? type,
+                    Lifetime = baseAttr.Lifetime,
+                    Priority = baseAttr.Priority,
+                    RegisterSelf = baseAttr.RegisterSelf
                 };
             }
 
@@ -175,9 +151,20 @@ namespace Strada.Core.DI.AutoBinding
             return null;
         }
 
+        private static MethodInfo _registerOneGeneric;
+        private static MethodInfo _registerTwoGeneric;
+
+        private static MethodInfo RegisterOneGeneric =>
+            _registerOneGeneric ??= Array.Find(typeof(IContainerBuilder).GetMethods(),
+                m => m.Name == "Register" && m.GetGenericArguments().Length == 1 && m.GetParameters().Length == 1);
+
+        private static MethodInfo RegisterTwoGeneric =>
+            _registerTwoGeneric ??= Array.Find(typeof(IContainerBuilder).GetMethods(),
+                m => m.Name == "Register" && m.GetGenericArguments().Length == 2 && m.GetParameters().Length == 1);
+
         private static void RegisterEntry(IContainerBuilder builder, AutoBindingEntry entry)
         {
-            var builderType = typeof(IContainerBuilder);
+            var args = new object[] { entry.Lifetime };
 
             if (entry.ServiceType != entry.ImplementationType)
             {
@@ -188,31 +175,19 @@ namespace Strada.Core.DI.AutoBinding
                     return;
                 }
 
-                var method = builderType.GetMethods()
-                    .First(m => m.Name == "Register" &&
-                                m.GetGenericArguments().Length == 2 &&
-                                m.GetParameters().Length == 1);
-                var generic = method.MakeGenericMethod(entry.ServiceType, entry.ImplementationType);
-                generic.Invoke(builder, new object[] { entry.Lifetime });
+                RegisterTwoGeneric.MakeGenericMethod(entry.ServiceType, entry.ImplementationType)
+                    .Invoke(builder, args);
 
                 if (entry.RegisterSelf)
                 {
-                    var selfMethod = builderType.GetMethods()
-                        .First(m => m.Name == "Register" &&
-                                    m.GetGenericArguments().Length == 1 &&
-                                    m.GetParameters().Length == 1);
-                    var selfGeneric = selfMethod.MakeGenericMethod(entry.ImplementationType);
-                    selfGeneric.Invoke(builder, new object[] { entry.Lifetime });
+                    RegisterOneGeneric.MakeGenericMethod(entry.ImplementationType)
+                        .Invoke(builder, args);
                 }
             }
             else
             {
-                var method = builderType.GetMethods()
-                    .First(m => m.Name == "Register" &&
-                                m.GetGenericArguments().Length == 1 &&
-                                m.GetParameters().Length == 1);
-                var generic = method.MakeGenericMethod(entry.ImplementationType);
-                generic.Invoke(builder, new object[] { entry.Lifetime });
+                RegisterOneGeneric.MakeGenericMethod(entry.ImplementationType)
+                    .Invoke(builder, args);
             }
         }
 
