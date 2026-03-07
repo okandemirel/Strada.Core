@@ -66,6 +66,9 @@ namespace Strada.Core.ECS.Core
         public void CreateEntities(NativeArray<Entity> entities)
         {
             int count = entities.Length;
+            if (count < 0 || _nextEntityIndex > int.MaxValue - count)
+                throw new ArgumentException("Entity count overflow");
+
             EnsureCapacity(_nextEntityIndex + count);
 
             for (int i = 0; i < count; i++)
@@ -140,7 +143,7 @@ namespace Strada.Core.ECS.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
-            if (!IsActiveIndex(entity.Index))
+            if (!Exists(entity))
                 return;
 
             var storage = _store.GetOrCreateStorage<T>();
@@ -150,7 +153,7 @@ namespace Strada.Core.ECS.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddComponent<T>(Entity entity, T component) where T : unmanaged, IComponent
         {
-            if (!IsActiveIndex(entity.Index))
+            if (!Exists(entity))
                 return;
 
             var storage = _store.GetOrCreateStorage<T>();
@@ -160,7 +163,7 @@ namespace Strada.Core.ECS.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
-            if (!IsActiveIndex(entity.Index))
+            if (!Exists(entity))
                 return;
 
             var storage = _store.GetOrCreateStorage<T>();
@@ -180,6 +183,9 @@ namespace Strada.Core.ECS.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T GetComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
+            if (!Exists(entity))
+                ThrowEntityNotExists(entity);
+
             var storage = _store.GetOrCreateStorage<T>();
             return storage.Get(entity.Index);
         }
@@ -213,7 +219,7 @@ namespace Strada.Core.ECS.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetComponent<T>(Entity entity, T component) where T : unmanaged, IComponent
         {
-            if (!IsActiveIndex(entity.Index))
+            if (!Exists(entity))
                 return;
 
             var storage = _store.GetOrCreateStorage<T>();
@@ -296,6 +302,9 @@ namespace Strada.Core.ECS.Core
             int newCapacity = _versions.Length;
             while (newCapacity < required)
                 newCapacity *= 2;
+
+            if (newCapacity < 0 || newCapacity > int.MaxValue / 2)
+                newCapacity = int.MaxValue / 2;
 
             var newVersions = new NativeArray<int>(newCapacity, Allocator.Persistent);
             var newActive = new NativeArray<byte>(newCapacity, Allocator.Persistent);
