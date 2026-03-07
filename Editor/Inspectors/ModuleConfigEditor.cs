@@ -70,17 +70,21 @@ namespace Strada.Core.Editor.Inspectors
             serializedObject.ApplyModifiedProperties();
         }
 
+        private static void DrawColoredBox(Color color)
+        {
+            var previousColor = GUI.color;
+            GUI.color = color;
+            GUILayout.Box("", GUILayout.Width(10), GUILayout.Height(EditorGUIUtility.singleLineHeight));
+            GUI.color = previousColor;
+        }
+
         private void DrawHeader()
         {
             var moduleConfig = target as ModuleConfig;
 
             EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
 
-            var statusColor = moduleConfig.Enabled ? EnabledColor : DisabledColor;
-            var previousColor = GUI.color;
-            GUI.color = statusColor;
-            GUILayout.Box("", GUILayout.Width(10), GUILayout.Height(EditorGUIUtility.singleLineHeight));
-            GUI.color = previousColor;
+            DrawColoredBox(moduleConfig.Enabled ? EnabledColor : DisabledColor);
 
             EditorGUILayout.LabelField(moduleConfig.ModuleName, EditorStyles.boldLabel);
 
@@ -130,42 +134,34 @@ namespace Strada.Core.Editor.Inspectors
 
         private void DrawServicesSection()
         {
-            EditorGUILayout.BeginHorizontal();
-            _showServices = EditorGUILayout.Foldout(_showServices, $"Services ({_servicesProp.arraySize})", true, EditorStyles.foldoutHeader);
-
-            GUILayout.FlexibleSpace();
-
-            if (GUILayout.Button("+", EditorStyles.miniButtonRight, GUILayout.Width(25)))
-            {
-                _servicesProp.arraySize++;
-            }
-
-            EditorGUILayout.EndHorizontal();
-
-            if (_showServices)
-            {
-                _servicesList.DoLayoutList();
-            }
+            _showServices = DrawFoldoutListSection("Services", _servicesProp, _servicesList, _showServices);
         }
 
         private void DrawDependenciesSection()
         {
+            _showDependencies = DrawFoldoutListSection("Dependencies", _dependenciesProp, _dependenciesList, _showDependencies);
+        }
+
+        private static bool DrawFoldoutListSection(string label, SerializedProperty arrayProp, ReorderableList list, bool foldout)
+        {
             EditorGUILayout.BeginHorizontal();
-            _showDependencies = EditorGUILayout.Foldout(_showDependencies, $"Dependencies ({_dependenciesProp.arraySize})", true, EditorStyles.foldoutHeader);
+            foldout = EditorGUILayout.Foldout(foldout, $"{label} ({arrayProp.arraySize})", true, EditorStyles.foldoutHeader);
 
             GUILayout.FlexibleSpace();
 
             if (GUILayout.Button("+", EditorStyles.miniButtonRight, GUILayout.Width(25)))
             {
-                _dependenciesProp.arraySize++;
+                arrayProp.arraySize++;
             }
 
             EditorGUILayout.EndHorizontal();
 
-            if (_showDependencies)
+            if (foldout)
             {
-                _dependenciesList.DoLayoutList();
+                list.DoLayoutList();
             }
+
+            return foldout;
         }
 
         private void DrawCustomConfiguration()
@@ -229,38 +225,32 @@ namespace Strada.Core.Editor.Inspectors
 
         private void SetupServicesList()
         {
-            _servicesList = new ReorderableList(serializedObject, _servicesProp, true, true, false, true);
-
-            _servicesList.drawHeaderCallback = rect =>
-            {
-                EditorGUI.LabelField(rect, "Interface → Implementation [Lifetime]");
-            };
-
-            _servicesList.drawElementCallback = (rect, index, isActive, isFocused) =>
-            {
-                var element = _servicesProp.GetArrayElementAtIndex(index);
-                rect.y += 2;
-                rect.height = EditorGUIUtility.singleLineHeight;
-                EditorGUI.PropertyField(rect, element, GUIContent.none);
-            };
+            _servicesList = CreateSimpleReorderableList(_servicesProp, "Interface → Implementation [Lifetime]");
         }
 
         private void SetupDependenciesList()
         {
-            _dependenciesList = new ReorderableList(serializedObject, _dependenciesProp, true, true, false, true);
+            _dependenciesList = CreateSimpleReorderableList(_dependenciesProp, "Module Dependencies");
+        }
 
-            _dependenciesList.drawHeaderCallback = rect =>
+        private ReorderableList CreateSimpleReorderableList(SerializedProperty property, string headerLabel)
+        {
+            var list = new ReorderableList(serializedObject, property, true, true, false, true);
+
+            list.drawHeaderCallback = rect =>
             {
-                EditorGUI.LabelField(rect, "Module Dependencies");
+                EditorGUI.LabelField(rect, headerLabel);
             };
 
-            _dependenciesList.drawElementCallback = (rect, index, isActive, isFocused) =>
+            list.drawElementCallback = (rect, index, isActive, isFocused) =>
             {
-                var element = _dependenciesProp.GetArrayElementAtIndex(index);
+                var element = property.GetArrayElementAtIndex(index);
                 rect.y += 2;
                 rect.height = EditorGUIUtility.singleLineHeight;
                 EditorGUI.PropertyField(rect, element, GUIContent.none);
             };
+
+            return list;
         }
 
         private void DiscoverSystems()

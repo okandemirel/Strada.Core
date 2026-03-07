@@ -69,10 +69,7 @@ namespace Strada.Core.Editor.Inspectors
             EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
 
             var statusColor = _validationErrors.Count == 0 ? ValidColor : ErrorColor;
-            var previousColor = GUI.color;
-            GUI.color = statusColor;
-            GUILayout.Box("", GUILayout.Width(10), GUILayout.Height(EditorGUIUtility.singleLineHeight));
-            GUI.color = previousColor;
+            DrawColoredBox(statusColor);
 
             EditorGUILayout.LabelField("Game Bootstrapper Config", EditorStyles.boldLabel);
 
@@ -167,17 +164,11 @@ namespace Strada.Core.Editor.Inspectors
 
                 if (_validationErrors.Count == 0)
                 {
-                    var previousColor = GUI.color;
-                    GUI.color = ValidColor;
-                    EditorGUILayout.LabelField("✓ Configuration is valid", EditorStyles.boldLabel);
-                    GUI.color = previousColor;
+                    DrawColoredLabel("✓ Configuration is valid", ValidColor);
                 }
                 else
                 {
-                    var previousColor = GUI.color;
-                    GUI.color = ErrorColor;
-                    EditorGUILayout.LabelField($"✗ {_validationErrors.Count} validation error(s)", EditorStyles.boldLabel);
-                    GUI.color = previousColor;
+                    DrawColoredLabel($"✗ {_validationErrors.Count} validation error(s)", ErrorColor);
 
                     EditorGUILayout.Space(5);
 
@@ -206,6 +197,22 @@ namespace Strada.Core.Editor.Inspectors
             }
 
             EditorGUILayout.EndHorizontal();
+        }
+
+        private static void DrawColoredBox(Color color)
+        {
+            var previousColor = GUI.color;
+            GUI.color = color;
+            GUILayout.Box("", GUILayout.Width(10), GUILayout.Height(EditorGUIUtility.singleLineHeight));
+            GUI.color = previousColor;
+        }
+
+        private static void DrawColoredLabel(string text, Color color)
+        {
+            var previousColor = GUI.color;
+            GUI.color = color;
+            EditorGUILayout.LabelField(text, EditorStyles.boldLabel);
+            GUI.color = previousColor;
         }
 
         private void SetupModulesList()
@@ -251,18 +258,10 @@ namespace Strada.Core.Editor.Inspectors
 
         private void FindAllModuleConfigs()
         {
-            var guids = AssetDatabase.FindAssets("t:ModuleConfig");
-            var configs = new List<ModuleConfig>();
-
-            foreach (var guid in guids)
-            {
-                var path = AssetDatabase.GUIDToAssetPath(guid);
-                var config = AssetDatabase.LoadAssetAtPath<ModuleConfig>(path);
-                if (config != null)
-                {
-                    configs.Add(config);
-                }
-            }
+            var configs = AssetDatabase.FindAssets("t:ModuleConfig")
+                .Select(guid => AssetDatabase.LoadAssetAtPath<ModuleConfig>(AssetDatabase.GUIDToAssetPath(guid)))
+                .Where(config => config != null)
+                .ToList();
 
             if (configs.Count == 0)
             {

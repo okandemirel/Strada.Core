@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using Strada.Core.Modules;
@@ -33,7 +34,6 @@ namespace Strada.Core.Editor.PropertyDrawers
             var phaseProp = property.FindPropertyRelative("_phase");
             var orderProp = property.FindPropertyRelative("_order");
             var descriptionProp = property.FindPropertyRelative("_description");
-            var categoryProp = property.FindPropertyRelative("_category");
 
             var lineRect = new Rect(position.x, position.y, position.width, EditorGUIUtility.singleLineHeight);
 
@@ -118,7 +118,7 @@ namespace Strada.Core.Editor.PropertyDrawers
             menu.AddSeparator("");
 
             var systems = RuntimeSystemDiscovery.DiscoverSystems();
-            var groupedSystems = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<Modules.SystemInfo>>();
+            var groupedSystems = new Dictionary<string, List<Modules.SystemInfo>>();
 
             foreach (var system in systems)
             {
@@ -128,7 +128,7 @@ namespace Strada.Core.Editor.PropertyDrawers
 
                 if (!groupedSystems.TryGetValue(key, out var list))
                 {
-                    list = new System.Collections.Generic.List<Modules.SystemInfo>();
+                    list = new List<Modules.SystemInfo>();
                     groupedSystems[key] = list;
                 }
                 list.Add(system);
