@@ -24,13 +24,7 @@ namespace Strada.Core.DI
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void InjectInto<T>(T target, IContainer container) where T : class
-        {
-            var info = GetOrCreateInfo(typeof(T));
-
-            InjectMethods(target, info.Methods, container);
-            InjectProperties(target, info.Properties, container);
-            InjectFields(target, info.Fields, container);
-        }
+            => Inject(target, container);
 
         private static TypeInjectionInfo GetOrCreateInfo(Type type)
         {
