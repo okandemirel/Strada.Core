@@ -13,17 +13,12 @@ namespace Strada.Core.Editor.ModuleGenerator
             public static readonly GUIStyle SectionHeaderStyle;
             public static readonly GUIStyle GroupHeaderStyle;
             public static readonly GUIStyle PreviewCodeStyle;
-            public static readonly GUIStyle ValidationErrorStyle;
-            public static readonly GUIStyle ValidationWarningStyle;
-            public static readonly GUIStyle ValidationInfoStyle;
 
             public static readonly Color MainModuleColor = new Color(0.7f, 0.7f, 0.7f);
             public static readonly Color SubModuleColor = new Color(0.5f, 0.8f, 0.5f);
             public static readonly Color ScreenModuleColor = new Color(0.5f, 0.7f, 1.0f);
             public static readonly Color TestModuleColor = new Color(1.0f, 0.7f, 0.4f);
             public static readonly Color SuccessColor = new Color(0.4f, 0.8f, 0.4f);
-            public static readonly Color ErrorColor = new Color(1.0f, 0.4f, 0.4f);
-            public static readonly Color WarningColor = new Color(1.0f, 0.85f, 0.4f);
             public static readonly Color SelectButtonColor = new Color(0.3f, 0.5f, 0.7f);
 
             static Styles()
@@ -52,10 +47,12 @@ namespace Strada.Core.Editor.ModuleGenerator
                     richText = true
                 };
 
-                ValidationErrorStyle = new GUIStyle(EditorStyles.helpBox);
-                ValidationWarningStyle = new GUIStyle(EditorStyles.helpBox);
-                ValidationInfoStyle = new GUIStyle(EditorStyles.helpBox);
+                RichTextLabelStyle = new GUIStyle(EditorStyles.label) { richText = true };
+                WordWrapRichTextLabelStyle = new GUIStyle(EditorStyles.label) { wordWrap = true, richText = true };
             }
+
+            public static readonly GUIStyle RichTextLabelStyle;
+            public static readonly GUIStyle WordWrapRichTextLabelStyle;
         }
 
         private void DrawHeader()
@@ -176,26 +173,24 @@ namespace Strada.Core.Editor.ModuleGenerator
                 return;
             }
 
-            var hasError = _validationMessages?.Exists(m => m.Severity == ValidationSeverity.Error && m.Field == "ModuleName") ?? false;
-            var hasWarning = _validationMessages?.Exists(m => m.Severity == ValidationSeverity.Warning && m.Field == "ModuleName") ?? false;
+            var error = _validationMessages?.Find(m => m.Severity == ValidationSeverity.Error && m.Field == "ModuleName");
+            if (error != null)
+            {
+                EditorGUILayout.HelpBox(error.Message, MessageType.Error);
+                return;
+            }
 
-            if (hasError)
+            var warning = _validationMessages?.Find(m => m.Severity == ValidationSeverity.Warning && m.Field == "ModuleName");
+            if (warning != null)
             {
-                var msg = _validationMessages.Find(m => m.Severity == ValidationSeverity.Error && m.Field == "ModuleName");
-                EditorGUILayout.HelpBox(msg.Message, MessageType.Error);
+                EditorGUILayout.HelpBox(warning.Message, MessageType.Warning);
+                return;
             }
-            else if (hasWarning)
-            {
-                var msg = _validationMessages.Find(m => m.Severity == ValidationSeverity.Warning && m.Field == "ModuleName");
-                EditorGUILayout.HelpBox(msg.Message, MessageType.Warning);
-            }
-            else
-            {
-                var oldColor = GUI.contentColor;
-                GUI.contentColor = Styles.SuccessColor;
-                EditorGUILayout.LabelField("✓ Valid module name");
-                GUI.contentColor = oldColor;
-            }
+
+            var oldColor = GUI.contentColor;
+            GUI.contentColor = Styles.SuccessColor;
+            EditorGUILayout.LabelField("✓ Valid module name");
+            GUI.contentColor = oldColor;
         }
 
         private void DrawModuleTypeDescription()
@@ -405,8 +400,7 @@ namespace Strada.Core.Editor.ModuleGenerator
                 displayText = $"{module.DisplayName} <color=#{ColorUtility.ToHtmlStringRGB(module.TypeColor)}>{module.TypeLabel}</color>";
             }
 
-            var labelStyle = new GUIStyle(EditorStyles.label) { richText = true };
-            GUILayout.Label(displayText, labelStyle);
+            GUILayout.Label(displayText, Styles.RichTextLabelStyle);
 
             GUI.contentColor = oldColor;
 
@@ -435,9 +429,7 @@ namespace Strada.Core.Editor.ModuleGenerator
 
         private bool ModuleMatchesSearch(ModuleInfoData module, string search)
         {
-            var searchLower = search.ToLower();
-
-            if (module.Name.ToLower().Contains(searchLower))
+            if (module.Name.IndexOf(search, System.StringComparison.OrdinalIgnoreCase) >= 0)
                 return true;
 
             if (module.HasChildren)
@@ -500,7 +492,7 @@ namespace Strada.Core.Editor.ModuleGenerator
             }
 
             var preview = GenerateStructurePreview();
-            EditorGUILayout.LabelField(preview, new GUIStyle(EditorStyles.label) { wordWrap = true, richText = true });
+            EditorGUILayout.LabelField(preview, Styles.WordWrapRichTextLabelStyle);
         }
 
         private void DrawCodePreview()
@@ -533,16 +525,16 @@ namespace Strada.Core.Editor.ModuleGenerator
                 _selectedFileIndex = Mathf.Min(files.Length - 1, _selectedFileIndex + 1);
             }
 
+            var codePreview = GenerateCodePreview(files[_selectedFileIndex]);
+
             if (GUILayout.Button("Copy", GUILayout.Width(50)))
             {
-                var code = GenerateCodePreview(files[_selectedFileIndex]);
-                EditorGUIUtility.systemCopyBuffer = code;
+                EditorGUIUtility.systemCopyBuffer = codePreview;
             }
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space(5);
 
-            var codePreview = GenerateCodePreview(files[_selectedFileIndex]);
             EditorGUILayout.TextArea(codePreview, Styles.PreviewCodeStyle, GUILayout.ExpandHeight(true));
         }
 
@@ -720,27 +712,16 @@ namespace Strada.Core.Editor.ModuleGenerator
             if (_validationMessages == null || _validationMessages.Count == 0)
                 return;
 
-            var errors = _validationMessages.FindAll(m => m.Severity == ValidationSeverity.Error);
-            var warnings = _validationMessages.FindAll(m => m.Severity == ValidationSeverity.Warning);
-
             EditorGUILayout.Space(5);
 
-            if (errors.Count > 0)
+            foreach (var msg in _validationMessages)
             {
-                foreach (var error in errors)
-                {
-                    if (error.Field == "ModuleName") continue;
-                    EditorGUILayout.HelpBox(error.Message, MessageType.Error);
-                }
-            }
+                if (msg.Field == "ModuleName") continue;
 
-            if (warnings.Count > 0)
-            {
-                foreach (var warning in warnings)
-                {
-                    if (warning.Field == "ModuleName") continue;
-                    EditorGUILayout.HelpBox(warning.Message, MessageType.Warning);
-                }
+                if (msg.Severity == ValidationSeverity.Error)
+                    EditorGUILayout.HelpBox(msg.Message, MessageType.Error);
+                else if (msg.Severity == ValidationSeverity.Warning)
+                    EditorGUILayout.HelpBox(msg.Message, MessageType.Warning);
             }
         }
 
