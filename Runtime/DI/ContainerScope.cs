@@ -118,7 +118,7 @@ namespace Strada.Core.DI
                 return false;
             }
 
-            instance = (T)ResolveById(typeId);
+            instance = (T)ResolveByIndex(_typeIdToIndex[typeId]);
             return true;
         }
 
