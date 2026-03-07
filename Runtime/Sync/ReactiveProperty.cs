@@ -84,8 +84,9 @@ namespace Strada.Core.Sync
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Notify()
         {
-            var snapshot = _handlers.ToArray();
-            for (int i = 0; i < snapshot.Length; i++)
+            int count = _handlers.Count;
+            if (count == 0) return;
+            for (int i = 0; i < count && i < _handlers.Count; i++)
             {
                 snapshot[i](_value);
             }
@@ -160,23 +161,23 @@ namespace Strada.Core.Sync
 
         private void NotifyAdd(T item)
         {
-            var snapshot = _addHandlers.ToArray();
-            for (int i = 0; i < snapshot.Length; i++)
-                snapshot[i](item);
+            int count = _addHandlers.Count;
+            for (int i = 0; i < count && i < _addHandlers.Count; i++)
+                _addHandlers[i](item);
         }
 
         private void NotifyRemove(T item)
         {
-            var snapshot = _removeHandlers.ToArray();
-            for (int i = 0; i < snapshot.Length; i++)
-                snapshot[i](item);
+            int count = _removeHandlers.Count;
+            for (int i = 0; i < count && i < _removeHandlers.Count; i++)
+                _removeHandlers[i](item);
         }
 
         private void NotifyClear()
         {
-            var snapshot = _clearHandlers.ToArray();
-            for (int i = 0; i < snapshot.Length; i++)
-                snapshot[i]();
+            int count = _clearHandlers.Count;
+            for (int i = 0; i < count && i < _clearHandlers.Count; i++)
+                _clearHandlers[i]();
         }
 
         public void Dispose()

@@ -98,14 +98,14 @@ namespace Strada.Core.Pooling
 
         public void Clear()
         {
+            int cleared = _available.Count;
             while (_available.Count > 0)
             {
                 var instance = _available.Pop();
                 if (instance is IDisposable d)
                     d.Dispose();
             }
-            _inPool.Clear();
-            _totalCreated = 0;
+            _totalCreated -= cleared;
         }
 
         public void Dispose()

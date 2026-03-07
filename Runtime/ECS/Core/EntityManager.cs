@@ -170,7 +170,7 @@ namespace Strada.Core.ECS.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool HasComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
-            if (!IsActiveIndex(entity.Index))
+            if (!Exists(entity))
                 return false;
 
             var storage = _store.GetOrCreateStorage<T>();

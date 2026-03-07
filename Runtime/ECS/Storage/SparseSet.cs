@@ -74,14 +74,9 @@ namespace Strada.Core.ECS.Storage
 
         public T Get(int entityIndex)
         {
-            if (entityIndex < 0 || entityIndex >= _sparse.Length)
-                throw new ArgumentOutOfRangeException(nameof(entityIndex), $"Entity index {entityIndex} is out of range [0, {_sparse.Length})");
-
-            int denseIndex = _sparse[entityIndex];
-            if (denseIndex < 0 || denseIndex >= _count)
+            if (entityIndex >= _sparse.Length || _sparse[entityIndex] < 0)
                 throw new InvalidOperationException($"Entity {entityIndex} does not exist in sparse set");
-
-            return _data[denseIndex];
+            return _data[_sparse[entityIndex]];
         }
 
         public ref T GetRef(int entityIndex)
@@ -114,14 +109,9 @@ namespace Strada.Core.ECS.Storage
 
         public void Set(int entityIndex, T component)
         {
-            if (entityIndex < 0 || entityIndex >= _sparse.Length)
-                throw new ArgumentOutOfRangeException(nameof(entityIndex), $"Entity index {entityIndex} is out of range [0, {_sparse.Length})");
-
-            int denseIndex = _sparse[entityIndex];
-            if (denseIndex < 0 || denseIndex >= _count)
+            if (entityIndex >= _sparse.Length || _sparse[entityIndex] < 0)
                 throw new InvalidOperationException($"Entity {entityIndex} does not exist in sparse set");
-
-            _data[denseIndex] = component;
+            _data[_sparse[entityIndex]] = component;
         }
 
         public int* GetDenseEntityPtr() => (int*)_dense.GetUnsafePtr();
