@@ -59,10 +59,6 @@ namespace Strada.Core.Editor.CodeGen
                         result.Add(new SystemInfo(type, order));
                     }
                 }
-                catch (Exception e)
-                {
-                    Debug.LogWarning($"[Strada] Failed to scan assembly '{assembly.GetName().Name}': {e.Message}");
-                }
                 catch (ReflectionTypeLoadException ex)
                 {
                     foreach (var type in ex.Types)
@@ -97,10 +93,7 @@ namespace Strada.Core.Editor.CodeGen
                 }
                 catch (Exception ex)
                 {
-                    if (StradaCodeGenSettings.VerboseLogging)
-                    {
-                        Debug.LogWarning($"[Strada] Failed to scan assembly '{assembly.GetName().Name}': {ex.Message}");
-                    }
+                    Debug.LogWarning($"[Strada] Failed to scan assembly '{assembly.GetName().Name}': {ex.Message}");
                 }
             }
 

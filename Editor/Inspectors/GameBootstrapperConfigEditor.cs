@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
@@ -62,9 +63,14 @@ namespace Strada.Core.Editor.Inspectors
             serializedObject.ApplyModifiedProperties();
         }
 
-        private new void DrawHeader()
+        private void DrawHeader()
         {
             var config = target as GameBootstrapperConfig;
+            if (config == null)
+            {
+                EditorGUILayout.HelpBox("Target is not a GameBootstrapperConfig.", MessageType.Error);
+                return;
+            }
 
             EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
 

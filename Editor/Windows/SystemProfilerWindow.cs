@@ -37,6 +37,8 @@ namespace Strada.Core.Editor.Windows
         private GUIStyle _phaseHeaderStyle;
         private GUIStyle _systemRowStyle;
         private GUIStyle _metricsStyle;
+        private GUIStyle _warningStyle;
+        private GUIStyle _criticalStyle;
         private bool _stylesInitialized;
 
         private readonly Color _normalColor = new Color(0.7f, 0.9f, 0.7f);

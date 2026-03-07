@@ -21,5 +21,6 @@ namespace Strada.Core.Editor.ModuleGenerator.Pipeline
 
         public static StepResult Ok(string message = null) => new StepResult { Success = true, Message = message };
         public static StepResult Fail(string message) => new StepResult { Success = false, Message = message };
+        public static StepResult Error(string message) => Fail(message);
     }
 }

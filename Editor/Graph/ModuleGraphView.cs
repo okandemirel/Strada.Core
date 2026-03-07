@@ -166,11 +166,11 @@ namespace Strada.Core.Editor.Graph
                     var y = row * VERTICAL_SPACING + 50;
                     node.SetPosition(new Rect(x, y, NODE_WIDTH, NODE_HEIGHT));
 
-                    var orderLabel = new Label($"#{i + 1}")
+                    var orderLabel = new UnityEngine.UIElements.Label($"#{i + 1}")
                     {
                         style =
                         {
-                            position = Position.Absolute,
+                            position = UnityEngine.UIElements.Position.Absolute,
                             top = -20,
                             left = 0,
                             fontSize = 10,

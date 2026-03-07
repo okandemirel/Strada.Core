@@ -80,6 +80,7 @@ namespace Strada.Core.Editor.Windows
         private readonly Color _selectedColor = new Color(0.24f, 0.49f, 0.91f, 0.4f);
         private readonly Color _breakpointColor = new Color(0.9f, 0.2f, 0.2f);
         private readonly Color _bookmarkColor = new Color(0.9f, 0.8f, 0.2f);
+        private readonly Color _resizeHandleColor = new Color(0.25f, 0.25f, 0.25f, 1f);
 
         private BusDataProvider _busDataProvider;
 
@@ -914,6 +915,19 @@ namespace Strada.Core.Editor.Windows
             DrawTriggeredMessages(entry);
 
             EditorGUILayout.EndScrollView();
+        }
+
+        private static void DrawDetailRow(string label, string value)
+        {
+            DrawDetailRow(label, value, EditorStyles.label);
+        }
+
+        private static void DrawDetailRow(string label, string value, GUIStyle valueStyle)
+        {
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField(label, EditorStyles.boldLabel, GUILayout.Width(80));
+            EditorGUILayout.LabelField(value, valueStyle);
+            EditorGUILayout.EndHorizontal();
         }
 
         /// <summary>

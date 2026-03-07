@@ -396,7 +396,7 @@ namespace Strada.Core.Editor.Windows
             }
 
             _expandedEntries[entry.UniqueKey] = EditorGUILayout.Foldout(
-                _expandedEntries[entry.UniqueKey], "", true, GUILayout.Width(15));
+                _expandedEntries[entry.UniqueKey], GUIContent.none, true, EditorStyles.foldout);
 
             if (!isWatchSection)
             {
