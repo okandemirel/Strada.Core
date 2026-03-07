@@ -27,7 +27,6 @@ namespace Strada.Core.Sync
         {
             if (_viewRegistry == null) return;
 
-            _viewRegistry.ForceSyncAll();
             switch (_syncMode)
             {
                 case ViewSyncMode.DirtyOnly:

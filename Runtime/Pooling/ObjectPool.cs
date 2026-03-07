@@ -42,6 +42,7 @@ namespace Strada.Core.Pooling
             if (_available.Count > 0)
             {
                 instance = _available.Pop();
+                _inPool.Remove(instance);
 
                 if (instance is IPoolable reused)
                     reused.OnDespawn();
@@ -92,6 +93,7 @@ namespace Strada.Core.Pooling
                 if (instance is IPoolable<T> poolable)
                     poolable.SetPool(this);
 
+                _inPool.Add(instance);
                 _available.Push(instance);
             }
         }
@@ -105,6 +107,7 @@ namespace Strada.Core.Pooling
                 if (instance is IDisposable d)
                     d.Dispose();
             }
+            _inPool.Clear();
             _totalCreated -= cleared;
         }
 

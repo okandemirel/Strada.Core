@@ -24,7 +24,7 @@ namespace Strada.Core.StateMachine
         public void AddState<T>(T state) where T : TState
         {
             OnStateAdded(state);
-            _states[typeof(T)] = state;
+            States[typeof(T)] = state;
         }
 
         protected virtual void OnStateAdded(TState state) { }
@@ -38,6 +38,7 @@ namespace Strada.Core.StateMachine
                 list = new List<Transition<TState>>(4);
                 Transitions[fromType] = list;
             }
+
             list.Add(new Transition<TState>(typeof(TTo), condition));
         }
 
@@ -71,6 +72,7 @@ namespace Strada.Core.StateMachine
         public void Stop()
         {
             if (CurrentStateInternal == null) return;
+
             CurrentStateInternal.OnExit();
             CurrentStateInternal = null;
             CurrentStateTypeInternal = null;
@@ -78,25 +80,28 @@ namespace Strada.Core.StateMachine
 
         protected void SetState(Type stateType)
         {
-            if (stateType == _currentStateType) return;
-            if (!_states.TryGetValue(stateType, out var newState))
+            if (stateType == CurrentStateTypeInternal) return;
+            if (!States.TryGetValue(stateType, out var newState))
             {
                 Debug.LogWarning($"Attempted transition to unregistered state: {stateType}");
                 return;
             }
 
             IsTransitioningInternal = true;
-
             var previousState = CurrentStateInternal;
-            CurrentStateInternal?.OnExit();
 
-            CurrentStateInternal = newState;
-            CurrentStateTypeInternal = stateType;
-            CurrentStateInternal.OnEnter();
-
-            OnStateChanged?.Invoke(previousState, _currentState);
-
-            _isTransitioning = false;
+            try
+            {
+                previousState?.OnExit();
+                CurrentStateInternal = newState;
+                CurrentStateTypeInternal = stateType;
+                CurrentStateInternal.OnEnter();
+                OnStateChanged?.Invoke(previousState, CurrentStateInternal);
+            }
+            finally
+            {
+                IsTransitioningInternal = false;
+            }
         }
 
         private void CheckTransitions()
@@ -139,8 +144,7 @@ namespace Strada.Core.StateMachine
             _context = context;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddState<T>(T state) where T : TState
+        protected override void OnStateAdded(TState state)
         {
             state.SetContext(_context);
         }

@@ -13,38 +13,19 @@ namespace Strada.Core.ECS.Query
             if (withFilters != null)
             {
                 foreach (var storage in withFilters)
+                {
                     if (!storage.Contains(entity))
                         return false;
+                }
             }
 
             if (withoutFilters != null)
             {
                 foreach (var storage in withoutFilters)
+                {
                     if (storage.Contains(entity))
                         return false;
-            }
-
-            return true;
-        }
-    }
-
-    internal static class FilterHelper
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static bool PassesFilters(int entity, List<IComponentStorage> withFilters, List<IComponentStorage> withoutFilters)
-        {
-            if (withFilters != null)
-            {
-                foreach (var storage in withFilters)
-                    if (!storage.Contains(entity))
-                        return false;
-            }
-
-            if (withoutFilters != null)
-            {
-                foreach (var storage in withoutFilters)
-                    if (storage.Contains(entity))
-                        return false;
+                }
             }
 
             return true;
@@ -96,9 +77,7 @@ namespace Strada.Core.ECS.Query
                 for (int i = 0; i < count; i++)
                 {
                     int entity = entities[i];
-
                     if (!QueryFilterHelper.PassesFilters(entity, _withFilters, _withoutFilters))
-                    if (!FilterHelper.PassesFilters(entity, _withFilters, _withoutFilters))
                         continue;
 
                     action(entity, ref data[i]);
@@ -147,7 +126,6 @@ namespace Strada.Core.ECS.Query
         {
             ref var set1 = ref _storage1.GetSparseSet();
             ref var set2 = ref _storage2.GetSparseSet();
-
             bool useFirst = set1.Count <= set2.Count;
 
             unsafe
@@ -158,19 +136,17 @@ namespace Strada.Core.ECS.Query
                 for (int i = 0; i < count; i++)
                 {
                     int entity = entities[i];
-
                     int idx1 = set1.GetDenseIndex(entity);
                     int idx2 = set2.GetDenseIndex(entity);
 
                     if (idx1 < 0 || idx2 < 0)
                         continue;
 
-                    if (!FilterHelper.PassesFilters(entity, _withFilters, _withoutFilters))
+                    if (!QueryFilterHelper.PassesFilters(entity, _withFilters, _withoutFilters))
                         continue;
 
                     T1* p1 = set1.GetDataPtr() + idx1;
                     T2* p2 = set2.GetDataPtr() + idx2;
-
                     action(entity, ref *p1, ref *p2);
                 }
             }
@@ -250,7 +226,6 @@ namespace Strada.Core.ECS.Query
                 for (int i = 0; i < minCount; i++)
                 {
                     int entity = entities[i];
-
                     int idx1 = set1.GetDenseIndex(entity);
                     int idx2 = set2.GetDenseIndex(entity);
                     int idx3 = set3.GetDenseIndex(entity);
@@ -258,13 +233,12 @@ namespace Strada.Core.ECS.Query
                     if (idx1 < 0 || idx2 < 0 || idx3 < 0)
                         continue;
 
-                    if (!FilterHelper.PassesFilters(entity, _withFilters, _withoutFilters))
+                    if (!QueryFilterHelper.PassesFilters(entity, _withFilters, _withoutFilters))
                         continue;
 
                     T1* p1 = set1.GetDataPtr() + idx1;
                     T2* p2 = set2.GetDataPtr() + idx2;
                     T3* p3 = set3.GetDataPtr() + idx3;
-
                     action(entity, ref *p1, ref *p2, ref *p3);
                 }
             }

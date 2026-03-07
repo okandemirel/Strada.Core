@@ -141,6 +141,9 @@ namespace Strada.Core.Bootstrap
         private void OnDestroy()
         {
             Shutdown();
+
+            if (_instance == this)
+                _instance = null;
         }
 
         private IEnumerator InitializeAsync()

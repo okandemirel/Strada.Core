@@ -17,7 +17,6 @@ namespace Strada.Core.Sync
         private readonly List<Action<T>> _handlers = new(4);
         private readonly EqualityComparer<T> _comparer = EqualityComparer<T>.Default;
         private bool _disposed;
-        private bool _notifying; // Tracks if we're currently notifying to prevent concurrent modification
 
         public ReactiveProperty() => _value = default;
 
@@ -84,12 +83,9 @@ namespace Strada.Core.Sync
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Notify()
         {
-            int count = _handlers.Count;
-            if (count == 0) return;
-            for (int i = 0; i < count && i < _handlers.Count; i++)
-            {
+            var snapshot = _handlers.ToArray();
+            for (int i = 0; i < snapshot.Length; i++)
                 snapshot[i](_value);
-            }
         }
 
         public void Clear()
@@ -161,23 +157,23 @@ namespace Strada.Core.Sync
 
         private void NotifyAdd(T item)
         {
-            int count = _addHandlers.Count;
-            for (int i = 0; i < count && i < _addHandlers.Count; i++)
-                _addHandlers[i](item);
+            var snapshot = _addHandlers.ToArray();
+            for (int i = 0; i < snapshot.Length; i++)
+                snapshot[i](item);
         }
 
         private void NotifyRemove(T item)
         {
-            int count = _removeHandlers.Count;
-            for (int i = 0; i < count && i < _removeHandlers.Count; i++)
-                _removeHandlers[i](item);
+            var snapshot = _removeHandlers.ToArray();
+            for (int i = 0; i < snapshot.Length; i++)
+                snapshot[i](item);
         }
 
         private void NotifyClear()
         {
-            int count = _clearHandlers.Count;
-            for (int i = 0; i < count && i < _clearHandlers.Count; i++)
-                _clearHandlers[i]();
+            var snapshot = _clearHandlers.ToArray();
+            for (int i = 0; i < snapshot.Length; i++)
+                snapshot[i]();
         }
 
         public void Dispose()
