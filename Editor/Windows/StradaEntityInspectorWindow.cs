@@ -20,6 +20,17 @@ namespace Strada.Core.Editor.Windows
     /// </summary>
     public class StradaEntityInspectorWindow : EditorWindow
     {
+        /// <summary>
+        /// Search mode for entity filtering.
+        /// </summary>
+        public enum EntitySearchMode
+        {
+            All,
+            ById,
+            ByComponentType,
+            ByFieldValue
+        }
+
         private const float MinEntityListWidth = 200f;
         private const float MaxEntityListWidth = 400f;
         private const float DefaultEntityListWidth = 280f;
@@ -61,6 +72,17 @@ namespace Strada.Core.Editor.Windows
 
         private WorldDataProvider _worldDataProvider;
 
+        // Bookmarking
+        private HashSet<int> _bookmarkedEntities = new HashSet<int>();
+
+        // Component copy/paste clipboard
+        private static Type _clipboardComponentType;
+        private static object _clipboardComponentValue;
+
+        // Archetype grouping
+        private bool _archetypeGroupingEnabled;
+        private Dictionary<string, bool> _archetypeFoldouts = new Dictionary<string, bool>();
+
         public static void ShowWindow()
         {
             var window = GetWindow<StradaEntityInspectorWindow>("Entity Inspector");
@@ -94,6 +116,8 @@ namespace Strada.Core.Editor.Windows
                 _filteredEntityIds.Clear();
                 _selectedEntityId = -1;
                 _expandedComponents.Clear();
+                _bookmarkedEntities.Clear();
+                _archetypeFoldouts.Clear();
             }
             Repaint();
         }
@@ -239,6 +263,10 @@ namespace Strada.Core.Editor.Windows
                 _refreshInterval = EditorGUILayout.Slider(_refreshInterval, 0.1f, 2.0f, GUILayout.Width(80));
             }
 
+            GUILayout.Space(5);
+
+            _archetypeGroupingEnabled = GUILayout.Toggle(_archetypeGroupingEnabled, "Group by Archetype", EditorStyles.toolbarButton, GUILayout.Width(115));
+
             GUILayout.FlexibleSpace();
 
             GUILayout.Label($"Entities: {_allEntityIds.Count}", EditorStyles.toolbarButton);
@@ -275,7 +303,23 @@ namespace Strada.Core.Editor.Windows
         {
             EditorGUILayout.BeginVertical(GUILayout.Width(_entityListWidth));
 
+            EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Entities", _headerStyle);
+            GUILayout.FlexibleSpace();
+
+            if (GUILayout.Button("+", EditorStyles.miniButtonLeft, GUILayout.Width(22)))
+            {
+                CreateEntity();
+            }
+
+            EditorGUI.BeginDisabledGroup(_selectedEntityId < 0);
+            if (GUILayout.Button("-", EditorStyles.miniButtonRight, GUILayout.Width(22)))
+            {
+                DestroyEntity(_selectedEntityId);
+            }
+            EditorGUI.EndDisabledGroup();
+
+            EditorGUILayout.EndHorizontal();
 
             _entityListScrollPosition = EditorGUILayout.BeginScrollView(_entityListScrollPosition);
 
@@ -292,9 +336,35 @@ namespace Strada.Core.Editor.Windows
             }
             else
             {
-                foreach (var entityId in _filteredEntityIds)
+                // Always draw bookmarked entities at the top
+                var bookmarkedInList = _filteredEntityIds.Where(id => _bookmarkedEntities.Contains(id)).ToList();
+                var nonBookmarkedInList = _filteredEntityIds.Where(id => !_bookmarkedEntities.Contains(id)).ToList();
+
+                if (bookmarkedInList.Count > 0)
                 {
-                    DrawEntityListItem(entityId);
+                    EditorGUILayout.LabelField("Bookmarked", EditorStyles.miniBoldLabel);
+                    foreach (var entityId in bookmarkedInList)
+                    {
+                        DrawEntityListItem(entityId);
+                    }
+
+                    if (nonBookmarkedInList.Count > 0)
+                    {
+                        EditorGUILayout.Space(4);
+                        EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
+                    }
+                }
+
+                if (_archetypeGroupingEnabled)
+                {
+                    DrawArchetypeGroupedEntities(nonBookmarkedInList);
+                }
+                else
+                {
+                    foreach (var entityId in nonBookmarkedInList)
+                    {
+                        DrawEntityListItem(entityId);
+                    }
                 }
             }
 
@@ -302,12 +372,84 @@ namespace Strada.Core.Editor.Windows
             EditorGUILayout.EndVertical();
         }
 
+        private void DrawArchetypeGroupedEntities(List<int> entityIds)
+        {
+            var archetypeGroups = new Dictionary<string, List<int>>();
+
+            foreach (var entityId in entityIds)
+            {
+                var archetypeKey = GetArchetypeKey(entityId);
+                if (!archetypeGroups.ContainsKey(archetypeKey))
+                {
+                    archetypeGroups[archetypeKey] = new List<int>();
+                }
+                archetypeGroups[archetypeKey].Add(entityId);
+            }
+
+            foreach (var kvp in archetypeGroups.OrderBy(g => g.Key))
+            {
+                var archetypeKey = kvp.Key;
+                var entities = kvp.Value;
+
+                if (!_archetypeFoldouts.ContainsKey(archetypeKey))
+                {
+                    _archetypeFoldouts[archetypeKey] = true;
+                }
+
+                var displayName = string.IsNullOrEmpty(archetypeKey) ? "(No Components)" : archetypeKey;
+                var foldoutLabel = $"{displayName} ({entities.Count})";
+                _archetypeFoldouts[archetypeKey] = EditorGUILayout.Foldout(_archetypeFoldouts[archetypeKey], foldoutLabel, true);
+
+                if (_archetypeFoldouts[archetypeKey])
+                {
+                    EditorGUI.indentLevel++;
+                    foreach (var entityId in entities)
+                    {
+                        DrawEntityListItem(entityId);
+                    }
+                    EditorGUI.indentLevel--;
+                }
+            }
+        }
+
+        private string GetArchetypeKey(int entityId)
+        {
+            try
+            {
+                var components = _worldDataProvider.GetEntityComponents(entityId);
+                var typeNames = components.Select(c => c.ComponentType.Name).OrderBy(n => n);
+                return string.Join(", ", typeNames);
+            }
+            catch
+            {
+                return "";
+            }
+        }
+
         private void DrawEntityListItem(int entityId)
         {
             var isSelected = entityId == _selectedEntityId;
             var style = isSelected ? _selectedEntityStyle : _entityItemStyle;
+            var isBookmarked = _bookmarkedEntities.Contains(entityId);
 
-            EditorGUILayout.BeginHorizontal(style);
+            var rect = EditorGUILayout.BeginHorizontal(style);
+
+            // Handle right-click context menu on entity
+            if (Event.current.type == EventType.ContextClick && rect.Contains(Event.current.mousePosition))
+            {
+                ShowEntityContextMenu(entityId);
+                Event.current.Use();
+            }
+
+            // Bookmark toggle (star icon)
+            var starLabel = isBookmarked ? "\u2605" : "\u2606";
+            if (GUILayout.Button(starLabel, EditorStyles.miniLabel, GUILayout.Width(18)))
+            {
+                if (isBookmarked)
+                    _bookmarkedEntities.Remove(entityId);
+                else
+                    _bookmarkedEntities.Add(entityId);
+            }
 
             var componentCount = GetEntityComponentCount(entityId);
             var buttonContent = new GUIContent($"Entity [{entityId}]", $"Entity ID: {entityId}\nComponents: {componentCount}");
@@ -320,6 +462,37 @@ namespace Strada.Core.Editor.Windows
             GUILayout.Label($"[{componentCount}]", GUILayout.Width(35));
 
             EditorGUILayout.EndHorizontal();
+        }
+
+        private void ShowEntityContextMenu(int entityId)
+        {
+            var menu = new GenericMenu();
+            var isBookmarked = _bookmarkedEntities.Contains(entityId);
+
+            menu.AddItem(new GUIContent("Copy Entity ID"), false, () =>
+            {
+                EditorGUIUtility.systemCopyBuffer = entityId.ToString();
+            });
+
+            menu.AddSeparator("");
+
+            menu.AddItem(new GUIContent(isBookmarked ? "Remove Bookmark" : "Bookmark"), false, () =>
+            {
+                if (isBookmarked)
+                    _bookmarkedEntities.Remove(entityId);
+                else
+                    _bookmarkedEntities.Add(entityId);
+                Repaint();
+            });
+
+            menu.AddSeparator("");
+
+            menu.AddItem(new GUIContent("Destroy Entity"), false, () =>
+            {
+                DestroyEntity(entityId);
+            });
+
+            menu.ShowAsContext();
         }
 
         private void DrawResizeHandle()
@@ -412,7 +585,7 @@ namespace Strada.Core.Editor.Windows
             EditorGUILayout.BeginHorizontal();
             GUILayout.Label("Search:", GUILayout.Width(50));
             _addComponentSearch = EditorGUILayout.TextField(_addComponentSearch);
-            if (GUILayout.Button("×", GUILayout.Width(20)))
+            if (GUILayout.Button("\u00d7", GUILayout.Width(20)))
             {
                 _showAddComponentDropdown = false;
             }
@@ -471,7 +644,14 @@ namespace Strada.Core.Editor.Windows
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            EditorGUILayout.BeginHorizontal();
+            var headerRect = EditorGUILayout.BeginHorizontal();
+
+            // Handle right-click context menu on component header
+            if (Event.current.type == EventType.ContextClick && headerRect.Contains(Event.current.mousePosition))
+            {
+                ShowComponentContextMenu(component);
+                Event.current.Use();
+            }
 
             var newExpanded = EditorGUILayout.Foldout(isExpanded, component.ComponentType.Name, true, _componentHeaderStyle);
             if (newExpanded != isExpanded)
@@ -484,7 +664,23 @@ namespace Strada.Core.Editor.Windows
 
             GUILayout.FlexibleSpace();
 
-            if (GUILayout.Button("×", GUILayout.Width(20), GUILayout.Height(18)))
+            // Copy button
+            if (GUILayout.Button("Copy", EditorStyles.miniButtonLeft, GUILayout.Width(38)))
+            {
+                CopyComponent(component);
+            }
+
+            // Paste button
+            EditorGUI.BeginDisabledGroup(_clipboardComponentType == null || _clipboardComponentType != component.ComponentType);
+            if (GUILayout.Button("Paste", EditorStyles.miniButtonRight, GUILayout.Width(40)))
+            {
+                PasteComponent(component.ComponentType);
+            }
+            EditorGUI.EndDisabledGroup();
+
+            GUILayout.Space(4);
+
+            if (GUILayout.Button("\u00d7", GUILayout.Width(20), GUILayout.Height(18)))
             {
                 RemoveComponentFromEntity(_selectedEntityId, component.ComponentType);
             }
@@ -499,6 +695,97 @@ namespace Strada.Core.Editor.Windows
             }
 
             EditorGUILayout.EndVertical();
+        }
+
+        private void ShowComponentContextMenu(ComponentInfo component)
+        {
+            var menu = new GenericMenu();
+
+            menu.AddItem(new GUIContent("Copy Component"), false, () =>
+            {
+                CopyComponent(component);
+            });
+
+            if (_clipboardComponentType != null && _clipboardComponentType == component.ComponentType)
+            {
+                menu.AddItem(new GUIContent("Paste Component Values"), false, () =>
+                {
+                    PasteComponent(component.ComponentType);
+                });
+            }
+            else
+            {
+                menu.AddDisabledItem(new GUIContent("Paste Component Values"));
+            }
+
+            menu.AddSeparator("");
+
+            menu.AddItem(new GUIContent("Reset to Default"), false, () =>
+            {
+                ResetComponentToDefault(component.ComponentType);
+            });
+
+            menu.AddSeparator("");
+
+            menu.AddItem(new GUIContent("Remove Component"), false, () =>
+            {
+                RemoveComponentFromEntity(_selectedEntityId, component.ComponentType);
+            });
+
+            menu.ShowAsContext();
+        }
+
+        private void CopyComponent(ComponentInfo component)
+        {
+            _clipboardComponentType = component.ComponentType;
+            _clipboardComponentValue = CopyValueDeep(component.Value, component.ComponentType);
+        }
+
+        private void PasteComponent(Type componentType)
+        {
+            if (_clipboardComponentType == null || _clipboardComponentType != componentType) return;
+            if (_clipboardComponentValue == null) return;
+            if (_selectedEntityId < 0) return;
+
+            try
+            {
+                var pastedValue = CopyValueDeep(_clipboardComponentValue, componentType);
+                _worldDataProvider.SetComponentBoxed(_selectedEntityId, componentType, pastedValue);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[EntityInspector] Failed to paste component: {ex.Message}");
+            }
+        }
+
+        private void ResetComponentToDefault(Type componentType)
+        {
+            if (_selectedEntityId < 0) return;
+
+            try
+            {
+                var defaultValue = Activator.CreateInstance(componentType);
+                _worldDataProvider.SetComponentBoxed(_selectedEntityId, componentType, defaultValue);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[EntityInspector] Failed to reset component: {ex.Message}");
+            }
+        }
+
+        private object CopyValueDeep(object source, Type type)
+        {
+            if (source == null) return null;
+
+            // For value types, boxing already creates a copy, but we want to ensure
+            // nested reference fields are also copied if any exist
+            var copy = Activator.CreateInstance(type);
+            foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.Instance))
+            {
+                var fieldValue = field.GetValue(source);
+                field.SetValue(copy, fieldValue);
+            }
+            return copy;
         }
 
 
@@ -528,6 +815,12 @@ namespace Strada.Core.Editor.Windows
 
         private object DrawField(string name, Type fieldType, object value)
         {
+            // Check if this is a nested struct (non-Unity, non-primitive value type with public fields)
+            if (IsNestedStructType(fieldType))
+            {
+                return DrawNestedStructField(name, fieldType, value);
+            }
+
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField(name, _fieldLabelStyle, GUILayout.Width(120));
 
@@ -647,6 +940,135 @@ namespace Strada.Core.Editor.Windows
             return result;
         }
 
+        private bool IsNestedStructType(Type type)
+        {
+            if (type == null || !type.IsValueType || type.IsPrimitive || type.IsEnum)
+                return false;
+
+            // Exclude known Unity types that have dedicated editors
+            if (type == typeof(Vector2) || type == typeof(Vector3) || type == typeof(Vector4) ||
+                type == typeof(Vector2Int) || type == typeof(Vector3Int) ||
+                type == typeof(Quaternion) || type == typeof(Color) || type == typeof(Color32) ||
+                type == typeof(Rect) || type == typeof(RectInt) ||
+                type == typeof(Bounds) || type == typeof(BoundsInt))
+                return false;
+
+            // Exclude primitive-like numeric types
+            if (type == typeof(decimal) || type == typeof(IntPtr) || type == typeof(UIntPtr))
+                return false;
+
+            // Must have at least one public instance field to qualify
+            var publicFields = type.GetFields(BindingFlags.Public | BindingFlags.Instance);
+            return publicFields.Length > 0;
+        }
+
+        private object DrawNestedStructField(string name, Type fieldType, object value)
+        {
+            if (value == null)
+            {
+                value = Activator.CreateInstance(fieldType);
+            }
+
+            EditorGUILayout.LabelField(name, EditorStyles.boldLabel);
+            EditorGUI.indentLevel++;
+
+            var modified = false;
+            var boxedValue = value;
+
+            foreach (var subField in fieldType.GetFields(BindingFlags.Public | BindingFlags.Instance))
+            {
+                var subFieldValue = subField.GetValue(boxedValue);
+                var newSubValue = DrawField(subField.Name, subField.FieldType, subFieldValue);
+
+                if (!Equals(newSubValue, subFieldValue))
+                {
+                    subField.SetValue(boxedValue, newSubValue);
+                    modified = true;
+                }
+            }
+
+            EditorGUI.indentLevel--;
+
+            return modified ? boxedValue : value;
+        }
+
+        private void CreateEntity()
+        {
+            try
+            {
+                var entityManager = World.Current?.EntityManager;
+                if (entityManager == null)
+                {
+                    Debug.LogWarning("[EntityInspector] No EntityManager available to create entity.");
+                    return;
+                }
+
+                var createMethod = typeof(EntityManager).GetMethod("CreateEntity",
+                    BindingFlags.Public | BindingFlags.Instance,
+                    null, Type.EmptyTypes, null);
+
+                if (createMethod != null)
+                {
+                    var newEntityId = createMethod.Invoke(entityManager, null);
+                    Debug.Log($"[EntityInspector] Created entity: {newEntityId}");
+                    RefreshEntityList();
+
+                    if (newEntityId is int id)
+                    {
+                        _selectedEntityId = id;
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning("[EntityInspector] CreateEntity method not found on EntityManager.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[EntityInspector] Failed to create entity: {ex.Message}");
+            }
+        }
+
+        private void DestroyEntity(int entityId)
+        {
+            try
+            {
+                var entityManager = World.Current?.EntityManager;
+                if (entityManager == null)
+                {
+                    Debug.LogWarning("[EntityInspector] No EntityManager available to destroy entity.");
+                    return;
+                }
+
+                var destroyMethod = typeof(EntityManager).GetMethod("DestroyEntity",
+                    BindingFlags.Public | BindingFlags.Instance,
+                    null, new[] { typeof(int) }, null);
+
+                if (destroyMethod != null)
+                {
+                    destroyMethod.Invoke(entityManager, new object[] { entityId });
+                    Debug.Log($"[EntityInspector] Destroyed entity: {entityId}");
+
+                    _bookmarkedEntities.Remove(entityId);
+
+                    if (_selectedEntityId == entityId)
+                    {
+                        _selectedEntityId = -1;
+                    }
+
+                    RefreshEntityList();
+                }
+                else
+                {
+                    Debug.LogWarning("[EntityInspector] DestroyEntity(int) method not found on EntityManager.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[EntityInspector] Failed to destroy entity: {ex.Message}");
+            }
+        }
+
         private void RefreshEntityList()
         {
             _allEntityIds.Clear();
@@ -719,8 +1141,13 @@ namespace Strada.Core.Editor.Windows
 
         private void DetectDestroyedEntities()
         {
-            _allEntityIds.RemoveAll(id => !EntityExists(id));
-            _filteredEntityIds.RemoveAll(id => !EntityExists(id));
+            var destroyedEntities = _allEntityIds.Where(id => !EntityExists(id)).ToList();
+            foreach (var id in destroyedEntities)
+            {
+                _allEntityIds.Remove(id);
+                _filteredEntityIds.Remove(id);
+                _bookmarkedEntities.Remove(id);
+            }
 
             if (_selectedEntityId >= 0 && !EntityExists(_selectedEntityId))
             {
@@ -888,17 +1315,6 @@ namespace Strada.Core.Editor.Windows
             }
         }
 
-
-    /// <summary>
-    /// Search mode for entity filtering.
-    /// </summary>
-    public enum EntitySearchMode
-    {
-        All,
-        ById,
-        ByComponentType,
-        ByFieldValue
-    }
         private void DrawMemoryView()
         {
             EditorGUILayout.BeginVertical();
@@ -951,7 +1367,7 @@ namespace Strada.Core.Editor.Windows
             {
                 var storagesField = typeof(ComponentStore).GetField("_storages", BindingFlags.NonPublic | BindingFlags.Instance);
                 var storages = storagesField?.GetValue(store) as System.Collections.IDictionary;
-                
+
                 if (storages != null && storages.Contains(type))
                 {
                     var storage = storages[type];
@@ -964,7 +1380,7 @@ namespace Strada.Core.Editor.Windows
                     {
                         var denseField = sparseSet.GetType().GetField("_dense", BindingFlags.NonPublic | BindingFlags.Instance);
                         var dense = denseField?.GetValue(sparseSet);
-                        
+
                         if (dense != null)
                         {
                             var lengthProp = dense.GetType().GetProperty("Length");
@@ -981,7 +1397,7 @@ namespace Strada.Core.Editor.Windows
             GUILayout.Label(type.Name, GUILayout.Width(250));
             GUILayout.Label(count.ToString(), GUILayout.Width(80));
             GUILayout.Label(capacity.ToString(), GUILayout.Width(80));
-            
+
             long totalBytes = (long)size * capacity;
             GUILayout.Label(EditorUtility.FormatBytes(totalBytes), GUILayout.Width(100));
 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using Strada.Core.Editor.DataProviders;
 using Strada.Core.Editor.DataProviders.Models;
@@ -11,7 +12,8 @@ namespace Strada.Core.Editor.Windows
 {
     /// <summary>
     /// Editor window for debugging EventBus messages.
-    /// Provides message logging, filtering, and payload inspection.
+    /// Provides message logging, filtering, payload inspection,
+    /// breakpoints, statistics, chain tracking, export, and bookmarking.
     /// Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6
     /// </summary>
     public class BusDebuggerWindow : EditorWindow
@@ -20,6 +22,8 @@ namespace Strada.Core.Editor.Windows
         private const float MinMessageListWidth = 300f;
         private const float MaxMessageListWidth = 600f;
         private const float DefaultMessageListWidth = 450f;
+        private const float StatisticsWindowSeconds = 5f;
+        private const double MessageChainThresholdMs = 1.0;
 
         private float _messageListWidth = DefaultMessageListWidth;
         private bool _isResizing;
@@ -33,7 +37,7 @@ namespace Strada.Core.Editor.Windows
         private MessageKind? _kindFilter;
         private bool _showFilterOptions;
 
-        private enum Tab { Log, FlowGraph }
+        private enum Tab { Log, FlowGraph, Statistics }
         private Tab _currentTab = Tab.Log;
         private Vector2 _graphScrollPosition;
         private List<Type> _cachedEventTypes = new List<Type>();
@@ -46,6 +50,18 @@ namespace Strada.Core.Editor.Windows
         private double _lastRefreshTime;
         private float _refreshInterval = 0.1f;
 
+        // Breakpoints
+        private HashSet<string> _breakpoints = new HashSet<string>();
+        private bool _showBreakpointManager;
+
+        // Bookmarks
+        private HashSet<int> _bookmarkedIndices = new HashSet<int>();
+        private bool _showBookmarkedOnly;
+        private Dictionary<MessageLogEntry, bool> _bookmarkedEntries = new Dictionary<MessageLogEntry, bool>();
+
+        // Statistics
+        private Vector2 _statisticsScrollPosition;
+
         private GUIStyle _headerStyle;
         private GUIStyle _messageItemStyle;
         private GUIStyle _selectedMessageStyle;
@@ -53,6 +69,8 @@ namespace Strada.Core.Editor.Windows
         private GUIStyle _commandStyle;
         private GUIStyle _queryStyle;
         private GUIStyle _warningIconStyle;
+        private GUIStyle _breakpointStyle;
+        private GUIStyle _bookmarkStyle;
         private bool _stylesInitialized;
 
         private readonly Color _eventColor = new Color(0.4f, 0.7f, 0.4f);
@@ -60,7 +78,8 @@ namespace Strada.Core.Editor.Windows
         private readonly Color _queryColor = new Color(0.9f, 0.7f, 0.4f);
         private readonly Color _warningColor = new Color(1.0f, 0.6f, 0.2f);
         private readonly Color _selectedColor = new Color(0.24f, 0.49f, 0.91f, 0.4f);
-        private readonly Color _resizeHandleColor = new Color(0.15f, 0.15f, 0.15f, 1f);
+        private readonly Color _breakpointColor = new Color(0.9f, 0.2f, 0.2f);
+        private readonly Color _bookmarkColor = new Color(0.9f, 0.8f, 0.2f);
 
         private BusDataProvider _busDataProvider;
 
@@ -91,18 +110,49 @@ namespace Strada.Core.Editor.Windows
             if (!_isPaused)
             {
                 RefreshDisplayedEntries();
+                CheckBreakpoints();
                 Repaint();
+            }
+        }
+
+        /// <summary>
+        /// Checks incoming messages against breakpoints. If a breakpoint type is
+        /// found among the newest entries, pauses logging and selects that message.
+        /// </summary>
+        private void CheckBreakpoints()
+        {
+            if (_breakpoints.Count == 0 || _isPaused) return;
+
+            for (int i = _displayedEntries.Count - 1; i >= 0; i--)
+            {
+                var entry = _displayedEntries[i];
+                var typeName = entry.MessageType?.Name;
+                if (typeName != null && _breakpoints.Contains(typeName))
+                {
+                    _isPaused = true;
+                    _selectedMessageIndex = i;
+                    _autoScroll = false;
+                    break;
+                }
             }
         }
 
         private void OnPlayModeStateChanged(PlayModeStateChange state)
         {
-            if (state == PlayModeStateChange.EnteredPlayMode || state == PlayModeStateChange.ExitingPlayMode)
+            if (state == PlayModeStateChange.EnteredPlayMode)
             {
                 _displayedEntries.Clear();
                 _selectedMessageIndex = -1;
-                if (state == PlayModeStateChange.ExitingPlayMode)
-                    _isPaused = false;
+                _bookmarkedEntries.Clear();
+                _bookmarkedIndices.Clear();
+            }
+            else if (state == PlayModeStateChange.ExitingPlayMode)
+            {
+                _displayedEntries.Clear();
+                _selectedMessageIndex = -1;
+                _isPaused = false;
+                _bookmarkedEntries.Clear();
+                _bookmarkedIndices.Clear();
             }
             Repaint();
         }
@@ -166,6 +216,18 @@ namespace Strada.Core.Editor.Windows
                 fontSize = 14
             };
 
+            _breakpointStyle = new GUIStyle(EditorStyles.miniButton)
+            {
+                normal = { textColor = _breakpointColor },
+                fontStyle = FontStyle.Bold,
+                padding = new RectOffset(2, 2, 1, 1)
+            };
+
+            _bookmarkStyle = new GUIStyle(EditorStyles.miniButton)
+            {
+                padding = new RectOffset(2, 2, 1, 1)
+            };
+
             _stylesInitialized = true;
         }
 
@@ -194,15 +256,19 @@ namespace Strada.Core.Editor.Windows
             }
 
             DrawToolbar();
-            
+
             if (_currentTab == Tab.Log)
             {
                 DrawFilterBar();
                 DrawSplitView();
             }
-            else
+            else if (_currentTab == Tab.FlowGraph)
             {
                 DrawFlowGraph();
+            }
+            else if (_currentTab == Tab.Statistics)
+            {
+                DrawStatisticsPanel();
             }
         }
 
@@ -219,7 +285,10 @@ namespace Strada.Core.Editor.Windows
                 "• View Events, Signals, and Queries\n" +
                 "• Filter by message type pattern\n" +
                 "• Inspect message payloads\n" +
-                "• Detect unhandled signals\n\n" +
+                "• Detect unhandled signals\n" +
+                "• Set breakpoints on message types\n" +
+                "• View message statistics\n" +
+                "• Export logs to JSON\n\n" +
                 "Enter Play Mode to start debugging.",
                 MessageType.Info);
 
@@ -261,11 +330,11 @@ namespace Strada.Core.Editor.Windows
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
 
-            _currentTab = (Tab)GUILayout.Toolbar((int)_currentTab, new[] { "Log", "Flow Graph" }, EditorStyles.toolbarButton, GUILayout.Width(150));
+            _currentTab = (Tab)GUILayout.Toolbar((int)_currentTab, new[] { "Log", "Flow Graph", "Statistics" }, EditorStyles.toolbarButton, GUILayout.Width(230));
             GUILayout.Space(10);
 
             var isLogging = _busDataProvider.IsLogging;
-            var logIcon = isLogging ? "●" : "○";
+            var logIcon = isLogging ? "\u25CF" : "\u25CB";
             var logColor = isLogging ? Color.green : Color.gray;
             var prevColor = GUI.contentColor;
             GUI.contentColor = logColor;
@@ -280,7 +349,7 @@ namespace Strada.Core.Editor.Windows
 
             GUI.contentColor = prevColor;
 
-            var pauseIcon = _isPaused ? "▶" : "❚❚";
+            var pauseIcon = _isPaused ? "\u25B6" : "\u275A\u275A";
             var pauseTooltip = _isPaused ? "Resume" : "Pause";
             if (GUILayout.Button(new GUIContent(pauseIcon, pauseTooltip), EditorStyles.toolbarButton, GUILayout.Width(30)))
             {
@@ -290,6 +359,11 @@ namespace Strada.Core.Editor.Windows
             if (GUILayout.Button("Clear", EditorStyles.toolbarButton, GUILayout.Width(45)))
             {
                 ClearLog();
+            }
+
+            if (GUILayout.Button("Export", EditorStyles.toolbarButton, GUILayout.Width(50)))
+            {
+                ExportLogToJson();
             }
 
             GUILayout.Space(10);
@@ -322,7 +396,7 @@ namespace Strada.Core.Editor.Windows
             }
 
             EditorGUILayout.BeginVertical();
-            
+
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
             if (GUILayout.Button("Refresh Graph", EditorStyles.toolbarButton))
             {
@@ -332,7 +406,7 @@ namespace Strada.Core.Editor.Windows
             EditorGUILayout.EndHorizontal();
 
             _graphScrollPosition = EditorGUILayout.BeginScrollView(_graphScrollPosition);
-            
+
             if (_cachedEventTypes.Count == 0)
             {
                 EditorGUILayout.HelpBox("No events found or not in Play Mode.", MessageType.Info);
@@ -357,11 +431,11 @@ namespace Strada.Core.Editor.Windows
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
             foreach (var assembly in assemblies)
             {
-                try 
+                try
                 {
                     foreach (var type in assembly.GetTypes())
                     {
-                        if (type.IsValueType && !type.IsPrimitive && !type.IsEnum && 
+                        if (type.IsValueType && !type.IsPrimitive && !type.IsEnum &&
                            (type.Name.EndsWith("Event") || type.Name.EndsWith("Signal")))
                         {
                             _cachedEventTypes.Add(type);
@@ -379,7 +453,7 @@ namespace Strada.Core.Editor.Windows
             if (subscribers.Count == 0) return;
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-            
+
             EditorGUILayout.BeginHorizontal();
             GUILayout.Label(eventType.Name, EditorStyles.boldLabel, GUILayout.Width(200));
             GUILayout.FlexibleSpace();
@@ -390,11 +464,11 @@ namespace Strada.Core.Editor.Windows
             foreach (var sub in subscribers)
             {
                 EditorGUILayout.BeginHorizontal();
-                GUILayout.Label("↳", GUILayout.Width(15));
-                
+                GUILayout.Label("\u21B3", GUILayout.Width(15));
+
                 var targetName = sub.Target?.GetType().Name ?? "Static/Unknown";
                 var methodName = sub.Method?.Name ?? "Unknown";
-                
+
                 if (GUILayout.Button($"{targetName}.{methodName}", EditorStyles.label))
                 {
                     if (sub.Target is MonoBehaviour mb)
@@ -439,7 +513,7 @@ namespace Strada.Core.Editor.Windows
                 var kindOptions = new[] { "All", "Event", "Command", "Query" };
                 var currentKindIndex = _kindFilter.HasValue ? (int)_kindFilter.Value + 1 : 0;
                 var newKindIndex = EditorGUILayout.Popup(currentKindIndex, kindOptions, EditorStyles.toolbarPopup, GUILayout.Width(80));
-                
+
                 var newKindFilter = newKindIndex == 0 ? (MessageKind?)null : (MessageKind)(newKindIndex - 1);
                 if (newKindFilter != _kindFilter)
                 {
@@ -449,19 +523,91 @@ namespace Strada.Core.Editor.Windows
 
                 GUILayout.Space(10);
 
+                // Bookmarked only toggle
+                var newShowBookmarked = GUILayout.Toggle(_showBookmarkedOnly, "Bookmarked", EditorStyles.toolbarButton, GUILayout.Width(75));
+                if (newShowBookmarked != _showBookmarkedOnly)
+                {
+                    _showBookmarkedOnly = newShowBookmarked;
+                    Repaint();
+                }
+
+                GUILayout.Space(10);
+
                 if (GUILayout.Button("Clear Filters", EditorStyles.toolbarButton, GUILayout.Width(80)))
                 {
                     _typeFilterPattern = "";
                     _kindFilter = null;
+                    _showBookmarkedOnly = false;
                     RefreshDisplayedEntries();
                 }
             }
 
             GUILayout.FlexibleSpace();
 
+            // Manage Breakpoints toggle
+            _showBreakpointManager = GUILayout.Toggle(_showBreakpointManager, $"Breakpoints ({_breakpoints.Count})", EditorStyles.toolbarButton, GUILayout.Width(100));
+
+            GUILayout.Space(5);
+
             DrawLegend();
 
             EditorGUILayout.EndHorizontal();
+
+            // Draw breakpoint manager section if toggled
+            if (_showBreakpointManager)
+            {
+                DrawBreakpointManager();
+            }
+        }
+
+        /// <summary>
+        /// Draws the Manage Breakpoints section below the filter bar.
+        /// Lists all active breakpoints with the ability to remove them.
+        /// </summary>
+        private void DrawBreakpointManager()
+        {
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Label("Manage Breakpoints", EditorStyles.boldLabel);
+            GUILayout.FlexibleSpace();
+            if (_breakpoints.Count > 0 && GUILayout.Button("Clear All", EditorStyles.miniButton, GUILayout.Width(60)))
+            {
+                _breakpoints.Clear();
+            }
+            EditorGUILayout.EndHorizontal();
+
+            if (_breakpoints.Count == 0)
+            {
+                EditorGUILayout.LabelField("No breakpoints set. Click 'B' next to a message type to add one.", EditorStyles.centeredGreyMiniLabel);
+            }
+            else
+            {
+                string toRemove = null;
+                foreach (var bp in _breakpoints)
+                {
+                    EditorGUILayout.BeginHorizontal();
+
+                    var prevContentColor = GUI.contentColor;
+                    GUI.contentColor = _breakpointColor;
+                    GUILayout.Label("\u25CF", GUILayout.Width(14));
+                    GUI.contentColor = prevContentColor;
+
+                    GUILayout.Label(bp, GUILayout.ExpandWidth(true));
+
+                    if (GUILayout.Button("X", EditorStyles.miniButton, GUILayout.Width(20)))
+                    {
+                        toRemove = bp;
+                    }
+                    EditorGUILayout.EndHorizontal();
+                }
+                if (toRemove != null)
+                {
+                    _breakpoints.Remove(toRemove);
+                }
+            }
+
+            EditorGUILayout.EndVertical();
         }
 
         private void DrawLegend()
@@ -472,7 +618,7 @@ namespace Strada.Core.Editor.Windows
             DrawLegendSwatch(_commandColor, "Cmd", 30);
             DrawLegendSwatch(_queryColor, "Query", 35);
 
-            GUILayout.Label("⚠", _warningIconStyle, GUILayout.Width(15));
+            GUILayout.Label("\u26A0", _warningIconStyle, GUILayout.Width(15));
             GUILayout.Label("No Handler", GUILayout.Width(65));
         }
 
@@ -519,7 +665,15 @@ namespace Strada.Core.Editor.Windows
             {
                 for (int i = 0; i < _displayedEntries.Count; i++)
                 {
-                    DrawMessageListItem(i, _displayedEntries[i]);
+                    var entry = _displayedEntries[i];
+
+                    // Bookmark filter: skip non-bookmarked entries when filter is active
+                    if (_showBookmarkedOnly && !IsBookmarked(entry))
+                    {
+                        continue;
+                    }
+
+                    DrawMessageListItem(i, entry);
                 }
 
                 if (_autoScroll && !_isPaused && Event.current.type == EventType.Repaint)
@@ -540,13 +694,34 @@ namespace Strada.Core.Editor.Windows
 
             EditorGUILayout.BeginHorizontal(style);
 
-            if (entry.Kind == MessageKind.Command && !entry.HasHandler)
+            // Bookmark star button
+            var isBookmarked = IsBookmarked(entry);
+            var prevContentColor = GUI.contentColor;
+            GUI.contentColor = isBookmarked ? _bookmarkColor : Color.gray;
+            if (GUILayout.Button(isBookmarked ? "\u2605" : "\u2606", _bookmarkStyle, GUILayout.Width(18)))
             {
-                GUILayout.Label("⚠", _warningIconStyle, GUILayout.Width(18));
+                ToggleBookmark(index, entry);
+            }
+            GUI.contentColor = prevContentColor;
+
+            // Breakpoint or warning icon
+            var typeName = entry.MessageType?.Name;
+            bool hasBreakpoint = typeName != null && _breakpoints.Contains(typeName);
+
+            if (hasBreakpoint)
+            {
+                prevContentColor = GUI.contentColor;
+                GUI.contentColor = _breakpointColor;
+                GUILayout.Label("\u25CF", GUILayout.Width(14));
+                GUI.contentColor = prevContentColor;
+            }
+            else if (entry.Kind == MessageKind.Command && !entry.HasHandler)
+            {
+                GUILayout.Label("\u26A0", _warningIconStyle, GUILayout.Width(14));
             }
             else
             {
-                GUILayout.Space(18);
+                GUILayout.Space(14);
             }
 
             var timeStr = entry.Timestamp.ToString("HH:mm:ss.fff");
@@ -556,11 +731,30 @@ namespace Strada.Core.Editor.Windows
             var kindLabel = GetKindLabel(entry.Kind);
             GUILayout.Label(kindLabel, kindStyle, GUILayout.Width(45));
 
-            var typeName = entry.MessageType?.Name ?? "Unknown";
-            if (GUILayout.Button(typeName, EditorStyles.label, GUILayout.ExpandWidth(true)))
+            var displayTypeName = typeName ?? "Unknown";
+            if (GUILayout.Button(displayTypeName, EditorStyles.label, GUILayout.ExpandWidth(true)))
             {
                 _selectedMessageIndex = index;
             }
+
+            // Breakpoint toggle button
+            var bpActive = typeName != null && _breakpoints.Contains(typeName);
+            var prevBgColor = GUI.backgroundColor;
+            if (bpActive)
+            {
+                GUI.backgroundColor = _breakpointColor;
+            }
+            if (GUILayout.Button("B", _breakpointStyle, GUILayout.Width(20)))
+            {
+                if (typeName != null)
+                {
+                    if (_breakpoints.Contains(typeName))
+                        _breakpoints.Remove(typeName);
+                    else
+                        _breakpoints.Add(typeName);
+                }
+            }
+            GUI.backgroundColor = prevBgColor;
 
             if (entry.Kind == MessageKind.Event)
             {
@@ -673,7 +867,7 @@ namespace Strada.Core.Editor.Windows
                 {
                     var prevColor = GUI.contentColor;
                     GUI.contentColor = _warningColor;
-                    EditorGUILayout.LabelField("⚠ No - Command will not be processed!", EditorStyles.boldLabel);
+                    EditorGUILayout.LabelField("\u26A0 No - Command will not be processed!", EditorStyles.boldLabel);
                     GUI.contentColor = prevColor;
                 }
                 EditorGUILayout.EndHorizontal();
@@ -682,6 +876,19 @@ namespace Strada.Core.Editor.Windows
             if (entry.Kind == MessageKind.Query && entry.ProcessingTimeMs > 0)
             {
                 DrawDetailRow("Processing:", $"{entry.ProcessingTimeMs:F3} ms");
+            }
+
+            // Breakpoint status
+            var typeName = entry.MessageType?.Name;
+            if (typeName != null && _breakpoints.Contains(typeName))
+            {
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField("Breakpoint:", EditorStyles.boldLabel, GUILayout.Width(80));
+                var prevContentColor = GUI.contentColor;
+                GUI.contentColor = _breakpointColor;
+                EditorGUILayout.LabelField("\u25CF Active");
+                GUI.contentColor = prevContentColor;
+                EditorGUILayout.EndHorizontal();
             }
 
             EditorGUILayout.EndVertical();
@@ -702,15 +909,73 @@ namespace Strada.Core.Editor.Windows
 
             EditorGUILayout.EndVertical();
 
+            // Message chain tracking
+            GUILayout.Space(10);
+            DrawTriggeredMessages(entry);
+
             EditorGUILayout.EndScrollView();
         }
 
-        private void DrawDetailRow(string label, string value, GUIStyle valueStyle = null)
+        /// <summary>
+        /// Draws triggered messages section - messages that arrived within 1ms
+        /// of the selected message, implying a causal chain.
+        /// </summary>
+        private void DrawTriggeredMessages(MessageLogEntry selectedEntry)
         {
-            EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField(label, EditorStyles.boldLabel, GUILayout.Width(80));
-            EditorGUILayout.LabelField(value, valueStyle ?? EditorStyles.label);
-            EditorGUILayout.EndHorizontal();
+            var triggeredMessages = new List<MessageLogEntry>();
+            var selectedIndex = _displayedEntries.IndexOf(selectedEntry);
+            if (selectedIndex < 0) return;
+
+            // Look at subsequent messages within the chain threshold
+            for (int i = selectedIndex + 1; i < _displayedEntries.Count; i++)
+            {
+                var candidate = _displayedEntries[i];
+                var timeDiffMs = (candidate.Timestamp - selectedEntry.Timestamp).TotalMilliseconds;
+
+                if (timeDiffMs <= MessageChainThresholdMs && timeDiffMs >= 0)
+                {
+                    triggeredMessages.Add(candidate);
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            if (triggeredMessages.Count == 0) return;
+
+            EditorGUILayout.LabelField("Triggered Messages", EditorStyles.boldLabel);
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            EditorGUILayout.LabelField($"Messages arriving within {MessageChainThresholdMs}ms (possible causal chain):", EditorStyles.miniLabel);
+
+            GUILayout.Space(3);
+
+            foreach (var triggered in triggeredMessages)
+            {
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.Label("\u21B3", GUILayout.Width(15));
+
+                var trigKindStyle = GetKindStyle(triggered.Kind);
+                var trigKindLabel = GetKindLabel(triggered.Kind);
+                GUILayout.Label(trigKindLabel, trigKindStyle, GUILayout.Width(35));
+
+                var trigTypeName = triggered.MessageType?.Name ?? "Unknown";
+                var timeDiff = (triggered.Timestamp - selectedEntry.Timestamp).TotalMilliseconds;
+                GUILayout.Label($"{trigTypeName} (+{timeDiff:F3}ms)", EditorStyles.label);
+
+                GUILayout.FlexibleSpace();
+
+                // Allow clicking to select the triggered message
+                var trigIndex = _displayedEntries.IndexOf(triggered);
+                if (trigIndex >= 0 && GUILayout.Button("Select", EditorStyles.miniButton, GUILayout.Width(50)))
+                {
+                    _selectedMessageIndex = trigIndex;
+                }
+
+                EditorGUILayout.EndHorizontal();
+            }
+
+            EditorGUILayout.EndVertical();
         }
 
         private void DrawPayloadFields(object payload)
@@ -757,6 +1022,388 @@ namespace Strada.Core.Editor.Windows
 
             return value.ToString();
         }
+
+        // =====================================================================
+        // Statistics Panel
+        // =====================================================================
+
+        /// <summary>
+        /// Draws the Statistics tab showing message throughput, frequency,
+        /// processing times, and kind distribution.
+        /// </summary>
+        private void DrawStatisticsPanel()
+        {
+            _statisticsScrollPosition = EditorGUILayout.BeginScrollView(_statisticsScrollPosition);
+
+            EditorGUILayout.BeginVertical();
+
+            if (_displayedEntries.Count == 0)
+            {
+                EditorGUILayout.HelpBox("No messages to analyze. Start logging and generate some messages.", MessageType.Info);
+                EditorGUILayout.EndVertical();
+                EditorGUILayout.EndScrollView();
+                return;
+            }
+
+            // Messages per second (rolling average over last 5 seconds)
+            DrawMessagesPerSecond();
+
+            GUILayout.Space(10);
+
+            // Most frequent message types (top 10)
+            DrawMostFrequentTypes();
+
+            GUILayout.Space(10);
+
+            // Average processing time per query type
+            DrawAverageQueryProcessingTimes();
+
+            GUILayout.Space(10);
+
+            // Message kind distribution
+            DrawKindDistribution();
+
+            EditorGUILayout.EndVertical();
+            EditorGUILayout.EndScrollView();
+        }
+
+        private void DrawMessagesPerSecond()
+        {
+            EditorGUILayout.LabelField("Messages Per Second", _headerStyle);
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+            var now = DateTime.Now;
+            var windowStart = now.AddSeconds(-StatisticsWindowSeconds);
+            var recentCount = 0;
+
+            for (int i = _displayedEntries.Count - 1; i >= 0; i--)
+            {
+                if (_displayedEntries[i].Timestamp >= windowStart)
+                    recentCount++;
+                else
+                    break;
+            }
+
+            var messagesPerSecond = recentCount / StatisticsWindowSeconds;
+            EditorGUILayout.LabelField($"Rolling average ({StatisticsWindowSeconds:F0}s window): {messagesPerSecond:F1} msg/s");
+            EditorGUILayout.LabelField($"Total messages: {_displayedEntries.Count}");
+
+            if (_displayedEntries.Count >= 2)
+            {
+                var totalSpan = (_displayedEntries[_displayedEntries.Count - 1].Timestamp - _displayedEntries[0].Timestamp).TotalSeconds;
+                if (totalSpan > 0)
+                {
+                    var overallRate = _displayedEntries.Count / totalSpan;
+                    EditorGUILayout.LabelField($"Overall average: {overallRate:F1} msg/s");
+                }
+            }
+
+            EditorGUILayout.EndVertical();
+        }
+
+        private void DrawMostFrequentTypes()
+        {
+            EditorGUILayout.LabelField("Most Frequent Message Types (Top 10)", _headerStyle);
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+            var typeCounts = new Dictionary<string, int>();
+            foreach (var entry in _displayedEntries)
+            {
+                var name = entry.MessageType?.Name ?? "Unknown";
+                if (typeCounts.ContainsKey(name))
+                    typeCounts[name]++;
+                else
+                    typeCounts[name] = 1;
+            }
+
+            var topTypes = typeCounts
+                .OrderByDescending(kv => kv.Value)
+                .Take(10)
+                .ToList();
+
+            if (topTypes.Count == 0)
+            {
+                EditorGUILayout.LabelField("(no data)", EditorStyles.centeredGreyMiniLabel);
+            }
+            else
+            {
+                var maxCount = topTypes[0].Value;
+
+                foreach (var kv in topTypes)
+                {
+                    EditorGUILayout.BeginHorizontal();
+                    EditorGUILayout.LabelField(kv.Key, GUILayout.Width(200));
+                    EditorGUILayout.LabelField(kv.Value.ToString(), GUILayout.Width(50));
+
+                    // Draw a proportional bar
+                    var barRect = GUILayoutUtility.GetRect(0, 16, GUILayout.ExpandWidth(true));
+                    if (Event.current.type == EventType.Repaint)
+                    {
+                        var fillFraction = maxCount > 0 ? (float)kv.Value / maxCount : 0f;
+                        var fillRect = new Rect(barRect.x, barRect.y + 2, barRect.width * fillFraction, barRect.height - 4);
+                        EditorGUI.DrawRect(fillRect, _commandColor);
+                    }
+
+                    EditorGUILayout.EndHorizontal();
+                }
+            }
+
+            EditorGUILayout.EndVertical();
+        }
+
+        private void DrawAverageQueryProcessingTimes()
+        {
+            EditorGUILayout.LabelField("Average Processing Time Per Query Type", _headerStyle);
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+            var queryTimes = new Dictionary<string, List<double>>();
+            foreach (var entry in _displayedEntries)
+            {
+                if (entry.Kind != MessageKind.Query || entry.ProcessingTimeMs <= 0) continue;
+
+                var name = entry.MessageType?.Name ?? "Unknown";
+                if (!queryTimes.ContainsKey(name))
+                    queryTimes[name] = new List<double>();
+                queryTimes[name].Add(entry.ProcessingTimeMs);
+            }
+
+            if (queryTimes.Count == 0)
+            {
+                EditorGUILayout.LabelField("(no query data)", EditorStyles.centeredGreyMiniLabel);
+            }
+            else
+            {
+                var queryStats = queryTimes
+                    .Select(kv => new
+                    {
+                        Name = kv.Key,
+                        Count = kv.Value.Count,
+                        Avg = kv.Value.Average(),
+                        Min = kv.Value.Min(),
+                        Max = kv.Value.Max()
+                    })
+                    .OrderByDescending(x => x.Avg)
+                    .ToList();
+
+                // Header row
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField("Query Type", EditorStyles.boldLabel, GUILayout.Width(200));
+                EditorGUILayout.LabelField("Count", EditorStyles.boldLabel, GUILayout.Width(50));
+                EditorGUILayout.LabelField("Avg (ms)", EditorStyles.boldLabel, GUILayout.Width(70));
+                EditorGUILayout.LabelField("Min (ms)", EditorStyles.boldLabel, GUILayout.Width(70));
+                EditorGUILayout.LabelField("Max (ms)", EditorStyles.boldLabel, GUILayout.Width(70));
+                EditorGUILayout.EndHorizontal();
+
+                foreach (var stat in queryStats)
+                {
+                    EditorGUILayout.BeginHorizontal();
+                    EditorGUILayout.LabelField(stat.Name, GUILayout.Width(200));
+                    EditorGUILayout.LabelField(stat.Count.ToString(), GUILayout.Width(50));
+                    EditorGUILayout.LabelField($"{stat.Avg:F3}", GUILayout.Width(70));
+                    EditorGUILayout.LabelField($"{stat.Min:F3}", GUILayout.Width(70));
+                    EditorGUILayout.LabelField($"{stat.Max:F3}", GUILayout.Width(70));
+                    EditorGUILayout.EndHorizontal();
+                }
+            }
+
+            EditorGUILayout.EndVertical();
+        }
+
+        private void DrawKindDistribution()
+        {
+            EditorGUILayout.LabelField("Message Kind Distribution", _headerStyle);
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+            var totalCount = _displayedEntries.Count;
+            if (totalCount == 0)
+            {
+                EditorGUILayout.LabelField("(no data)", EditorStyles.centeredGreyMiniLabel);
+                EditorGUILayout.EndVertical();
+                return;
+            }
+
+            var eventCount = _displayedEntries.Count(e => e.Kind == MessageKind.Event);
+            var commandCount = _displayedEntries.Count(e => e.Kind == MessageKind.Command);
+            var queryCount = _displayedEntries.Count(e => e.Kind == MessageKind.Query);
+
+            float eventPct = (float)eventCount / totalCount;
+            float commandPct = (float)commandCount / totalCount;
+            float queryPct = (float)queryCount / totalCount;
+
+            // Draw colored bar (pie chart approximation)
+            var barRect = GUILayoutUtility.GetRect(0, 24, GUILayout.ExpandWidth(true));
+            if (Event.current.type == EventType.Repaint)
+            {
+                var eventRect = new Rect(barRect.x, barRect.y, barRect.width * eventPct, barRect.height);
+                var commandRect = new Rect(barRect.x + barRect.width * eventPct, barRect.y, barRect.width * commandPct, barRect.height);
+                var queryRect = new Rect(barRect.x + barRect.width * (eventPct + commandPct), barRect.y, barRect.width * queryPct, barRect.height);
+
+                EditorGUI.DrawRect(eventRect, _eventColor);
+                EditorGUI.DrawRect(commandRect, _commandColor);
+                EditorGUI.DrawRect(queryRect, _queryColor);
+            }
+
+            GUILayout.Space(5);
+
+            // Labels
+            EditorGUILayout.BeginHorizontal();
+
+            var prevContentColor = GUI.contentColor;
+
+            GUI.contentColor = _eventColor;
+            EditorGUILayout.LabelField($"Events: {eventCount} ({eventPct:P1})", GUILayout.Width(150));
+
+            GUI.contentColor = _commandColor;
+            EditorGUILayout.LabelField($"Commands: {commandCount} ({commandPct:P1})", GUILayout.Width(160));
+
+            GUI.contentColor = _queryColor;
+            EditorGUILayout.LabelField($"Queries: {queryCount} ({queryPct:P1})", GUILayout.Width(150));
+
+            GUI.contentColor = prevContentColor;
+
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.EndVertical();
+        }
+
+        // =====================================================================
+        // Export
+        // =====================================================================
+
+        /// <summary>
+        /// Exports the current displayed log entries to a JSON file.
+        /// Uses EditorUtility.SaveFilePanel to let the user choose the file path.
+        /// </summary>
+        private void ExportLogToJson()
+        {
+            if (_displayedEntries.Count == 0)
+            {
+                EditorUtility.DisplayDialog("Export Log", "No messages to export.", "OK");
+                return;
+            }
+
+            var path = EditorUtility.SaveFilePanel(
+                "Export Bus Log",
+                "",
+                "bus_log_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".json",
+                "json");
+
+            if (string.IsNullOrEmpty(path)) return;
+
+            try
+            {
+                var sb = new StringBuilder();
+                sb.AppendLine("{");
+                sb.AppendLine($"  \"exportTimestamp\": \"{DateTime.Now:yyyy-MM-ddTHH:mm:ss.fff}\",");
+                sb.AppendLine($"  \"messageCount\": {_displayedEntries.Count},");
+                sb.AppendLine("  \"messages\": [");
+
+                for (int i = 0; i < _displayedEntries.Count; i++)
+                {
+                    var entry = _displayedEntries[i];
+                    var comma = i < _displayedEntries.Count - 1 ? "," : "";
+                    var typeName = entry.MessageType?.FullName ?? "Unknown";
+                    var payloadJson = SerializePayload(entry.Payload);
+                    var isBookmarked = IsBookmarked(entry);
+                    var hasBreakpoint = entry.MessageType?.Name != null && _breakpoints.Contains(entry.MessageType.Name);
+
+                    sb.AppendLine("    {");
+                    sb.AppendLine($"      \"timestamp\": \"{entry.Timestamp:yyyy-MM-ddTHH:mm:ss.fff}\",");
+                    sb.AppendLine($"      \"kind\": \"{entry.Kind}\",");
+                    sb.AppendLine($"      \"messageType\": \"{EscapeJsonString(typeName)}\",");
+                    sb.AppendLine($"      \"subscriberCount\": {entry.SubscriberCount},");
+                    sb.AppendLine($"      \"hasHandler\": {(entry.HasHandler ? "true" : "false")},");
+                    sb.AppendLine($"      \"processingTimeMs\": {entry.ProcessingTimeMs:F4},");
+                    sb.AppendLine($"      \"bookmarked\": {(isBookmarked ? "true" : "false")},");
+                    sb.AppendLine($"      \"breakpoint\": {(hasBreakpoint ? "true" : "false")},");
+                    sb.AppendLine($"      \"payload\": {payloadJson}");
+                    sb.AppendLine($"    }}{comma}");
+                }
+
+                sb.AppendLine("  ]");
+                sb.AppendLine("}");
+
+                System.IO.File.WriteAllText(path, sb.ToString());
+                Debug.Log($"[BusDebugger] Log exported to: {path}");
+                EditorUtility.DisplayDialog("Export Log", $"Successfully exported {_displayedEntries.Count} messages to:\n{path}", "OK");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[BusDebugger] Failed to export log: {ex.Message}");
+                EditorUtility.DisplayDialog("Export Error", $"Failed to export log:\n{ex.Message}", "OK");
+            }
+        }
+
+        private string SerializePayload(object payload)
+        {
+            if (payload == null) return "null";
+
+            var type = payload.GetType();
+            var fields = type.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+
+            if (fields.Length == 0) return "{}";
+
+            var sb = new StringBuilder();
+            sb.Append("{ ");
+
+            for (int i = 0; i < fields.Length; i++)
+            {
+                var field = fields[i];
+                var value = field.GetValue(payload);
+                var valueStr = FormatValue(value);
+
+                sb.Append($"\"{EscapeJsonString(field.Name)}\": \"{EscapeJsonString(valueStr)}\"");
+                if (i < fields.Length - 1) sb.Append(", ");
+            }
+
+            sb.Append(" }");
+            return sb.ToString();
+        }
+
+        private static string EscapeJsonString(string str)
+        {
+            if (string.IsNullOrEmpty(str)) return str;
+            return str
+                .Replace("\\", "\\\\")
+                .Replace("\"", "\\\"")
+                .Replace("\n", "\\n")
+                .Replace("\r", "\\r")
+                .Replace("\t", "\\t");
+        }
+
+        // =====================================================================
+        // Bookmarking
+        // =====================================================================
+
+        /// <summary>
+        /// Checks whether a specific entry is bookmarked.
+        /// Uses the entry reference for identity tracking.
+        /// </summary>
+        private bool IsBookmarked(MessageLogEntry entry)
+        {
+            return _bookmarkedEntries.ContainsKey(entry) && _bookmarkedEntries[entry];
+        }
+
+        /// <summary>
+        /// Toggles the bookmark state for a message entry.
+        /// </summary>
+        private void ToggleBookmark(int index, MessageLogEntry entry)
+        {
+            if (_bookmarkedEntries.ContainsKey(entry) && _bookmarkedEntries[entry])
+            {
+                _bookmarkedEntries[entry] = false;
+                _bookmarkedIndices.Remove(index);
+            }
+            else
+            {
+                _bookmarkedEntries[entry] = true;
+                _bookmarkedIndices.Add(index);
+            }
+        }
+
+        // =====================================================================
+        // Data Refresh & Filtering
+        // =====================================================================
 
         /// <summary>
         /// Refreshes the displayed entries based on current filter settings.
@@ -814,6 +1461,8 @@ namespace Strada.Core.Editor.Windows
             _busDataProvider.ClearLog();
             _displayedEntries.Clear();
             _selectedMessageIndex = -1;
+            _bookmarkedEntries.Clear();
+            _bookmarkedIndices.Clear();
             Repaint();
         }
 
@@ -839,6 +1488,16 @@ namespace Strada.Core.Editor.Windows
         internal MessageKind? KindFilter => _kindFilter;
 
         /// <summary>
+        /// Gets the breakpoints set (by type name).
+        /// </summary>
+        internal IReadOnlyCollection<string> Breakpoints => _breakpoints;
+
+        /// <summary>
+        /// Gets whether the bookmarked-only filter is active.
+        /// </summary>
+        internal bool ShowBookmarkedOnly => _showBookmarkedOnly;
+
+        /// <summary>
         /// Sets the type filter pattern programmatically.
         /// </summary>
         internal void SetTypeFilter(string pattern)
@@ -854,6 +1513,46 @@ namespace Strada.Core.Editor.Windows
         {
             _kindFilter = kind;
             RefreshDisplayedEntries();
+        }
+
+        /// <summary>
+        /// Adds a breakpoint for the specified message type name.
+        /// </summary>
+        internal void AddBreakpoint(string typeName)
+        {
+            if (!string.IsNullOrEmpty(typeName))
+                _breakpoints.Add(typeName);
+        }
+
+        /// <summary>
+        /// Removes a breakpoint for the specified message type name.
+        /// </summary>
+        internal void RemoveBreakpoint(string typeName)
+        {
+            _breakpoints.Remove(typeName);
+        }
+
+        /// <summary>
+        /// Toggles a bookmark on the entry at the given index.
+        /// </summary>
+        internal void ToggleBookmarkAt(int index)
+        {
+            if (index >= 0 && index < _displayedEntries.Count)
+            {
+                ToggleBookmark(index, _displayedEntries[index]);
+            }
+        }
+
+        /// <summary>
+        /// Checks whether an entry at the given index is bookmarked.
+        /// </summary>
+        internal bool IsBookmarkedAt(int index)
+        {
+            if (index >= 0 && index < _displayedEntries.Count)
+            {
+                return IsBookmarked(_displayedEntries[index]);
+            }
+            return false;
         }
 
         /// <summary>

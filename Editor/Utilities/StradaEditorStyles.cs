@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
@@ -318,5 +319,145 @@ namespace Strada.Core.Editor.Utilities
         /// Small minimum window size for simple dialogs.
         /// </summary>
         public static readonly Vector2 SmallMinSize = new Vector2(400, 300);
+
+        /// <summary>
+        /// Draws a mini sparkline chart within the given rect.
+        /// Values are scaled proportionally between their min and max.
+        /// </summary>
+        public static void DrawSparkline(Rect rect, IList<float> values, Color lineColor, Color bgColor)
+        {
+            EditorGUI.DrawRect(rect, bgColor);
+
+            if (values == null || values.Count == 0) return;
+
+            float min = values[0];
+            float max = values[0];
+            for (int i = 1; i < values.Count; i++)
+            {
+                if (values[i] < min) min = values[i];
+                if (values[i] > max) max = values[i];
+            }
+
+            float range = max - min;
+            if (range < Mathf.Epsilon) range = 1f;
+
+            float barWidth = rect.width / values.Count;
+
+            for (int i = 0; i < values.Count; i++)
+            {
+                float normalized = (values[i] - min) / range;
+                float barHeight = normalized * rect.height;
+                var barRect = new Rect(
+                    rect.x + i * barWidth,
+                    rect.y + rect.height - barHeight,
+                    Mathf.Max(1f, barWidth),
+                    barHeight
+                );
+                EditorGUI.DrawRect(barRect, lineColor);
+            }
+        }
+
+        /// <summary>
+        /// Draws a small bar chart with individually colored bars.
+        /// </summary>
+        public static void DrawMiniBarChart(Rect rect, float[] values, Color[] colors)
+        {
+            if (values == null || values.Length == 0) return;
+
+            float max = values[0];
+            for (int i = 1; i < values.Length; i++)
+            {
+                if (values[i] > max) max = values[i];
+            }
+
+            if (max < Mathf.Epsilon) max = 1f;
+
+            float barWidth = rect.width / values.Length;
+            float spacing = Mathf.Max(1f, barWidth * 0.1f);
+
+            for (int i = 0; i < values.Length; i++)
+            {
+                float normalized = values[i] / max;
+                float barHeight = normalized * rect.height;
+                Color color = (colors != null && i < colors.Length) ? colors[i] : Color.white;
+                var barRect = new Rect(
+                    rect.x + i * barWidth + spacing * 0.5f,
+                    rect.y + rect.height - barHeight,
+                    barWidth - spacing,
+                    barHeight
+                );
+                EditorGUI.DrawRect(barRect, color);
+            }
+        }
+
+        /// <summary>
+        /// Draws a horizontal timeline with a playhead indicator.
+        /// </summary>
+        public static void DrawTimeline(Rect rect, int totalFrames, int currentFrame, Color trackColor, Color playheadColor)
+        {
+            EditorGUI.DrawRect(rect, trackColor);
+
+            if (totalFrames <= 0) return;
+
+            float playheadX = rect.x + (rect.width * Mathf.Clamp01((float)currentFrame / totalFrames));
+            var playheadRect = new Rect(playheadX - 1f, rect.y, 2f, rect.height);
+            EditorGUI.DrawRect(playheadRect, playheadColor);
+        }
+
+        /// <summary>
+        /// Saves a string value to EditorPrefs for persistent editor state.
+        /// </summary>
+        public static void SaveEditorState(string windowKey, string key, string value)
+        {
+            EditorPrefs.SetString($"Strada.{windowKey}.{key}", value);
+        }
+
+        /// <summary>
+        /// Loads a string value from EditorPrefs for persistent editor state.
+        /// </summary>
+        public static string LoadEditorState(string windowKey, string key, string defaultValue = "")
+        {
+            return EditorPrefs.GetString($"Strada.{windowKey}.{key}", defaultValue);
+        }
+
+        /// <summary>
+        /// Saves an int value to EditorPrefs for persistent editor state.
+        /// </summary>
+        public static void SaveEditorStateInt(string windowKey, string key, int value)
+        {
+            EditorPrefs.SetInt($"Strada.{windowKey}.{key}", value);
+        }
+
+        /// <summary>
+        /// Loads an int value from EditorPrefs for persistent editor state.
+        /// </summary>
+        public static int LoadEditorStateInt(string windowKey, string key, int defaultValue = 0)
+        {
+            return EditorPrefs.GetInt($"Strada.{windowKey}.{key}", defaultValue);
+        }
+
+        /// <summary>
+        /// Saves a bool value to EditorPrefs for persistent editor state.
+        /// </summary>
+        public static void SaveEditorStateBool(string windowKey, string key, bool value)
+        {
+            EditorPrefs.SetBool($"Strada.{windowKey}.{key}", value);
+        }
+
+        /// <summary>
+        /// Loads a bool value from EditorPrefs for persistent editor state.
+        /// </summary>
+        public static bool LoadEditorStateBool(string windowKey, string key, bool defaultValue = false)
+        {
+            return EditorPrefs.GetBool($"Strada.{windowKey}.{key}", defaultValue);
+        }
+
+        /// <summary>
+        /// Draws a context menu button ("...") and returns true if clicked.
+        /// </summary>
+        public static bool DrawContextMenuButton(float width = 20f)
+        {
+            return GUILayout.Button("...", EditorStyles.miniButton, GUILayout.Width(width));
+        }
     }
 }
