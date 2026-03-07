@@ -143,7 +143,6 @@ namespace Strada.Core.Editor.Benchmarking
             _thresholds[benchmarkName] = threshold;
         }
 
-
         /// <summary>
         /// Runs a single benchmark by name.
         /// </summary>
@@ -239,41 +238,22 @@ namespace Strada.Core.Editor.Benchmarking
 
         private BenchmarkResult RunDITransientBenchmark(int iterations)
         {
-            var timings = new double[iterations];
-            var sw = new Stopwatch();
-            long memoryBefore = GC.GetTotalMemory(true);
-
-            var container = new ContainerBuilder()
-                .Register<ITestService, TestServiceImpl>(Lifetime.Transient)
-                .Build();
-
-            for (int i = 0; i < iterations; i++)
-            {
-                sw.Restart();
-                var _ = container.Resolve<ITestService>();
-                sw.Stop();
-                timings[i] = sw.Elapsed.TotalMilliseconds;
-            }
-
-            long memoryAfter = GC.GetTotalMemory(false);
-            container.Dispose();
-
-            return BenchmarkResult.Calculate(
-                "DI_TransientResolve",
-                "DI Container",
-                timings,
-                memoryAfter - memoryBefore,
-                iterations);
+            return RunDIBenchmark("DI_TransientResolve", Lifetime.Transient, iterations);
         }
 
         private BenchmarkResult RunDISingletonBenchmark(int iterations)
+        {
+            return RunDIBenchmark("DI_SingletonResolve", Lifetime.Singleton, iterations);
+        }
+
+        private BenchmarkResult RunDIBenchmark(string name, Lifetime lifetime, int iterations)
         {
             var timings = new double[iterations];
             var sw = new Stopwatch();
             long memoryBefore = GC.GetTotalMemory(true);
 
             var container = new ContainerBuilder()
-                .Register<ITestService, TestServiceImpl>(Lifetime.Singleton)
+                .Register<ITestService, TestServiceImpl>(lifetime)
                 .Build();
 
             for (int i = 0; i < iterations; i++)
@@ -288,7 +268,7 @@ namespace Strada.Core.Editor.Benchmarking
             container.Dispose();
 
             return BenchmarkResult.Calculate(
-                "DI_SingletonResolve",
+                name,
                 "DI Container",
                 timings,
                 memoryAfter - memoryBefore,

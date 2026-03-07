@@ -25,7 +25,7 @@ namespace Strada.Core.Editor.Benchmarking
             if (!fullPath.StartsWith(projectRoot))
                 throw new InvalidOperationException($"Path outside project: {fullPath}");
         }
-        
+
         /// <summary>
         /// Gets the default directory for benchmark results.
         /// </summary>
@@ -56,10 +56,8 @@ namespace Strada.Core.Editor.Benchmarking
             var filename = $"benchmark_session_{session.Timestamp:yyyyMMdd_HHmmss}_{session.SessionId}.json";
             var path = Path.Combine(directory, filename);
             
-            var wrapper = new BenchmarkSessionWrapper(session);
-            var json = JsonUtility.ToJson(wrapper, true);
-            File.WriteAllText(path, json);
-            
+            WriteSessionToFile(session, path);
+
             return path;
         }
         
@@ -98,7 +96,7 @@ namespace Strada.Core.Editor.Benchmarking
             if (!Directory.Exists(directory))
                 return new List<string>();
             
-            return Directory.GetFiles(directory, "benchmark_session_*.json")
+            return Directory.GetFiles(directory, SessionFilePattern)
                 .OrderByDescending(f => f)
                 .ToList();
         }
@@ -162,9 +160,7 @@ namespace Strada.Core.Editor.Benchmarking
             ValidatePath(path);
             try
             {
-                var wrapper = new BenchmarkSessionWrapper(session);
-                var json = JsonUtility.ToJson(wrapper, true);
-                File.WriteAllText(path, json);
+                WriteSessionToFile(session, path);
                 return true;
             }
             catch (Exception ex)
@@ -172,6 +168,13 @@ namespace Strada.Core.Editor.Benchmarking
                 Debug.LogError($"[BenchmarkPersistence] Failed to export session: {ex.Message}");
                 return false;
             }
+        }
+
+        private static void WriteSessionToFile(BenchmarkSession session, string path)
+        {
+            var wrapper = new BenchmarkSessionWrapper(session);
+            var json = JsonUtility.ToJson(wrapper, true);
+            File.WriteAllText(path, json);
         }
     }
     
