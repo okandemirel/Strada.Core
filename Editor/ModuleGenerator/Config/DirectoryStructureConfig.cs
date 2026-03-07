@@ -72,7 +72,7 @@ namespace Strada.Core.Editor.ModuleGenerator.Config
             return _instance;
         }
 
-        public List<string> GetFoldersForModule(ComponentSelection components, ModuleType moduleType)
+        public List<string> GetFoldersForModule(ComponentSelection components)
         {
             var result = new List<string>();
 
@@ -124,7 +124,6 @@ namespace Strada.Core.Editor.ModuleGenerator.Config
         public bool IsMandatory;
         public bool IsOptional;
         public ComponentType RequiredComponent = ComponentType.None;
-        public ModuleType[] ApplicableTypes;
     }
 
     public enum ComponentType

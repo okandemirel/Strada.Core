@@ -36,6 +36,7 @@ namespace Strada.Core.Editor.ModuleGenerator.Models
         {
             var name = Definition.ModuleName;
             var nameLower = char.ToLowerInvariant(name[0]) + name.Substring(1);
+            var now = DateTime.Now;
 
             TemplateValues["Name"] = name;
             TemplateValues["NameLower"] = nameLower;
@@ -44,9 +45,9 @@ namespace Strada.Core.Editor.ModuleGenerator.Models
             TemplateValues["RootNamespace"] = Definition.Namespace;
             TemplateValues["ModuleName"] = name;
             TemplateValues["ModuleFolderName"] = Definition.ModuleFolderName;
-            TemplateValues["Date"] = DateTime.Now.ToString("yyyy-MM-dd");
-            TemplateValues["Year"] = DateTime.Now.Year.ToString();
-            TemplateValues["Time"] = DateTime.Now.ToString("HH:mm:ss");
+            TemplateValues["Date"] = now.ToString("yyyy-MM-dd");
+            TemplateValues["Year"] = now.Year.ToString();
+            TemplateValues["Time"] = now.ToString("HH:mm:ss");
         }
 
         public void AddError(string message)

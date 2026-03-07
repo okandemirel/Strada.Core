@@ -1,5 +1,3 @@
-using System;
-
 namespace Strada.Core.Editor.ModuleGenerator.Models
 {
     /// <summary>

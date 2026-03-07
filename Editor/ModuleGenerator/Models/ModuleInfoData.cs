@@ -19,18 +19,10 @@ namespace Strada.Core.Editor.ModuleGenerator.Models
         public bool IsExpanded { get; set; }
         public int Depth { get; set; }
 
-        public string DisplayName => Type switch
-        {
-            ModuleType.Main => Name,
-            ModuleType.Sub => Name,
-            ModuleType.Screen => Name,
-            ModuleType.Test => Name,
-            _ => Name
-        };
+        public string DisplayName => Name;
 
         public string TypeLabel => Type switch
         {
-            ModuleType.Main => "",
             ModuleType.Sub => "(Sub)",
             ModuleType.Screen => "(Screen)",
             ModuleType.Test => "(Test)",
@@ -46,6 +38,6 @@ namespace Strada.Core.Editor.ModuleGenerator.Models
             _ => Color.white
         };
 
-        public bool HasChildren => SubModules != null && SubModules.Count > 0;
+        public bool HasChildren => SubModules.Count > 0;
     }
 }

@@ -33,7 +33,7 @@ namespace Strada.Core.Editor.ModuleGenerator.Pipeline.Steps
             context.AddCreatedFolder(basePath);
 
             var config = DirectoryStructureConfig.GetOrCreateConfig();
-            var folders = config.GetFoldersForModule(context.Definition.Components, context.Definition.ModuleType);
+            var folders = config.GetFoldersForModule(context.Definition.Components);
 
             foreach (var folder in folders)
             {

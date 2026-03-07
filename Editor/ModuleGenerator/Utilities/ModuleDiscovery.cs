@@ -100,19 +100,15 @@ namespace Strada.Core.Editor.ModuleGenerator
 
         private static bool IsModuleFolder(string folderName)
         {
-            return folderName.EndsWith("Module") ||
-                   folderName.Contains("Module") ||
+            return folderName.Contains("Module") ||
                    ScreenPatterns.Any(p => folderName.Contains(p) && !folderName.StartsWith("-"));
         }
 
         private static string ExtractModuleName(string folderName)
         {
-            var name = folderName;
-
-            if (name.EndsWith("Module"))
-                name = name.Substring(0, name.Length - 6);
-
-            return name;
+            return folderName.EndsWith("Module")
+                ? folderName.Substring(0, folderName.Length - "Module".Length)
+                : folderName;
         }
 
         private static ModuleType DetermineModuleType(string folderName, ModuleInfoData parent)
@@ -189,8 +185,7 @@ namespace Strada.Core.Editor.ModuleGenerator
         {
             var modules = GetFlatList();
             return modules.Any(m =>
-                string.Equals(m.Name, moduleName, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(m.Name + "Module", moduleName + "Module", StringComparison.OrdinalIgnoreCase));
+                string.Equals(m.Name, moduleName, StringComparison.OrdinalIgnoreCase));
         }
 
         public static string FindAssemblyForModule(string moduleName)
