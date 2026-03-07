@@ -366,8 +366,8 @@ namespace Strada.Core.ECS.Jobs
                         $"TypeHash collision detected for {typeof(T).Name}: hash {hash} is already registered for {existing.GetType().Name}");
                 return;
             }
-            _handlers[hash] = new ComponentPlaybackHandler<T>();
-            _handlers.GetOrAdd(hash, _ => new ComponentPlaybackHandler<T>());
+
+            _handlers.TryAdd(hash, new ComponentPlaybackHandler<T>());
         }
     }
 
@@ -378,16 +378,10 @@ namespace Strada.Core.ECS.Jobs
         unsafe void SetComponent(EntityManager em, Entity entity, byte* data, int size);
     }
 
-    internal class ComponentPlaybackHandler<T> : IComponentPlaybackHandler where T : unmanaged, IComponent
+    internal unsafe class ComponentPlaybackHandler<T> : IComponentPlaybackHandler where T : unmanaged, IComponent
     {
-        private static readonly int ExpectedSize = sizeof(T);
-
         public unsafe void AddComponent(EntityManager em, Entity entity, byte* data, int size)
         {
-            if (size != ExpectedSize)
-                throw new InvalidOperationException(
-                    $"Component size mismatch for {typeof(T).Name}: expected {ExpectedSize} bytes but got {size} bytes");
-
             CheckComponentSize(size);
             T component = *(T*)data;
             em.AddComponent(entity, component);
@@ -400,10 +394,6 @@ namespace Strada.Core.ECS.Jobs
 
         public unsafe void SetComponent(EntityManager em, Entity entity, byte* data, int size)
         {
-            if (size != ExpectedSize)
-                throw new InvalidOperationException(
-                    $"Component size mismatch for {typeof(T).Name}: expected {ExpectedSize} bytes but got {size} bytes");
-
             CheckComponentSize(size);
             T component = *(T*)data;
             em.SetComponent(entity, component);
