@@ -19,6 +19,8 @@ namespace Strada.Core.Bootstrap
     [DefaultExecutionOrder(-1000)]
     public class GameBootstrapper : MonoBehaviour
     {
+        private static GameBootstrapper _instance;
+
         [Header("Configuration")]
         [Tooltip("Game bootstrapper configuration")]
         [SerializeField] private GameBootstrapperConfig _gameConfig;
@@ -73,6 +75,13 @@ namespace Strada.Core.Bootstrap
 
         private void Awake()
         {
+            if (_instance != null && _instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+            _instance = this;
+
             if (_gameConfig == null)
             {
                 Debug.LogError("[GameBootstrapper] No configuration assigned! Please assign a GameBootstrapperConfig.");
@@ -185,8 +194,6 @@ namespace Strada.Core.Bootstrap
 
             _container = builder.Build();
             _serviceLocator = new ServiceLocator(_container);
-            Container = _container;
-            Services = _serviceLocator;
 
             Log($"Container built with {_gameConfig.EnabledModuleCount} modules");
         }
@@ -200,7 +207,6 @@ namespace Strada.Core.Bootstrap
 
             _systemRunner = new SystemRunner(_world.EntityManager, _world.EventBus, _sharedHandleRegistry, _container);
             _systemRunner.AddSystemsFromConfigs(_gameConfig.GetEnabledModules());
-            Systems = _systemRunner;
 
             Log($"World created with {_systemRunner.SystemCount} systems");
         }
@@ -263,16 +269,30 @@ namespace Strada.Core.Bootstrap
             catch (Exception ex)
             {
                 error = ex;
-                Debug.LogError($"[GameBootstrapper] {phaseName} failed: {ex.Message}\n{ex.StackTrace}");
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                Debug.LogError($"[GameBootstrapper] {phaseName} failed: {ex}");
+#else
+                Debug.LogError($"[GameBootstrapper] {phaseName} failed: {ex.Message}");
+#endif
                 return false;
             }
         }
 
         private void HandleInitializationError(Exception ex)
         {
-            Debug.LogError($"[GameBootstrapper] Initialization failed: {ex.Message}\n{ex.StackTrace}");
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.LogError($"[GameBootstrapper] Initialization failed: {ex}");
+#else
+            Debug.LogError($"[GameBootstrapper] Initialization failed: {ex.Message}");
+#endif
+            CleanupPartialInitialization();
             OnInitializationFailed?.Invoke(ex);
             _isInitialized = false;
+        }
+
+        private void CleanupPartialInitialization()
+        {
+            DisposeResources();
         }
 
         private void Shutdown()
@@ -284,6 +304,16 @@ namespace Strada.Core.Bootstrap
 
             Log("=== Strada Framework Shutdown Started ===");
 
+            DisposeResources();
+            _isInitialized = false;
+
+            PlayerLoop.Shutdown();
+
+            Log("=== Strada Framework Shutdown Complete ===");
+        }
+
+        private void DisposeResources()
+        {
             for (int i = _initializedModuleConfigs.Count - 1; i >= 0; i--)
             {
                 try
@@ -310,16 +340,13 @@ namespace Strada.Core.Bootstrap
             {
                 disposable.Dispose();
             }
+            _container = null;
+            _serviceLocator = null;
 
             Container = null;
             Services = null;
             World = null;
             Systems = null;
-            _isInitialized = false;
-
-            PlayerLoop.Shutdown();
-
-            Log("=== Strada Framework Shutdown Complete ===");
         }
 
         private void Log(string message)
