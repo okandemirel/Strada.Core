@@ -9,9 +9,9 @@ namespace Strada.Core.ECS.Archetypes
     {
         private readonly List<Type> _componentTypes = new(8);
         private readonly List<IComponentInitializer> _initializers = new(8);
-        private Type[] _cachedTypes;
+        private readonly Type[] _cachedTypes;
 
-        public Type[] ComponentTypes => _cachedTypes ??= _componentTypes.ToArray();
+        public Type[] ComponentTypes => _cachedTypes;
 
         protected EntityDescriptor()
         {

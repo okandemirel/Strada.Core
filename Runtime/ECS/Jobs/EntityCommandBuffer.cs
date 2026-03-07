@@ -229,7 +229,11 @@ namespace Strada.Core.ECS.Jobs
             byte isDeferred = reader.ReadByte();
 
             if (isDeferred == 1)
+            {
+                if (index < 0 || index >= _createdEntities.Length)
+                    throw new IndexOutOfRangeException("Invalid deferred entity index");
                 return _createdEntities[index];
+            }
 
             return new Entity(index, version);
         }
@@ -293,8 +297,9 @@ namespace Strada.Core.ECS.Jobs
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public unsafe byte* ReadBytes(int count)
             {
-                if (count < 0 || Remaining < count)
-                    throw new InvalidOperationException($"Command stream overflow: requested {count} bytes but only {Remaining} remaining");
+                if (_position + count > _data.Length)
+                    throw new InvalidOperationException("Command buffer read overflow");
+
                 byte* result = (byte*)_data.GetUnsafeReadOnlyPtr() + _position;
                 _position += count;
                 return result;
@@ -321,7 +326,7 @@ namespace Strada.Core.ECS.Jobs
 
     public static class ComponentPlayback
     {
-        private static readonly System.Collections.Generic.Dictionary<ulong, IComponentPlaybackHandler> _handlers = new(64);
+        private static readonly ConcurrentDictionary<ulong, IComponentPlaybackHandler> _handlers = new();
 
         public static void RegisterHandler<T>(IComponentPlaybackHandler handler) where T : unmanaged, IComponent
         {
@@ -361,6 +366,7 @@ namespace Strada.Core.ECS.Jobs
                 return;
             }
             _handlers[hash] = new ComponentPlaybackHandler<T>();
+            _handlers.GetOrAdd(hash, _ => new ComponentPlaybackHandler<T>());
         }
     }
 
@@ -381,6 +387,7 @@ namespace Strada.Core.ECS.Jobs
                 throw new InvalidOperationException(
                     $"Component size mismatch for {typeof(T).Name}: expected {ExpectedSize} bytes but got {size} bytes");
 
+            CheckComponentSize(size);
             T component = *(T*)data;
             em.AddComponent(entity, component);
         }
@@ -396,8 +403,22 @@ namespace Strada.Core.ECS.Jobs
                 throw new InvalidOperationException(
                     $"Component size mismatch for {typeof(T).Name}: expected {ExpectedSize} bytes but got {size} bytes");
 
+            CheckComponentSize(size);
             T component = *(T*)data;
             em.SetComponent(entity, component);
         }
+
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static unsafe void CheckComponentSize(int size)
+        {
+            if (size != sizeof(T))
+                throw new InvalidOperationException(
+                    $"Component size mismatch during playback: expected {sizeof(T)} bytes for {typeof(T).Name}, but got {size}");
+        }
+#else
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void CheckComponentSize(int size) { }
+#endif
     }
 }

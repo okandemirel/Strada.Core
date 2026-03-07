@@ -115,23 +115,12 @@ namespace Strada.Core.Editor.ModuleGenerator.Models
         {
             return type switch
             {
-                ModuleType.Main => new ComponentSelection
-                {
-                    ModuleConfig = true,
-                    AssemblyDefinition = true,
-                    ServiceInterface = true,
-                    Service = true,
-                    Controller = true,
-                    ConfigData = true,
-                    ValueObject = true
-                },
+                // Main uses all class defaults as-is
+                ModuleType.Main => new ComponentSelection(),
                 ModuleType.Sub => new ComponentSelection
                 {
                     ModuleConfig = false,
                     AssemblyDefinition = false,
-                    ServiceInterface = true,
-                    Service = true,
-                    Controller = true,
                     ConfigData = false,
                     ValueObject = false
                 },
@@ -141,8 +130,6 @@ namespace Strada.Core.Editor.ModuleGenerator.Models
                     AssemblyDefinition = false,
                     ServiceInterface = false,
                     Service = false,
-                    Controller = true,
-                    Model = false,
                     View = true,
                     EntityMediator = true,
                     ConfigData = false,
@@ -151,7 +138,6 @@ namespace Strada.Core.Editor.ModuleGenerator.Models
                 ModuleType.Test => new ComponentSelection
                 {
                     ModuleConfig = false,
-                    AssemblyDefinition = true,
                     ServiceInterface = false,
                     Service = false,
                     Controller = false,

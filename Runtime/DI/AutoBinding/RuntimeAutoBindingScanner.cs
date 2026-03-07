@@ -18,6 +18,7 @@ namespace Strada.Core.DI.AutoBinding
     public static class RuntimeAutoBindingScanner
     {
         private static List<AutoBindingEntry> _cachedEntries;
+        private static string _cachedKey;
         private static readonly object _lock = new();
 
         public static void RegisterAll(
@@ -26,8 +27,10 @@ namespace Strada.Core.DI.AutoBinding
             IReadOnlyList<string> excludePatterns = null)
         {
             var entries = ScanAssemblies(includePatterns, excludePatterns);
+            var sorted = new List<AutoBindingEntry>(entries);
+            sorted.Sort((a, b) => a.Priority.CompareTo(b.Priority));
 
-            foreach (var entry in entries.OrderBy(e => e.Priority))
+            foreach (var entry in sorted)
             {
                 RegisterEntry(builder, entry);
             }
@@ -37,14 +40,16 @@ namespace Strada.Core.DI.AutoBinding
             IReadOnlyList<string> includePatterns = null,
             IReadOnlyList<string> excludePatterns = null)
         {
-            lock (_lock)
-            {
-                if (_cachedEntries != null)
-                    return _cachedEntries;
-            }
-
             includePatterns ??= new[] { "Strada.*", "Game.*", "Assembly-CSharp" };
             excludePatterns ??= new[] { "Unity.*", "System.*", "Mono.*", "mscorlib", "*.Tests", "*.Editor" };
+
+            var key = BuildCacheKey(includePatterns, excludePatterns);
+
+            lock (_lock)
+            {
+                if (_cachedEntries != null && _cachedKey == key)
+                    return _cachedEntries;
+            }
 
             var entries = new List<AutoBindingEntry>();
 
@@ -62,15 +67,28 @@ namespace Strada.Core.DI.AutoBinding
                 {
                     ScanAssembly(assembly, entries);
                 }
-                catch (ReflectionTypeLoadException e)
+                catch (ReflectionTypeLoadException ex)
                 {
-                    UnityEngine.Debug.LogWarning($"[Strada] Failed to load types from assembly '{name}': {e.Message}");
+                    UnityEngine.Debug.LogWarning($"Partial type load from assembly {assembly.GetName().Name}: {ex.Message}");
+                    var loadedTypes = ex.Types;
+                    if (loadedTypes != null)
+                    {
+                        foreach (var type in loadedTypes)
+                        {
+                            if (type == null || type.IsAbstract || type.IsInterface || type.IsGenericTypeDefinition)
+                                continue;
+                            var entry = TryCreateEntry(type);
+                            if (entry != null)
+                                entries.Add(entry);
+                        }
+                    }
                 }
             }
 
             lock (_lock)
             {
                 _cachedEntries = entries;
+                _cachedKey = key;
             }
 
             return entries;
@@ -104,42 +122,16 @@ namespace Strada.Core.DI.AutoBinding
                 };
             }
 
-            var singleton = type.GetCustomAttribute<AutoRegisterSingletonAttribute>();
-            if (singleton != null)
+            var baseAttr = type.GetCustomAttribute<AutoRegisterBaseAttribute>(inherit: false);
+            if (baseAttr != null)
             {
                 return new AutoBindingEntry
                 {
                     ImplementationType = type,
-                    ServiceType = singleton.As ?? type,
-                    Lifetime = Lifetime.Singleton,
-                    Priority = singleton.Priority,
-                    RegisterSelf = singleton.RegisterSelf
-                };
-            }
-
-            var transient = type.GetCustomAttribute<AutoRegisterTransientAttribute>();
-            if (transient != null)
-            {
-                return new AutoBindingEntry
-                {
-                    ImplementationType = type,
-                    ServiceType = transient.As ?? type,
-                    Lifetime = Lifetime.Transient,
-                    Priority = transient.Priority,
-                    RegisterSelf = transient.RegisterSelf
-                };
-            }
-
-            var scoped = type.GetCustomAttribute<AutoRegisterScopedAttribute>();
-            if (scoped != null)
-            {
-                return new AutoBindingEntry
-                {
-                    ImplementationType = type,
-                    ServiceType = scoped.As ?? type,
-                    Lifetime = Lifetime.Scoped,
-                    Priority = scoped.Priority,
-                    RegisterSelf = scoped.RegisterSelf
+                    ServiceType = baseAttr.As ?? type,
+                    Lifetime = baseAttr.Lifetime,
+                    Priority = baseAttr.Priority,
+                    RegisterSelf = baseAttr.RegisterSelf
                 };
             }
 
@@ -159,37 +151,43 @@ namespace Strada.Core.DI.AutoBinding
             return null;
         }
 
+        private static MethodInfo _registerOneGeneric;
+        private static MethodInfo _registerTwoGeneric;
+
+        private static MethodInfo RegisterOneGeneric =>
+            _registerOneGeneric ??= Array.Find(typeof(IContainerBuilder).GetMethods(),
+                m => m.Name == "Register" && m.GetGenericArguments().Length == 1 && m.GetParameters().Length == 1);
+
+        private static MethodInfo RegisterTwoGeneric =>
+            _registerTwoGeneric ??= Array.Find(typeof(IContainerBuilder).GetMethods(),
+                m => m.Name == "Register" && m.GetGenericArguments().Length == 2 && m.GetParameters().Length == 1);
+
         private static void RegisterEntry(IContainerBuilder builder, AutoBindingEntry entry)
         {
-            var builderType = typeof(IContainerBuilder);
+            var args = new object[] { entry.Lifetime };
 
             if (entry.ServiceType != entry.ImplementationType)
             {
-                var method = builderType.GetMethods()
-                    .First(m => m.Name == "Register" &&
-                                m.GetGenericArguments().Length == 2 &&
-                                m.GetParameters().Length == 1);
-                var generic = method.MakeGenericMethod(entry.ServiceType, entry.ImplementationType);
-                generic.Invoke(builder, new object[] { entry.Lifetime });
+                if (!entry.ServiceType.IsAssignableFrom(entry.ImplementationType))
+                {
+                    UnityEngine.Debug.LogWarning(
+                        $"AutoBinding skipped: {entry.ImplementationType.FullName} is not assignable to {entry.ServiceType.FullName}");
+                    return;
+                }
+
+                RegisterTwoGeneric.MakeGenericMethod(entry.ServiceType, entry.ImplementationType)
+                    .Invoke(builder, args);
 
                 if (entry.RegisterSelf)
                 {
-                    var selfMethod = builderType.GetMethods()
-                        .First(m => m.Name == "Register" &&
-                                    m.GetGenericArguments().Length == 1 &&
-                                    m.GetParameters().Length == 1);
-                    var selfGeneric = selfMethod.MakeGenericMethod(entry.ImplementationType);
-                    selfGeneric.Invoke(builder, new object[] { entry.Lifetime });
+                    RegisterOneGeneric.MakeGenericMethod(entry.ImplementationType)
+                        .Invoke(builder, args);
                 }
             }
             else
             {
-                var method = builderType.GetMethods()
-                    .First(m => m.Name == "Register" &&
-                                m.GetGenericArguments().Length == 1 &&
-                                m.GetParameters().Length == 1);
-                var generic = method.MakeGenericMethod(entry.ImplementationType);
-                generic.Invoke(builder, new object[] { entry.Lifetime });
+                RegisterOneGeneric.MakeGenericMethod(entry.ImplementationType)
+                    .Invoke(builder, args);
             }
         }
 
@@ -206,12 +204,19 @@ namespace Strada.Core.DI.AutoBinding
         private static bool MatchesPattern(string name, string pattern)
         {
             if (pattern.StartsWith("*") && pattern.EndsWith("*"))
-                return name.Contains(pattern.Trim('*'));
+                return name.Contains(pattern.Trim('*'), StringComparison.OrdinalIgnoreCase);
             if (pattern.StartsWith("*"))
-                return name.EndsWith(pattern.TrimStart('*'));
+                return name.EndsWith(pattern.TrimStart('*'), StringComparison.OrdinalIgnoreCase);
             if (pattern.EndsWith("*"))
-                return name.StartsWith(pattern.TrimEnd('*'));
+                return name.StartsWith(pattern.TrimEnd('*'), StringComparison.OrdinalIgnoreCase);
             return name.Equals(pattern, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string BuildCacheKey(IReadOnlyList<string> includePatterns, IReadOnlyList<string> excludePatterns)
+        {
+            var includes = includePatterns.OrderBy(p => p, StringComparer.Ordinal);
+            var excludes = excludePatterns.OrderBy(p => p, StringComparer.Ordinal);
+            return string.Join("|", includes) + "||" + string.Join("|", excludes);
         }
 
         public static void ClearCache()
@@ -219,6 +224,7 @@ namespace Strada.Core.DI.AutoBinding
             lock (_lock)
             {
                 _cachedEntries = null;
+                _cachedKey = null;
             }
         }
 

@@ -2,6 +2,8 @@
 
 **A high-performance Unity framework unifying Patterns architecture with ECS simulation**
 
+> **Language**: [English](README.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [한국어](README.ko.md)
+
 [![Tests](https://img.shields.io/badge/tests-324%20passing-brightgreen)]()
 [![Unity](https://img.shields.io/badge/Unity-6000.0%2B-blue)]()
 [![.NET](https://img.shields.io/badge/.NET-Standard%202.1-purple)]()
@@ -33,6 +35,7 @@ Strada combines enterprise-grade dependency injection with performance-critical 
 - **Auto-Binding**: Attribute-based service registration with `[AutoRegister]`, `[AutoRegisterSingleton]`, etc.
 - **Circular Detection**: Build-time cycle detection prevents runtime errors
 - **Zero-alloc Resolution**: No GC allocation for singleton/scoped paths
+- **Thread-Safe**: Volatile reads, ConcurrentDictionary, and lock-based disposal safety
 
 ### Entity Component System ([docs](Documentation~/ECS.md))
 - **SparseSet Storage**: Cache-friendly component iteration (6-28ns per entity)
@@ -46,6 +49,7 @@ Strada combines enterprise-grade dependency injection with performance-critical 
 - **MessageBus**: Unified command/query/event bus with array-indexed dispatch (4ns/dispatch)
 - **Pooled Commands**: Execute ICommand objects with automatic pool return
 - **Zero-alloc Publish**: Struct-based messages, no boxing
+- **Exception Isolation**: Handler failures don't interrupt other subscribers
 
 ### Patterns-ECS Sync ([docs](Documentation~/Sync.md))
 - **Event-Driven Integration**: ECS systems publish ComponentChanged events, Patterns controllers subscribe

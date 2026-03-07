@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
@@ -82,7 +81,6 @@ namespace Strada.Core.Editor.Validation
                 }
             }
         }
-
 
         /// <summary>
         /// Validates a single module's structure.
@@ -206,29 +204,5 @@ namespace Strada.Core.Editor.Validation
             return PascalCasePattern.IsMatch(name.Replace("_", ""));
         }
 
-        /// <summary>
-        /// Gets all module paths in the project.
-        /// </summary>
-        public static IEnumerable<string> GetModulePaths()
-        {
-            var modulesPath = Path.Combine(Application.dataPath, "Modules");
-            if (!Directory.Exists(modulesPath))
-                return Enumerable.Empty<string>();
-
-            return Directory.GetDirectories(modulesPath);
-        }
-
-        /// <summary>
-        /// Validates all modules and returns all issues.
-        /// </summary>
-        public static IEnumerable<ValidationIssue> ValidateAllModulesAndGetIssues()
-        {
-            var issues = new List<ValidationIssue>();
-            foreach (var modulePath in GetModulePaths())
-            {
-                issues.AddRange(ValidateModule(modulePath));
-            }
-            return issues;
-        }
     }
 }

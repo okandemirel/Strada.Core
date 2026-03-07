@@ -15,14 +15,24 @@ namespace Strada.Core.Editor.Benchmarking
     {
         private const string DefaultDirectory = "BenchmarkResults";
         private const string SessionFilePattern = "benchmark_session_*.json";
-        
+
+        private static string ProjectRoot =>
+            Path.GetDirectoryName(Application.dataPath);
+
+        private static void ValidatePath(string path)
+        {
+            var fullPath = Path.GetFullPath(path);
+            var projectRoot = Path.GetFullPath(ProjectRoot);
+            if (!fullPath.StartsWith(projectRoot))
+                throw new InvalidOperationException($"Path outside project: {fullPath}");
+        }
+
         /// <summary>
         /// Gets the default directory for benchmark results.
         /// </summary>
         public static string GetDefaultDirectory()
         {
-            var projectPath = Path.GetDirectoryName(Application.dataPath);
-            return Path.Combine(projectPath, DefaultDirectory);
+            return Path.Combine(ProjectRoot, DefaultDirectory);
         }
         
         /// <summary>
@@ -37,19 +47,18 @@ namespace Strada.Core.Editor.Benchmarking
                 throw new ArgumentNullException(nameof(session));
             
             directory = directory ?? GetDefaultDirectory();
-            
+            ValidatePath(directory);
+
             if (!Directory.Exists(directory))
             {
                 Directory.CreateDirectory(directory);
             }
-            
+
             var filename = $"benchmark_session_{session.Timestamp:yyyyMMdd_HHmmss}_{session.SessionId}.json";
             var path = Path.Combine(directory, filename);
             
-            var wrapper = new BenchmarkSessionWrapper(session);
-            var json = JsonUtility.ToJson(wrapper, true);
-            File.WriteAllText(path, json);
-            
+            WriteSessionToFile(session, path);
+
             return path;
         }
         
@@ -60,6 +69,7 @@ namespace Strada.Core.Editor.Benchmarking
         /// <returns>The loaded session, or null if loading fails.</returns>
         public static BenchmarkSession LoadSession(string path)
         {
+            ValidatePath(path);
             if (!File.Exists(path))
                 return null;
             
@@ -87,7 +97,7 @@ namespace Strada.Core.Editor.Benchmarking
             if (!Directory.Exists(directory))
                 return new List<string>();
             
-            return Directory.GetFiles(directory, "benchmark_session_*.json")
+            return Directory.GetFiles(directory, SessionFilePattern)
                 .OrderByDescending(f => f)
                 .ToList();
         }
@@ -126,6 +136,7 @@ namespace Strada.Core.Editor.Benchmarking
         /// </summary>
         public static bool DeleteSession(string path)
         {
+            ValidatePath(path);
             try
             {
                 if (File.Exists(path))
@@ -147,11 +158,10 @@ namespace Strada.Core.Editor.Benchmarking
         /// </summary>
         public static bool ExportSession(BenchmarkSession session, string path)
         {
+            ValidatePath(path);
             try
             {
-                var wrapper = new BenchmarkSessionWrapper(session);
-                var json = JsonUtility.ToJson(wrapper, true);
-                File.WriteAllText(path, json);
+                WriteSessionToFile(session, path);
                 return true;
             }
             catch (Exception ex)
@@ -159,6 +169,13 @@ namespace Strada.Core.Editor.Benchmarking
                 Debug.LogError($"[BenchmarkPersistence] Failed to export session: {ex.Message}");
                 return false;
             }
+        }
+
+        private static void WriteSessionToFile(BenchmarkSession session, string path)
+        {
+            var wrapper = new BenchmarkSessionWrapper(session);
+            var json = JsonUtility.ToJson(wrapper, true);
+            File.WriteAllText(path, json);
         }
     }
     

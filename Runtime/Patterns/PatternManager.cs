@@ -41,14 +41,7 @@ namespace Strada.Core.Patterns
             if (controller is IFixedTickController fixedController)
                 _fixedControllers.Add(fixedController);
 
-            if (controller is ITickable tickable)
-                _tickables.Add(tickable);
-
-            if (controller is IFixedTickable fixedTickable)
-                _fixedTickables.Add(fixedTickable);
-
-            if (controller is ILateTickable lateTickable)
-                _lateTickables.Add(lateTickable);
+            RegisterTickables(controller);
         }
 
         /// <summary>
@@ -57,14 +50,18 @@ namespace Strada.Core.Patterns
         public void RegisterService(IService service)
         {
             _services.Add(service);
+            RegisterTickables(service);
+        }
 
-            if (service is ITickable tickable)
+        private void RegisterTickables(object component)
+        {
+            if (component is ITickable tickable)
                 _tickables.Add(tickable);
 
-            if (service is IFixedTickable fixedTickable)
+            if (component is IFixedTickable fixedTickable)
                 _fixedTickables.Add(fixedTickable);
 
-            if (service is ILateTickable lateTickable)
+            if (component is ILateTickable lateTickable)
                 _lateTickables.Add(lateTickable);
         }
 
@@ -119,22 +116,34 @@ namespace Strada.Core.Patterns
         public void OnUpdate(float deltaTime)
         {
             for (int i = 0; i < _tickables.Count; i++)
-                _tickables[i].Tick(deltaTime);
+            {
+                try { _tickables[i].Tick(deltaTime); }
+                catch (Exception ex) { UnityEngine.Debug.LogError($"Exception in pattern update: {ex}"); }
+            }
         }
 
         public void OnFixedUpdate(float fixedDeltaTime)
         {
             for (int i = 0; i < _fixedControllers.Count; i++)
-                _fixedControllers[i].FixedTick(fixedDeltaTime);
+            {
+                try { _fixedControllers[i].FixedTick(fixedDeltaTime); }
+                catch (Exception ex) { UnityEngine.Debug.LogError($"Exception in pattern update: {ex}"); }
+            }
 
             for (int i = 0; i < _fixedTickables.Count; i++)
-                _fixedTickables[i].FixedTick(fixedDeltaTime);
+            {
+                try { _fixedTickables[i].FixedTick(fixedDeltaTime); }
+                catch (Exception ex) { UnityEngine.Debug.LogError($"Exception in pattern update: {ex}"); }
+            }
         }
 
         public void OnLateUpdate(float deltaTime)
         {
             for (int i = 0; i < _lateTickables.Count; i++)
-                _lateTickables[i].LateTick(deltaTime);
+            {
+                try { _lateTickables[i].LateTick(deltaTime); }
+                catch (Exception ex) { UnityEngine.Debug.LogError($"Exception in pattern update: {ex}"); }
+            }
         }
 
         /// <summary>

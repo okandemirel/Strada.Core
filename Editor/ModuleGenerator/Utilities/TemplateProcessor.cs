@@ -49,6 +49,15 @@ namespace Strada.Core.Editor.ModuleGenerator
             return $"// Preview not available for {fileName}";
         }
 
+        private static void AppendSummary(StringBuilder sb, StradaGeneratorSettings settings, string description)
+        {
+            if (!settings.GenerateSummaries) return;
+
+            sb.AppendLine("    /// <summary>");
+            sb.AppendLine($"    /// {description}");
+            sb.AppendLine("    /// </summary>");
+        }
+
         private static string GenerateModuleConfigPreview(string name, string ns, StradaGeneratorSettings settings)
         {
             var sb = new StringBuilder();
@@ -59,14 +68,7 @@ namespace Strada.Core.Editor.ModuleGenerator
             sb.AppendLine();
             sb.AppendLine($"namespace {ns}");
             sb.AppendLine("{");
-
-            if (settings.GenerateSummaries)
-            {
-                sb.AppendLine("    /// <summary>");
-                sb.AppendLine($"    /// Module configuration for {name}.");
-                sb.AppendLine("    /// </summary>");
-            }
-
+            AppendSummary(sb, settings, $"Module configuration for {name}.");
             sb.AppendLine($"    [CreateAssetMenu(fileName = \"{name}ModuleConfig\", menuName = \"{name}/Module Config\")]");
             sb.AppendLine($"    public class {name}ModuleConfig : ModuleConfig");
             sb.AppendLine("    {");
@@ -96,14 +98,7 @@ namespace Strada.Core.Editor.ModuleGenerator
 
             sb.AppendLine($"namespace {ns}");
             sb.AppendLine("{");
-
-            if (settings.GenerateSummaries)
-            {
-                sb.AppendLine("    /// <summary>");
-                sb.AppendLine($"    /// Service interface for {name} functionality.");
-                sb.AppendLine("    /// </summary>");
-            }
-
+            AppendSummary(sb, settings, $"Service interface for {name} functionality.");
             sb.AppendLine($"    public interface I{name}Service");
             sb.AppendLine("    {");
             sb.AppendLine("        void Initialize();");
@@ -122,14 +117,7 @@ namespace Strada.Core.Editor.ModuleGenerator
             sb.AppendLine();
             sb.AppendLine($"namespace {ns}");
             sb.AppendLine("{");
-
-            if (settings.GenerateSummaries)
-            {
-                sb.AppendLine("    /// <summary>");
-                sb.AppendLine($"    /// Service implementation for {name}.");
-                sb.AppendLine("    /// </summary>");
-            }
-
+            AppendSummary(sb, settings, $"Service implementation for {name}.");
             sb.AppendLine($"    public class {name}Service : I{name}Service");
             sb.AppendLine("    {");
             sb.AppendLine("        [Inject] private readonly EventBus _eventBus;");
@@ -152,14 +140,7 @@ namespace Strada.Core.Editor.ModuleGenerator
             sb.AppendLine();
             sb.AppendLine($"namespace {ns}");
             sb.AppendLine("{");
-
-            if (settings.GenerateSummaries)
-            {
-                sb.AppendLine("    /// <summary>");
-                sb.AppendLine($"    /// Controller for {name} functionality.");
-                sb.AppendLine("    /// </summary>");
-            }
-
+            AppendSummary(sb, settings, $"Controller for {name} functionality.");
             sb.AppendLine($"    public class {name}Controller");
             sb.AppendLine("    {");
             sb.AppendLine($"        [Inject] private readonly I{name}Service _service;");
@@ -186,14 +167,7 @@ namespace Strada.Core.Editor.ModuleGenerator
             sb.AppendLine();
             sb.AppendLine($"namespace {ns}");
             sb.AppendLine("{");
-
-            if (settings.GenerateSummaries)
-            {
-                sb.AppendLine("    /// <summary>");
-                sb.AppendLine($"    /// Model for {name} state management.");
-                sb.AppendLine("    /// </summary>");
-            }
-
+            AppendSummary(sb, settings, $"Model for {name} state management.");
             sb.AppendLine($"    public class {name}Model");
             sb.AppendLine("    {");
             sb.AppendLine($"        public ReactiveProperty<int> Value {{ get; }} = new(0);");
@@ -217,14 +191,7 @@ namespace Strada.Core.Editor.ModuleGenerator
             sb.AppendLine();
             sb.AppendLine($"namespace {ns}");
             sb.AppendLine("{");
-
-            if (settings.GenerateSummaries)
-            {
-                sb.AppendLine("    /// <summary>");
-                sb.AppendLine($"    /// View for {name} visual representation.");
-                sb.AppendLine("    /// </summary>");
-            }
-
+            AppendSummary(sb, settings, $"View for {name} visual representation.");
             sb.AppendLine($"    public class {name}View : View");
             sb.AppendLine("    {");
             sb.AppendLine("        public override void Initialize()");
@@ -254,14 +221,7 @@ namespace Strada.Core.Editor.ModuleGenerator
             sb.AppendLine();
             sb.AppendLine($"namespace {ns}");
             sb.AppendLine("{");
-
-            if (settings.GenerateSummaries)
-            {
-                sb.AppendLine("    /// <summary>");
-                sb.AppendLine($"    /// ECS System for {name} processing.");
-                sb.AppendLine("    /// </summary>");
-            }
-
+            AppendSummary(sb, settings, $"ECS System for {name} processing.");
             sb.AppendLine("    [SystemOrder(0)]");
             sb.AppendLine($"    public class {name}System : SystemBase");
             sb.AppendLine("    {");
@@ -291,14 +251,7 @@ namespace Strada.Core.Editor.ModuleGenerator
             sb.AppendLine();
             sb.AppendLine($"namespace {ns}");
             sb.AppendLine("{");
-
-            if (settings.GenerateSummaries)
-            {
-                sb.AppendLine("    /// <summary>");
-                sb.AppendLine($"    /// ECS Component for {name} data.");
-                sb.AppendLine("    /// </summary>");
-            }
-
+            AppendSummary(sb, settings, $"ECS Component for {name} data.");
             sb.AppendLine("    [StructLayout(LayoutKind.Sequential)]");
             sb.AppendLine($"    public struct {name}Component : IComponent");
             sb.AppendLine("    {");
@@ -319,14 +272,7 @@ namespace Strada.Core.Editor.ModuleGenerator
             sb.AppendLine();
             sb.AppendLine($"namespace {ns}");
             sb.AppendLine("{");
-
-            if (settings.GenerateSummaries)
-            {
-                sb.AppendLine("    /// <summary>");
-                sb.AppendLine($"    /// Configuration data for {name}.");
-                sb.AppendLine("    /// </summary>");
-            }
-
+            AppendSummary(sb, settings, $"Configuration data for {name}.");
             sb.AppendLine($"    [CreateAssetMenu(fileName = \"CD_{name}\", menuName = \"{name}/Config/{name}\")]");
             sb.AppendLine($"    public class CD_{name} : ConfigData<{name}Config>");
             sb.AppendLine("    {");
@@ -345,14 +291,7 @@ namespace Strada.Core.Editor.ModuleGenerator
             sb.AppendLine();
             sb.AppendLine($"namespace {ns}");
             sb.AppendLine("{");
-
-            if (settings.GenerateSummaries)
-            {
-                sb.AppendLine("    /// <summary>");
-                sb.AppendLine($"    /// Value object for {name} configuration.");
-                sb.AppendLine("    /// </summary>");
-            }
-
+            AppendSummary(sb, settings, $"Value object for {name} configuration.");
             sb.AppendLine("    [Serializable]");
             sb.AppendLine($"    public class {name}Config");
             sb.AppendLine("    {");
@@ -373,14 +312,7 @@ namespace Strada.Core.Editor.ModuleGenerator
 
             sb.AppendLine($"namespace {ns}");
             sb.AppendLine("{");
-
-            if (settings.GenerateSummaries)
-            {
-                sb.AppendLine("    /// <summary>");
-                sb.AppendLine($"    /// Event for {name} state changes.");
-                sb.AppendLine("    /// </summary>");
-            }
-
+            AppendSummary(sb, settings, $"Event for {name} state changes.");
             sb.AppendLine($"    public readonly struct {name}ChangedEvent");
             sb.AppendLine("    {");
             sb.AppendLine("        public readonly int Value;");
@@ -403,14 +335,7 @@ namespace Strada.Core.Editor.ModuleGenerator
             sb.AppendLine();
             sb.AppendLine($"namespace {ns}");
             sb.AppendLine("{");
-
-            if (settings.GenerateSummaries)
-            {
-                sb.AppendLine("    /// <summary>");
-                sb.AppendLine($"    /// Signal for {name} actions.");
-                sb.AppendLine("    /// </summary>");
-            }
-
+            AppendSummary(sb, settings, $"Signal for {name} actions.");
             sb.AppendLine($"    public struct {name}Signal");
             sb.AppendLine("    {");
             sb.AppendLine("        public Entity Entity;");

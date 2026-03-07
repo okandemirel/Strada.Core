@@ -1,6 +1,5 @@
 using System;
 using System.Runtime.CompilerServices;
-using Strada.Core.ECS.Core;
 using Strada.Core.ECS.Storage;
 
 namespace Strada.Core.ECS.Query
@@ -31,7 +30,7 @@ namespace Strada.Core.ECS.Query
         private readonly ComponentStorage<T3> _storage3;
         private readonly ComponentStorage<T4> _storage4;
 
-        internal EntityQuery(EntityManager em, ComponentStorage<T1> s1, ComponentStorage<T2> s2, ComponentStorage<T3> s3, ComponentStorage<T4> s4)
+        internal EntityQuery(ComponentStorage<T1> s1, ComponentStorage<T2> s2, ComponentStorage<T3> s3, ComponentStorage<T4> s4)
         {
             _storage1 = s1; _storage2 = s2; _storage3 = s3; _storage4 = s4;
         }
@@ -77,7 +76,7 @@ namespace Strada.Core.ECS.Query
         private readonly ComponentStorage<T4> _storage4;
         private readonly ComponentStorage<T5> _storage5;
 
-        internal EntityQuery(EntityManager em, ComponentStorage<T1> s1, ComponentStorage<T2> s2, ComponentStorage<T3> s3, ComponentStorage<T4> s4, ComponentStorage<T5> s5)
+        internal EntityQuery(ComponentStorage<T1> s1, ComponentStorage<T2> s2, ComponentStorage<T3> s3, ComponentStorage<T4> s4, ComponentStorage<T5> s5)
         {
             _storage1 = s1; _storage2 = s2; _storage3 = s3; _storage4 = s4; _storage5 = s5;
         }
@@ -127,7 +126,7 @@ namespace Strada.Core.ECS.Query
         private readonly ComponentStorage<T5> _storage5;
         private readonly ComponentStorage<T6> _storage6;
 
-        internal EntityQuery(EntityManager em, ComponentStorage<T1> s1, ComponentStorage<T2> s2, ComponentStorage<T3> s3,
+        internal EntityQuery(ComponentStorage<T1> s1, ComponentStorage<T2> s2, ComponentStorage<T3> s3,
             ComponentStorage<T4> s4, ComponentStorage<T5> s5, ComponentStorage<T6> s6)
         {
             _storage1 = s1; _storage2 = s2; _storage3 = s3; _storage4 = s4; _storage5 = s5; _storage6 = s6;
@@ -182,7 +181,7 @@ namespace Strada.Core.ECS.Query
         private readonly ComponentStorage<T6> _storage6;
         private readonly ComponentStorage<T7> _storage7;
 
-        internal EntityQuery(EntityManager em, ComponentStorage<T1> s1, ComponentStorage<T2> s2, ComponentStorage<T3> s3,
+        internal EntityQuery(ComponentStorage<T1> s1, ComponentStorage<T2> s2, ComponentStorage<T3> s3,
             ComponentStorage<T4> s4, ComponentStorage<T5> s5, ComponentStorage<T6> s6, ComponentStorage<T7> s7)
         {
             _storage1 = s1; _storage2 = s2; _storage3 = s3; _storage4 = s4; _storage5 = s5; _storage6 = s6; _storage7 = s7;
@@ -240,7 +239,7 @@ namespace Strada.Core.ECS.Query
         private readonly ComponentStorage<T7> _storage7;
         private readonly ComponentStorage<T8> _storage8;
 
-        internal EntityQuery(EntityManager em, ComponentStorage<T1> s1, ComponentStorage<T2> s2, ComponentStorage<T3> s3,
+        internal EntityQuery(ComponentStorage<T1> s1, ComponentStorage<T2> s2, ComponentStorage<T3> s3,
             ComponentStorage<T4> s4, ComponentStorage<T5> s5, ComponentStorage<T6> s6, ComponentStorage<T7> s7, ComponentStorage<T8> s8)
         {
             _storage1 = s1; _storage2 = s2; _storage3 = s3; _storage4 = s4; _storage5 = s5; _storage6 = s6; _storage7 = s7; _storage8 = s8;

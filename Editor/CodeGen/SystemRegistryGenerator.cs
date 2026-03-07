@@ -12,7 +12,6 @@ namespace Strada.Core.Editor.CodeGen
 {
     public static class SystemRegistryGenerator
     {
-        private const string GeneratedFolder = "Assets/Strada.Generated";
         private const string GeneratedFile = "GeneratedSystemRegistry.cs";
 
         [MenuItem("Strada/Generate System Registry")]
@@ -27,10 +26,9 @@ namespace Strada.Core.Editor.CodeGen
 
             var code = GenerateRegistryCode(systems);
 
-            if (!Directory.Exists(GeneratedFolder))
-                Directory.CreateDirectory(GeneratedFolder);
+            StradaCodeGenerator.EnsureGeneratedFolder();
 
-            var path = Path.Combine(GeneratedFolder, GeneratedFile);
+            var path = Path.Combine(StradaCodeGenerator.GeneratedFolder, GeneratedFile);
             File.WriteAllText(path, code);
             AssetDatabase.Refresh();
 
@@ -131,8 +129,7 @@ namespace Strada.Core.Editor.CodeGen
 
             foreach (var s in systems)
             {
-                var typeName = GetFullTypeName(s.Type);
-                if (!IsValidTypeName(typeName)) continue;
+                var typeName = StradaCodeGenerator.GetFullTypeName(s.Type);
                 sb.AppendLine($"            typeof({typeName}),");
             }
 
@@ -143,8 +140,7 @@ namespace Strada.Core.Editor.CodeGen
 
             foreach (var s in systems)
             {
-                var typeName = GetFullTypeName(s.Type);
-                if (!IsValidTypeName(typeName)) continue;
+                var typeName = StradaCodeGenerator.GetFullTypeName(s.Type);
                 sb.AppendLine($"            builder.Register<{typeName}>(Lifetime.Singleton);");
             }
 
@@ -156,8 +152,7 @@ namespace Strada.Core.Editor.CodeGen
 
             foreach (var s in systems)
             {
-                var typeName = GetFullTypeName(s.Type);
-                if (!IsValidTypeName(typeName)) continue;
+                var typeName = StradaCodeGenerator.GetFullTypeName(s.Type);
                 sb.AppendLine($"            systems.Add(container.Resolve<{typeName}>());");
             }
 

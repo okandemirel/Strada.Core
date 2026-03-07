@@ -13,11 +13,8 @@ namespace Strada.Core.Editor.Graph
     public class ModuleGraphWindow : EditorWindow
     {
         private ModuleGraphView _graphView;
-        private VisualElement _toolbar;
         private VisualElement _cycleWarningBanner;
-        private VisualElement _statusBar;
         private VisualElement _initOrderPanel;
-        private TextField _searchField;
         private Label _statusLabel;
         private Label _moduleCountLabel;
 
@@ -49,7 +46,8 @@ namespace Strada.Core.Editor.Graph
 
             CreateToolbar(root);
 
-            CreateCycleWarningBanner(root);
+            _cycleWarningBanner = GraphWindowHelper.CreateCycleWarningBanner("Circular Module Dependency Detected!");
+            root.Add(_cycleWarningBanner);
 
             var mainContent = new VisualElement();
             mainContent.style.flexDirection = FlexDirection.Row;
@@ -58,7 +56,6 @@ namespace Strada.Core.Editor.Graph
             _graphView = new ModuleGraphView();
             _graphView.style.flexGrow = 1;
             _graphView.OnNodeSelected += OnNodeSelected;
-            _graphView.OnNodeHovered += OnNodeHovered;
             _graphView.OnGraphRefreshed += OnGraphRefreshed;
             mainContent.Add(_graphView);
 
@@ -66,110 +63,30 @@ namespace Strada.Core.Editor.Graph
 
             root.Add(mainContent);
 
-            CreateStatusBar(root);
+            var (statusBar, statusLabel, countLabel) = GraphWindowHelper.CreateStatusBar("Modules: 0");
+            _statusLabel = statusLabel;
+            _moduleCountLabel = countLabel;
+            root.Add(statusBar);
 
             RefreshGraph();
         }
 
         private void CreateToolbar(VisualElement root)
         {
-            _toolbar = new VisualElement();
-            _toolbar.style.flexDirection = FlexDirection.Row;
-            _toolbar.style.alignItems = Align.Center;
-            _toolbar.style.paddingLeft = 8;
-            _toolbar.style.paddingRight = 8;
-            _toolbar.style.paddingTop = 4;
-            _toolbar.style.paddingBottom = 4;
-            _toolbar.style.backgroundColor = new Color(0.18f, 0.18f, 0.18f);
-            _toolbar.style.borderBottomWidth = 1;
-            _toolbar.style.borderBottomColor = new Color(0.1f, 0.1f, 0.1f);
+            var toolbar = GraphWindowHelper.CreateToolbarBase();
 
-            var refreshButton = new Button(RefreshGraph) { text = "Refresh" };
-            refreshButton.style.marginRight = 8;
-            _toolbar.Add(refreshButton);
+            toolbar.Add(GraphWindowHelper.CreateToolbarButton("Refresh", RefreshGraph));
+            toolbar.Add(GraphWindowHelper.CreateToolbarButton("Validate All", ValidateModules));
+            toolbar.Add(GraphWindowHelper.CreateToolbarButton("Frame All", () => _graphView?.FrameAll()));
+            toolbar.Add(GraphWindowHelper.CreateToolbarButton("Clear Highlights", () => _graphView?.ClearHighlights()));
+            toolbar.Add(GraphWindowHelper.CreateToolbarButton("Toggle Init Order", ToggleInitOrderPanel));
+            toolbar.Add(GraphWindowHelper.CreateToolbarSpacer());
 
-            var validateButton = new Button(ValidateModules) { text = "Validate All" };
-            validateButton.style.marginRight = 8;
-            _toolbar.Add(validateButton);
+            var (searchContainer, searchField) = GraphWindowHelper.CreateSearchSection();
+            searchField.RegisterValueChangedCallback(OnSearchChanged);
+            toolbar.Add(searchContainer);
 
-            var frameAllButton = new Button(() => _graphView?.FrameAll()) { text = "Frame All" };
-            frameAllButton.style.marginRight = 8;
-            _toolbar.Add(frameAllButton);
-
-            var clearHighlightsButton = new Button(() => _graphView?.ClearHighlights()) { text = "Clear Highlights" };
-            clearHighlightsButton.style.marginRight = 8;
-            _toolbar.Add(clearHighlightsButton);
-
-            var toggleInitOrderButton = new Button(ToggleInitOrderPanel) { text = "Toggle Init Order" };
-            toggleInitOrderButton.style.marginRight = 8;
-            _toolbar.Add(toggleInitOrderButton);
-
-            var spacer = new VisualElement();
-            spacer.style.flexGrow = 1;
-            _toolbar.Add(spacer);
-
-            var searchContainer = new VisualElement();
-            searchContainer.style.flexDirection = FlexDirection.Row;
-            searchContainer.style.alignItems = Align.Center;
-
-            var searchLabel = new Label("Search:");
-            searchLabel.style.marginRight = 4;
-            searchContainer.Add(searchLabel);
-
-            _searchField = new TextField();
-            _searchField.style.minWidth = 180;
-            _searchField.RegisterValueChangedCallback(OnSearchChanged);
-            searchContainer.Add(_searchField);
-
-            _toolbar.Add(searchContainer);
-
-            root.Add(_toolbar);
-        }
-
-        private void CreateCycleWarningBanner(VisualElement root)
-        {
-            _cycleWarningBanner = new VisualElement();
-            _cycleWarningBanner.style.backgroundColor = new Color(0.3f, 0.15f, 0.15f);
-            _cycleWarningBanner.style.borderTopWidth = 2;
-            _cycleWarningBanner.style.borderBottomWidth = 2;
-            _cycleWarningBanner.style.borderLeftWidth = 2;
-            _cycleWarningBanner.style.borderRightWidth = 2;
-            _cycleWarningBanner.style.borderTopColor = new Color(0.8f, 0.2f, 0.2f);
-            _cycleWarningBanner.style.borderBottomColor = new Color(0.8f, 0.2f, 0.2f);
-            _cycleWarningBanner.style.borderLeftColor = new Color(0.8f, 0.2f, 0.2f);
-            _cycleWarningBanner.style.borderRightColor = new Color(0.8f, 0.2f, 0.2f);
-            _cycleWarningBanner.style.paddingLeft = 12;
-            _cycleWarningBanner.style.paddingRight = 12;
-            _cycleWarningBanner.style.paddingTop = 8;
-            _cycleWarningBanner.style.paddingBottom = 8;
-            _cycleWarningBanner.style.display = DisplayStyle.None;
-
-            var warningIcon = new Label("⚠");
-            warningIcon.style.fontSize = 16;
-            warningIcon.style.color = new Color(1f, 0.4f, 0.4f);
-            warningIcon.style.marginRight = 8;
-
-            var warningText = new Label("Circular Module Dependency Detected!");
-            warningText.name = "cycle-warning-text";
-            warningText.style.color = new Color(1f, 0.6f, 0.6f);
-            warningText.style.unityFontStyleAndWeight = FontStyle.Bold;
-
-            var cyclePathLabel = new Label();
-            cyclePathLabel.name = "cycle-path-label";
-            cyclePathLabel.style.color = new Color(0.8f, 0.8f, 0.8f);
-            cyclePathLabel.style.marginTop = 4;
-            cyclePathLabel.style.fontSize = 11;
-
-            var headerRow = new VisualElement();
-            headerRow.style.flexDirection = FlexDirection.Row;
-            headerRow.style.alignItems = Align.Center;
-            headerRow.Add(warningIcon);
-            headerRow.Add(warningText);
-
-            _cycleWarningBanner.Add(headerRow);
-            _cycleWarningBanner.Add(cyclePathLabel);
-
-            root.Add(_cycleWarningBanner);
+            root.Add(toolbar);
         }
 
         private void CreateInitOrderPanel(VisualElement parent)
@@ -197,33 +114,6 @@ namespace Strada.Core.Editor.Graph
             parent.Add(_initOrderPanel);
         }
 
-        private void CreateStatusBar(VisualElement root)
-        {
-            _statusBar = new VisualElement();
-            _statusBar.style.flexDirection = FlexDirection.Row;
-            _statusBar.style.justifyContent = Justify.SpaceBetween;
-            _statusBar.style.paddingLeft = 8;
-            _statusBar.style.paddingRight = 8;
-            _statusBar.style.paddingTop = 4;
-            _statusBar.style.paddingBottom = 4;
-            _statusBar.style.backgroundColor = new Color(0.15f, 0.15f, 0.15f);
-            _statusBar.style.borderTopWidth = 1;
-            _statusBar.style.borderTopColor = new Color(0.1f, 0.1f, 0.1f);
-
-            _statusLabel = new Label("Ready");
-            _statusLabel.style.color = new Color(0.6f, 0.6f, 0.6f);
-            _statusLabel.style.fontSize = 11;
-
-            _moduleCountLabel = new Label("Modules: 0");
-            _moduleCountLabel.style.color = new Color(0.6f, 0.6f, 0.6f);
-            _moduleCountLabel.style.fontSize = 11;
-
-            _statusBar.Add(_statusLabel);
-            _statusBar.Add(_moduleCountLabel);
-
-            root.Add(_statusBar);
-        }
-
         private void RefreshGraph()
         {
             var provider = ModuleDataProvider.Instance;
@@ -247,7 +137,7 @@ namespace Strada.Core.Editor.Graph
                 var pathLabel = _cycleWarningBanner.Q<Label>("cycle-path-label");
                 if (pathLabel != null)
                 {
-                    var pathStr = string.Join(" → ",
+                    var pathStr = string.Join(" \u2192 ",
                         System.Linq.Enumerable.Select(_graphView.CyclePath, t => t.Name));
                     pathLabel.text = $"Cycle: {pathStr}";
                 }
@@ -310,15 +200,15 @@ namespace Strada.Core.Editor.Graph
             var result = provider.ValidateModules();
             if (result.IsValid)
             {
-                _statusLabel.text = "✓ All modules validated successfully";
-                EditorUtility.DisplayDialog("Module Validation", 
+                _statusLabel.text = "\u2713 All modules validated successfully";
+                EditorUtility.DisplayDialog("Module Validation",
                     "All modules passed validation.", "OK");
             }
             else
             {
-                var issues = string.Join("\n", 
-                    System.Linq.Enumerable.Select(result.Issues, i => $"• {i.Message}"));
-                _statusLabel.text = $"✗ Validation failed: {result.Issues.Count} issue(s)";
+                var issues = string.Join("\n",
+                    System.Linq.Enumerable.Select(result.Issues, i => $"\u2022 {i.Message}"));
+                _statusLabel.text = $"\u2717 Validation failed: {result.Issues.Count} issue(s)";
                 EditorUtility.DisplayDialog("Module Validation Failed",
                     $"Found {result.Issues.Count} issue(s):\n\n{issues}", "OK");
             }
@@ -365,10 +255,6 @@ namespace Strada.Core.Editor.Graph
                 _statusLabel.text = $"Selected: {node.ModuleName} (Priority: {node.Priority})";
                 _graphView.HighlightNodeDependencies(node);
             }
-        }
-
-        private void OnNodeHovered(ModuleNode node)
-        {
         }
 
         private void OnPlayModeStateChanged(PlayModeStateChange state)

@@ -46,15 +46,6 @@ namespace Strada.Core.Editor
         }
 
         /// <summary>
-        /// Context menu item for viewing the component in the Entity Inspector.
-        /// </summary>
-        [MenuItem("CONTEXT/MonoBehaviour/Strada/View in Entity Inspector", false, 1002)]
-        private static void ViewInEntityInspector(MenuCommand command)
-        {
-            StradaEntityInspectorWindow.ShowWindow();
-        }
-
-        /// <summary>
         /// Context menu item for generating a Controller for this View.
         /// </summary>
         [MenuItem("CONTEXT/MonoBehaviour/Strada/Generate Controller", false, 1010)]
@@ -269,29 +260,15 @@ namespace Strada.Core.Editor
         /// </summary>
         private static string GetSelectedFolderPath()
         {
-            var path = "";
             var obj = Selection.activeObject;
-
             if (obj == null)
-            {
                 return "Assets";
-            }
 
-            path = AssetDatabase.GetAssetPath(obj.GetInstanceID());
+            var path = AssetDatabase.GetAssetPath(obj.GetInstanceID());
+            if (string.IsNullOrEmpty(path))
+                return "Assets";
 
-            if (path.Length > 0)
-            {
-                if (Directory.Exists(path))
-                {
-                    return path;
-                }
-                else
-                {
-                    return Path.GetDirectoryName(path);
-                }
-            }
-
-            return "Assets";
+            return Directory.Exists(path) ? path : Path.GetDirectoryName(path);
         }
     }
 }

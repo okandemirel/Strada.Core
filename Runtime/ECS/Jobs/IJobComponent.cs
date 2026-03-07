@@ -1,6 +1,3 @@
-using Unity.Burst;
-using Unity.Jobs;
-
 namespace Strada.Core.ECS.Jobs
 {
     public interface IJobComponent<T1> where T1 : unmanaged, IComponent

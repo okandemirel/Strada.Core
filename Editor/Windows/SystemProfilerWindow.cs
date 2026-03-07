@@ -36,8 +36,6 @@ namespace Strada.Core.Editor.Windows
         private GUIStyle _phaseHeaderStyle;
         private GUIStyle _systemRowStyle;
         private GUIStyle _metricsStyle;
-        private GUIStyle _warningStyle;
-        private GUIStyle _criticalStyle;
         private bool _stylesInitialized;
 
         private readonly Color _normalColor = new Color(0.7f, 0.9f, 0.7f);
@@ -111,10 +109,7 @@ namespace Strada.Core.Editor.Windows
             {
                 padding = new RectOffset(30, 5, 2, 2)
             };
-            
-            _warningStyle = new GUIStyle(EditorStyles.helpBox);
-            _criticalStyle = new GUIStyle(EditorStyles.helpBox);
-            
+
             _stylesInitialized = true;
         }
         
@@ -337,14 +332,10 @@ namespace Strada.Core.Editor.Windows
 
             EditorGUILayout.BeginHorizontal();
 
-            if (!_systemDetailFoldouts.ContainsKey(metrics.SystemType))
-            {
-                _systemDetailFoldouts[metrics.SystemType] = false;
-            }
-            
+            _systemDetailFoldouts.TryGetValue(metrics.SystemType, out var expanded);
             _systemDetailFoldouts[metrics.SystemType] = EditorGUILayout.Foldout(
-                _systemDetailFoldouts[metrics.SystemType], 
-                metrics.SystemType.Name, 
+                expanded,
+                metrics.SystemType.Name,
                 true);
             
             GUILayout.FlexibleSpace();
@@ -402,22 +393,14 @@ namespace Strada.Core.Editor.Windows
             GUILayout.Label($"Std Dev: {metrics.StandardDeviation:F3} ms", _metricsStyle);
             EditorGUILayout.EndHorizontal();
             
-            EditorGUILayout.BeginHorizontal();
             GUILayout.Label($"Full Type: {metrics.SystemType.FullName}", EditorStyles.miniLabel);
-            EditorGUILayout.EndHorizontal();
             
             EditorGUILayout.EndVertical();
         }
 
         private Color GetThresholdColor(double executionTimeMs)
         {
-            var level = ThresholdClassifier.Classify(executionTimeMs, _warningThresholdMs, _criticalThresholdMs);
-            return GetColorForLevel(level);
-        }
-        
-        private Color GetColorForLevel(ThresholdLevel level)
-        {
-            return level switch
+            return ThresholdClassifier.Classify(executionTimeMs, _warningThresholdMs, _criticalThresholdMs) switch
             {
                 ThresholdLevel.Critical => _criticalColor,
                 ThresholdLevel.Warning => _warningColor,

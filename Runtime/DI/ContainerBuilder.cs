@@ -113,7 +113,7 @@ namespace Strada.Core.DI
 
             visiting.Add(serviceType);
 
-            var constructor = FindBestConstructor(implType);
+            var constructor = Container.GetBestConstructor(implType);
             var parameters = constructor.GetParameters();
 
             foreach (var param in parameters)
@@ -130,23 +130,6 @@ namespace Strada.Core.DI
 
             visiting.Remove(serviceType);
             visited.Add(serviceType);
-        }
-
-        private static ConstructorInfo FindBestConstructor(Type type)
-        {
-            var constructors = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
-
-            if (constructors.Length == 0)
-                return null;
-
-            ConstructorInfo best = constructors[0];
-            for (int i = 1; i < constructors.Length; i++)
-            {
-                if (constructors[i].GetParameters().Length > best.GetParameters().Length)
-                    best = constructors[i];
-            }
-
-            return best;
         }
 
         IContainerBuilder IContainerBuilder.Register<TInterface, TImplementation>(Lifetime lifetime)

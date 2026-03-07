@@ -227,7 +227,7 @@ var b = container.Resolve<IService>();
 Assert.AreSame(a, b); // Same instance
 ```
 
-**Thread Safety**: Singleton creation uses `Interlocked.CompareExchange` for thread-safe lazy initialization.
+**Thread Safety**: Singleton creation uses `Volatile.Read/Write` for thread-safe lazy initialization. Container disposal is also thread-safe with a `volatile _disposed` flag and lock-based synchronization.
 
 ### Transient
 
@@ -377,6 +377,17 @@ Container uses expression tree compilation for near-native performance.
 - Singleton resolution: **0 bytes** GC allocation
 - Scoped resolution: **0 bytes** GC allocation
 - Transient: Allocates only the object itself
+
+### Thread Safety
+
+The DI container is hardened for thread-safe operation:
+
+- **TypeRegistry** uses `ConcurrentDictionary` with a configurable `MaxTypeCount` limit (default 8,192)
+- **Container disposal** is guarded by a `volatile _disposed` flag
+- **ContainerScope disposal** uses lock-based synchronization
+- **InjectionProcessor** uses `ConcurrentDictionary` for reflection cache
+- **LifecycleProcessor** uses lock synchronization and try-catch around lifecycle method invocations
+- **AutoBindingScanner** validates types with `IsAssignableFrom` before registration and uses exception-safe logging
 
 ### Type ID System
 

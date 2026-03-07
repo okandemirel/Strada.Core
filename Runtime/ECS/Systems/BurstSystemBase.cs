@@ -1,7 +1,5 @@
-using System.Runtime.CompilerServices;
 using Strada.Core.ECS.Jobs;
 using Strada.Core.ECS.Storage;
-using Unity.Burst;
 using Unity.Jobs;
 
 namespace Strada.Core.ECS.Systems

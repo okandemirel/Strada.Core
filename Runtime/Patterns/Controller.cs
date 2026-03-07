@@ -20,6 +20,7 @@ namespace Strada.Core.Patterns
         [Inject]
         public void InjectModel(TModel model)
         {
+            if (Model != null) return;
             Model = model;
         }
     }

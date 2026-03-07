@@ -23,14 +23,7 @@ namespace Strada.Core.Sync
 
         public ReactiveProperty(T initialValue) => _value = initialValue;
 
-        /// <summary>
-        /// Gets the number of active subscribers to this property.
-        /// </summary>
         public int SubscriberCount => _handlers.Count;
-
-        /// <summary>
-        /// Gets whether this property has any active subscribers.
-        /// </summary>
         public bool HasSubscribers => _handlers.Count > 0;
 
         public T Value
@@ -91,30 +84,10 @@ namespace Strada.Core.Sync
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Notify()
         {
-            if (_notifying || _handlers.Count == 0) return;
-
-            _notifying = true;
-            try
+            var snapshot = _handlers.ToArray();
+            for (int i = 0; i < snapshot.Length; i++)
             {
-                // Take a snapshot to avoid issues if handlers modify the list
-                int count = _handlers.Count;
-                var snapshot = System.Buffers.ArrayPool<Action<T>>.Shared.Rent(count);
-                try
-                {
-                    for (int i = 0; i < count; i++)
-                        snapshot[i] = _handlers[i];
-
-                    for (int i = 0; i < count; i++)
-                        snapshot[i](_value);
-                }
-                finally
-                {
-                    System.Buffers.ArrayPool<Action<T>>.Shared.Return(snapshot, clearArray: true);
-                }
-            }
-            finally
-            {
-                _notifying = false;
+                snapshot[i](_value);
             }
         }
 
@@ -181,22 +154,29 @@ namespace Strada.Core.Sync
         public void OnRemove(Action<T> handler) => _removeHandlers.Add(handler);
         public void OnClear(Action handler) => _clearHandlers.Add(handler);
 
+        public void OffAdd(Action<T> handler) => _addHandlers.Remove(handler);
+        public void OffRemove(Action<T> handler) => _removeHandlers.Remove(handler);
+        public void OffClear(Action handler) => _clearHandlers.Remove(handler);
+
         private void NotifyAdd(T item)
         {
-            for (int i = 0; i < _addHandlers.Count; i++)
-                _addHandlers[i](item);
+            var snapshot = _addHandlers.ToArray();
+            for (int i = 0; i < snapshot.Length; i++)
+                snapshot[i](item);
         }
 
         private void NotifyRemove(T item)
         {
-            for (int i = 0; i < _removeHandlers.Count; i++)
-                _removeHandlers[i](item);
+            var snapshot = _removeHandlers.ToArray();
+            for (int i = 0; i < snapshot.Length; i++)
+                snapshot[i](item);
         }
 
         private void NotifyClear()
         {
-            for (int i = 0; i < _clearHandlers.Count; i++)
-                _clearHandlers[i]();
+            var snapshot = _clearHandlers.ToArray();
+            for (int i = 0; i < snapshot.Length; i++)
+                snapshot[i]();
         }
 
         public void Dispose()

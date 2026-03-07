@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Strada.Core.DI;
 
 namespace Strada.Core.Editor.DataProviders.Models
@@ -177,6 +178,64 @@ namespace Strada.Core.Editor.DataProviders.Models
         public List<DependencyEdge> Edges { get; set; } = new List<DependencyEdge>();
         public bool HasCycle { get; set; }
         public List<Type> CyclePath { get; set; }
+
+        /// <summary>
+        /// Detects cycles in this dependency graph using DFS and marks affected edges.
+        /// </summary>
+        public void DetectCycles()
+        {
+            var visited = new HashSet<Type>();
+            var recursionStack = new HashSet<Type>();
+            var path = new List<Type>();
+
+            foreach (var node in Nodes)
+            {
+                if (!visited.Contains(node.ServiceType))
+                {
+                    if (DetectCyclesDFS(node.ServiceType, visited, recursionStack, path))
+                    {
+                        HasCycle = true;
+                        CyclePath = new List<Type>(path);
+
+                        for (int i = 0; i < path.Count - 1; i++)
+                        {
+                            var edge = Edges.FirstOrDefault(e =>
+                                e.Source == path[i] && e.Target == path[i + 1]);
+                            if (edge != null)
+                                edge.IsCircular = true;
+                        }
+                        return;
+                    }
+                }
+            }
+        }
+
+        private bool DetectCyclesDFS(Type current,
+            HashSet<Type> visited, HashSet<Type> recursionStack, List<Type> path)
+        {
+            visited.Add(current);
+            recursionStack.Add(current);
+            path.Add(current);
+
+            var outgoingEdges = Edges.Where(e => e.Source == current);
+            foreach (var edge in outgoingEdges)
+            {
+                if (!visited.Contains(edge.Target))
+                {
+                    if (DetectCyclesDFS(edge.Target, visited, recursionStack, path))
+                        return true;
+                }
+                else if (recursionStack.Contains(edge.Target))
+                {
+                    path.Add(edge.Target);
+                    return true;
+                }
+            }
+
+            path.Remove(current);
+            recursionStack.Remove(current);
+            return false;
+        }
     }
 
     /// <summary>
@@ -358,32 +417,5 @@ namespace Strada.Core.Editor.DataProviders.Models
             return Classify(executionTimeMs, config.WarningThresholdMs, config.CriticalThresholdMs);
         }
         
-        /// <summary>
-        /// Classifies system metrics against the given thresholds.
-        /// </summary>
-        /// <param name="metrics">The system metrics to classify.</param>
-        /// <param name="warningThresholdMs">The warning threshold in milliseconds.</param>
-        /// <param name="criticalThresholdMs">The critical threshold in milliseconds.</param>
-        /// <returns>The threshold level classification based on last execution time.</returns>
-        public static ThresholdLevel ClassifyMetrics(SystemMetrics metrics, double warningThresholdMs, double criticalThresholdMs)
-        {
-            return Classify(metrics.LastExecutionMs, warningThresholdMs, criticalThresholdMs);
-        }
-        
-        /// <summary>
-        /// Checks if the execution time exceeds the warning threshold.
-        /// </summary>
-        public static bool ExceedsWarning(double executionTimeMs, double warningThresholdMs)
-        {
-            return executionTimeMs >= warningThresholdMs;
-        }
-        
-        /// <summary>
-        /// Checks if the execution time exceeds the critical threshold.
-        /// </summary>
-        public static bool ExceedsCritical(double executionTimeMs, double criticalThresholdMs)
-        {
-            return executionTimeMs >= criticalThresholdMs;
-        }
     }
 }

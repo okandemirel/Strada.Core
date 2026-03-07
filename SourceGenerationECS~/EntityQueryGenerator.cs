@@ -69,8 +69,12 @@ namespace Strada.SourceGeneration
             for (int i = 1; i <= n; i++)
                 sb.AppendLine($"        private readonly ComponentStorage<T{i}> _s{i};");
 
-            sb.Append("        internal EntityQuery(EntityManager em");
-            for (int i = 1; i <= n; i++) sb.Append($", ComponentStorage<T{i}> s{i}");
+            sb.Append("        internal EntityQuery(");
+            for (int i = 1; i <= n; i++)
+            {
+                if (i > 1) sb.Append(", ");
+                sb.Append($"ComponentStorage<T{i}> s{i}");
+            }
             sb.Append(") { ");
             for (int i = 1; i <= n; i++) sb.Append($"_s{i} = s{i}; ");
             sb.AppendLine("}");
@@ -146,8 +150,12 @@ namespace Strada.SourceGeneration
                 sb.AppendLine();
                 sb.Append($"            => new EntityQuery<");
                 AppendTypeParams(sb, n);
-                sb.Append(">(b.Manager");
-                for (int i = 1; i <= n; i++) sb.Append($", b.Manager.Store.GetOrCreateStorage<T{i}>()");
+                sb.Append(">(");
+                for (int i = 1; i <= n; i++)
+                {
+                    if (i > 1) sb.Append(", ");
+                    sb.Append($"b.Manager.Store.GetOrCreateStorage<T{i}>()");
+                }
                 sb.AppendLine(");");
             }
 

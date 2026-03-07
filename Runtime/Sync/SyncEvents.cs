@@ -2,10 +2,6 @@ namespace Strada.Core.Sync
 {
     using Strada.Core.ECS;
 
-    /// <summary>
-    /// Event published when an ECS component changes.
-    /// ECS Systems publish this; MVCS Controllers subscribe to it.
-    /// </summary>
     public readonly struct ComponentChanged<T> where T : unmanaged, IComponent
     {
         public readonly Entity Entity;
@@ -20,9 +16,6 @@ namespace Strada.Core.Sync
         }
     }
 
-    /// <summary>
-    /// Event published when an ECS component is added to an entity.
-    /// </summary>
     public readonly struct ComponentAdded<T> where T : unmanaged, IComponent
     {
         public readonly Entity Entity;
@@ -35,9 +28,6 @@ namespace Strada.Core.Sync
         }
     }
 
-    /// <summary>
-    /// Event published when an ECS component is removed from an entity.
-    /// </summary>
     public readonly struct ComponentRemoved<T> where T : unmanaged, IComponent
     {
         public readonly Entity Entity;
@@ -50,9 +40,6 @@ namespace Strada.Core.Sync
         }
     }
 
-    /// <summary>
-    /// Event published when an entity is created.
-    /// </summary>
     public readonly struct EntityCreated
     {
         public readonly Entity Entity;
@@ -63,9 +50,6 @@ namespace Strada.Core.Sync
         }
     }
 
-    /// <summary>
-    /// Event published when an entity is destroyed.
-    /// </summary>
     public readonly struct EntityDestroyed
     {
         public readonly Entity Entity;

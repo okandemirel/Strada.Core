@@ -2,36 +2,6 @@ using UnityEngine;
 
 namespace Strada.Core.Sync
 {
-    /// <summary>
-    /// Sync mode for ViewSyncRunner.
-    /// </summary>
-    public enum ViewSyncMode
-    {
-        /// <summary>
-        /// Only sync views with dirty bindings (reactive mode, better performance).
-        /// </summary>
-        DirtyOnly,
-
-        /// <summary>
-        /// Force sync all views every frame (legacy mode, for high-frequency updates like position).
-        /// </summary>
-        ForceAll,
-
-        /// <summary>
-        /// Manual sync mode - no automatic syncing, call Sync() on views manually.
-        /// </summary>
-        Manual
-    }
-
-    /// <summary>
-    /// MonoBehaviour that drives view synchronization each frame.
-    /// Syncs all registered views with their bound ECS entities.
-    /// </summary>
-    /// <remarks>
-    /// <para>By default, uses DirtyOnly mode which only syncs views with dirty bindings.</para>
-    /// <para>For high-frequency updates (like position), use ForceAll mode or call ForceSyncAll() manually.</para>
-    /// <para>Set syncMode to Manual to disable automatic syncing entirely.</para>
-    /// </remarks>
     public class ViewSyncRunner : MonoBehaviour
     {
         [Tooltip("Sync mode: DirtyOnly (reactive), ForceAll (every frame), or Manual (disabled)")]
@@ -57,6 +27,7 @@ namespace Strada.Core.Sync
         {
             if (_viewRegistry == null) return;
 
+            _viewRegistry.ForceSyncAll();
             switch (_syncMode)
             {
                 case ViewSyncMode.DirtyOnly:

@@ -98,7 +98,11 @@ namespace Strada.Core.Patterns
         protected ReactiveProperty<T> Property<T>(string name, T initialValue = default)
         {
             if (_properties.TryGetValue(name, out var existing))
+            {
+                if (existing is not ReactiveProperty<T>)
+                    throw new InvalidOperationException($"Property type mismatch: expected {typeof(T)}, got {existing.GetType()}");
                 return (ReactiveProperty<T>)existing;
+            }
 
             var property = CreateProperty(initialValue);
             _properties[name] = property;

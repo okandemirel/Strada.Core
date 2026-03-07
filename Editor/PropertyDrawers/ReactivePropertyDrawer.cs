@@ -129,7 +129,7 @@ namespace Strada.Core.Editor.PropertyDrawers
 
             var borderColor = new Color(indicatorColor.r * 0.7f, indicatorColor.g * 0.7f, indicatorColor.b * 0.7f);
             DrawRectBorder(rect, borderColor, 1);
-            
+
             GUI.color = oldColor;
 
             EditorGUI.LabelField(rect, new GUIContent("", tooltip));
@@ -143,15 +143,16 @@ namespace Strada.Core.Editor.PropertyDrawers
             EditorGUI.DrawRect(new Rect(rect.xMax - thickness, rect.y, thickness, rect.height), color);
         }
 
-        private int GetSubscriberCount(SerializedProperty property)
+        private object GetReactivePropertyInstance(SerializedProperty property)
         {
             var targetObject = property.serializedObject.targetObject;
-            var path = property.propertyPath;
+            var field = GetFieldByPath(targetObject.GetType(), property.propertyPath);
+            return field?.GetValue(targetObject);
+        }
 
-            var field = GetFieldByPath(targetObject.GetType(), path);
-            if (field == null) return 0;
-
-            var reactiveProperty = field.GetValue(targetObject);
+        private int GetSubscriberCount(SerializedProperty property)
+        {
+            var reactiveProperty = GetReactivePropertyInstance(property);
             if (reactiveProperty == null) return 0;
 
             var subscriberCountProperty = reactiveProperty.GetType().GetProperty("SubscriberCount", BindingFlags.Public | BindingFlags.Instance);
@@ -162,20 +163,14 @@ namespace Strada.Core.Editor.PropertyDrawers
 
         private void TryNotifyProperty(SerializedProperty property)
         {
-            var targetObject = property.serializedObject.targetObject;
-            var path = property.propertyPath;
-
-            var field = GetFieldByPath(targetObject.GetType(), path);
-            if (field == null) return;
-
-            var reactiveProperty = field.GetValue(targetObject);
+            var reactiveProperty = GetReactivePropertyInstance(property);
             if (reactiveProperty == null) return;
 
             var notifyMethod = reactiveProperty.GetType().GetMethod("Notify", BindingFlags.Public | BindingFlags.Instance);
             notifyMethod?.Invoke(reactiveProperty, null);
         }
 
-        private FieldInfo GetFieldByPath(Type type, string path)
+        private static FieldInfo GetFieldByPath(Type type, string path)
         {
             var parts = path.Split('.');
             FieldInfo field = null;
@@ -258,7 +253,6 @@ namespace Strada.Core.Editor.PropertyDrawers
             {
                 itemsProperty.ClearArray();
                 property.serializedObject.ApplyModifiedProperties();
-                TryNotifyCollectionClear(property);
             }
             GUI.enabled = true;
 
@@ -353,52 +347,6 @@ namespace Strada.Core.Editor.PropertyDrawers
             textStyle.normal.textColor = BadgeTextColor;
 
             EditorGUI.LabelField(rect, count.ToString(), textStyle);
-        }
-
-        private void TryNotifyCollectionClear(SerializedProperty property)
-        {
-            if (!Application.isPlaying) return;
-
-            var targetObject = property.serializedObject.targetObject;
-            var path = property.propertyPath;
-
-            var field = GetFieldByPath(targetObject.GetType(), path);
-            if (field == null) return;
-
-            var collection = field.GetValue(targetObject);
-            if (collection == null) return;
-
-            var clearMethod = collection.GetType().GetMethod("Clear", BindingFlags.Public | BindingFlags.Instance);
-            if (clearMethod != null)
-            {
-                clearMethod.Invoke(collection, null);
-            }
-            else
-            {
-                var notifyResetMethod = collection.GetType().GetMethod("NotifyReset", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                notifyResetMethod?.Invoke(collection, null);
-            }
-        }
-
-        private FieldInfo GetFieldByPath(Type type, string path)
-        {
-            var parts = path.Split('.');
-            FieldInfo field = null;
-            var currentType = type;
-
-            foreach (var part in parts)
-            {
-                if (part == "Array" || part.StartsWith("data[")) continue;
-
-                field = currentType.GetField(part, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                if (field == null) return null;
-
-                currentType = field.FieldType;
-                if (currentType.IsGenericType && currentType.GetGenericTypeDefinition() == typeof(Sync.ReactiveCollection<>))
-                    return field;
-            }
-
-            return field;
         }
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)

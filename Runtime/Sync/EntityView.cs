@@ -8,39 +8,13 @@ using UnityEngine;
 
 namespace Strada.Core.Sync
 {
-    /// <summary>
-    /// Interface for component bindings that sync ECS component data to callbacks.
-    /// </summary>
     public interface IComponentBinding : IDisposable
     {
-        /// <summary>
-        /// Sync ECS component data to the binding's callback.
-        /// </summary>
         void Sync();
-
-        /// <summary>
-        /// Push the binding's cached value back to the ECS component.
-        /// </summary>
         void Push();
-
-        /// <summary>
-        /// Gets whether the binding has detected a change since last sync.
-        /// </summary>
         bool IsDirty { get; }
-
-        /// <summary>
-        /// Gets the component type this binding is watching.
-        /// </summary>
         Type ComponentType { get; }
-
-        /// <summary>
-        /// Gets the current sync state of the binding.
-        /// </summary>
         BindingSyncState SyncState { get; }
-
-        /// <summary>
-        /// Gets the last error message if sync failed.
-        /// </summary>
         string LastError { get; }
     }
 
@@ -100,10 +74,6 @@ namespace Strada.Core.Sync
             }
         }
 
-        /// <summary>
-        /// Force sync all bindings regardless of dirty flag.
-        /// Use this for high-frequency updates like position.
-        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ForceSyncBindings()
         {

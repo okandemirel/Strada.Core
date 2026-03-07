@@ -2,16 +2,24 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Strada.Core.ECS.Storage;
-using Unity.Collections;
+using UnityEngine;
 
 namespace Strada.Core.ECS.Reactive
 {
-    public sealed class ReactiveComponentStorage<T> : IDisposable where T : unmanaged, IComponent
+    internal interface IReactiveStorage
     {
+        bool Remove(int entityIndex);
+    }
+
+    public sealed class ReactiveComponentStorage<T> : IDisposable, IReactiveStorage where T : unmanaged, IComponent
+    {
+        private const int MaxNotifyDepth = 8;
+
         private readonly ComponentStorage<T> _storage;
         private readonly List<Action<int, T>> _onAddCallbacks = new(4);
         private readonly List<Action<int, T>> _onRemoveCallbacks = new(4);
         private readonly List<Action<int, T, T>> _onChangeCallbacks = new(4);
+        private int _notifyDepth;
 
         public ComponentStorage<T> Storage => _storage;
         public int Count => _storage.Count;
@@ -85,20 +93,65 @@ namespace Strada.Core.ECS.Reactive
 
         private void NotifyAdd(int entityIndex, T component)
         {
-            foreach (var callback in _onAddCallbacks)
-                callback(entityIndex, component);
+            if (_notifyDepth >= MaxNotifyDepth)
+            {
+                Debug.LogError($"[ReactiveComponentStorage<{typeof(T).Name}>] Max notify depth ({MaxNotifyDepth}) exceeded in OnAdd. Aborting to prevent stack overflow.");
+                return;
+            }
+
+            _notifyDepth++;
+            try
+            {
+                var snapshot = _onAddCallbacks.ToArray();
+                foreach (var callback in snapshot)
+                {
+                    try { callback(entityIndex, component); }
+                    catch (Exception ex) { Debug.LogError($"[ReactiveComponentStorage<{typeof(T).Name}>] Exception in OnAdd callback: {ex}"); }
+                }
+            }
+            finally { _notifyDepth--; }
         }
 
         private void NotifyRemove(int entityIndex, T component)
         {
-            foreach (var callback in _onRemoveCallbacks)
-                callback(entityIndex, component);
+            if (_notifyDepth >= MaxNotifyDepth)
+            {
+                Debug.LogError($"[ReactiveComponentStorage<{typeof(T).Name}>] Max notify depth ({MaxNotifyDepth}) exceeded in OnRemove. Aborting to prevent stack overflow.");
+                return;
+            }
+
+            _notifyDepth++;
+            try
+            {
+                var snapshot = _onRemoveCallbacks.ToArray();
+                foreach (var callback in snapshot)
+                {
+                    try { callback(entityIndex, component); }
+                    catch (Exception ex) { Debug.LogError($"[ReactiveComponentStorage<{typeof(T).Name}>] Exception in OnRemove callback: {ex}"); }
+                }
+            }
+            finally { _notifyDepth--; }
         }
 
         private void NotifyChange(int entityIndex, T oldValue, T newValue)
         {
-            foreach (var callback in _onChangeCallbacks)
-                callback(entityIndex, oldValue, newValue);
+            if (_notifyDepth >= MaxNotifyDepth)
+            {
+                Debug.LogError($"[ReactiveComponentStorage<{typeof(T).Name}>] Max notify depth ({MaxNotifyDepth}) exceeded in OnChange. Aborting to prevent stack overflow.");
+                return;
+            }
+
+            _notifyDepth++;
+            try
+            {
+                var snapshot = _onChangeCallbacks.ToArray();
+                foreach (var callback in snapshot)
+                {
+                    try { callback(entityIndex, oldValue, newValue); }
+                    catch (Exception ex) { Debug.LogError($"[ReactiveComponentStorage<{typeof(T).Name}>] Exception in OnChange callback: {ex}"); }
+                }
+            }
+            finally { _notifyDepth--; }
         }
 
         public void Clear()

@@ -1,13 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using UnityEngine;
 
 namespace Strada.Core.StateMachine
 {
-    /// <summary>
-    /// Base class for state machines. Contains all shared logic.
-    /// </summary>
-    public abstract class StateMachineBase<TState> where TState : class, IState
+    public abstract class StateMachineCore<TState> where TState : class, IState
     {
         protected readonly Dictionary<Type, TState> States = new(8);
         protected readonly Dictionary<Type, List<Transition<TState>>> Transitions = new(8);
@@ -21,6 +19,15 @@ namespace Strada.Core.StateMachine
         public bool IsRunning => CurrentStateInternal != null;
 
         public event Action<TState, TState> OnStateChanged;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void AddState<T>(T state) where T : TState
+        {
+            OnStateAdded(state);
+            _states[typeof(T)] = state;
+        }
+
+        protected virtual void OnStateAdded(TState state) { }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddTransition<TFrom, TTo>(Func<bool> condition) where TFrom : TState where TTo : TState
@@ -71,8 +78,12 @@ namespace Strada.Core.StateMachine
 
         protected void SetState(Type stateType)
         {
-            if (stateType == CurrentStateTypeInternal) return;
-            if (!States.TryGetValue(stateType, out var newState)) return;
+            if (stateType == _currentStateType) return;
+            if (!_states.TryGetValue(stateType, out var newState))
+            {
+                Debug.LogWarning($"Attempted transition to unregistered state: {stateType}");
+                return;
+            }
 
             IsTransitioningInternal = true;
 
@@ -83,9 +94,9 @@ namespace Strada.Core.StateMachine
             CurrentStateTypeInternal = stateType;
             CurrentStateInternal.OnEnter();
 
-            IsTransitioningInternal = false;
+            OnStateChanged?.Invoke(previousState, _currentState);
 
-            OnStateChanged?.Invoke(previousState, CurrentStateInternal);
+            _isTransitioning = false;
         }
 
         private void CheckTransitions()
@@ -113,22 +124,11 @@ namespace Strada.Core.StateMachine
         }
     }
 
-    /// <summary>
-    /// Simple state machine without context.
-    /// </summary>
-    public sealed class StateMachine<TState> : StateMachineBase<TState> where TState : class, IState
+    public sealed class StateMachine<TState> : StateMachineCore<TState> where TState : class, IState
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddState<T>(T state) where T : TState
-        {
-            States[typeof(T)] = state;
-        }
     }
 
-    /// <summary>
-    /// State machine with context that is shared between states.
-    /// </summary>
-    public sealed class StateMachine<TState, TContext> : StateMachineBase<TState> where TState : class, IState<TContext>
+    public sealed class StateMachine<TState, TContext> : StateMachineCore<TState> where TState : class, IState<TContext>
     {
         private readonly TContext _context;
 
@@ -143,11 +143,10 @@ namespace Strada.Core.StateMachine
         public void AddState<T>(T state) where T : TState
         {
             state.SetContext(_context);
-            States[typeof(T)] = state;
         }
     }
 
-    public readonly struct Transition<TState> where TState : class, IState
+    internal readonly struct Transition<TState> where TState : class, IState
     {
         public readonly Type ToType;
         public readonly Func<bool> Condition;

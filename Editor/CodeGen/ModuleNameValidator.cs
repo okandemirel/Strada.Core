@@ -45,49 +45,38 @@ namespace Strada.Core.Editor.CodeGen
         /// <returns>Validation result with success status and error message if invalid.</returns>
         public static ModuleNameValidationResult Validate(string name)
         {
-            if (string.IsNullOrEmpty(name))
-            {
-                return new ModuleNameValidationResult(false, "Module name cannot be empty.");
-            }
-
             if (string.IsNullOrWhiteSpace(name))
             {
-                return new ModuleNameValidationResult(false, "Module name cannot be whitespace only.");
-            }
-
-            if (!char.IsUpper(name[0]))
-            {
-                return new ModuleNameValidationResult(false, 
-                    "Module name must start with an uppercase letter (PascalCase convention).");
-            }
-
-            if (!Regex.IsMatch(name, @"^[A-Z][a-zA-Z0-9]*$"))
-            {
-                return new ModuleNameValidationResult(false, 
-                    "Module name must contain only letters and numbers, starting with an uppercase letter.");
+                return new ModuleNameValidationResult(false, "Module name cannot be empty or whitespace.");
             }
 
             if (name.Length < 2)
             {
-                return new ModuleNameValidationResult(false, 
+                return new ModuleNameValidationResult(false,
                     "Module name must be at least 2 characters long.");
             }
 
             if (name.Length > 64)
             {
-                return new ModuleNameValidationResult(false, 
+                return new ModuleNameValidationResult(false,
                     "Module name must be 64 characters or less.");
+            }
+
+            if (!Regex.IsMatch(name, @"^[A-Z][a-zA-Z0-9]*$"))
+            {
+                return new ModuleNameValidationResult(false,
+                    "Module name must contain only letters and numbers, starting with an uppercase letter.");
             }
 
             if (IsReservedName(name))
             {
-                return new ModuleNameValidationResult(false, 
+                return new ModuleNameValidationResult(false,
                     $"'{name}' is a reserved name and cannot be used as a module name.");
             }
 
             if (ModuleExists(name))
             {
-                return new ModuleNameValidationResult(false, 
+                return new ModuleNameValidationResult(false,
                     $"A module named '{name}Module' already exists in the project.");
             }
 
@@ -130,16 +119,7 @@ namespace Strada.Core.Editor.CodeGen
         /// <returns>True if the string is valid PascalCase.</returns>
         public static bool IsPascalCase(string name)
         {
-            if (string.IsNullOrEmpty(name))
-                return false;
-
-            if (!char.IsUpper(name[0]))
-                return false;
-
-            if (!Regex.IsMatch(name, @"^[A-Z][a-zA-Z0-9]*$"))
-                return false;
-
-            return true;
+            return !string.IsNullOrEmpty(name) && Regex.IsMatch(name, @"^[A-Z][a-zA-Z0-9]*$");
         }
 
         /// <summary>

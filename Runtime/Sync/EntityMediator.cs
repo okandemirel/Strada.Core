@@ -28,9 +28,6 @@ namespace Strada.Core.Sync
         protected Entity Entity => _entity;
         public bool IsBound => _bound;
 
-        /// <summary>
-        /// Gets the list of active component bindings for editor inspection.
-        /// </summary>
         public IReadOnlyList<IComponentBinding> Bindings => _bindings;
 
         public void Initialize(IContainer container)
@@ -142,10 +139,6 @@ namespace Strada.Core.Sync
             _disposables.Add(disposable);
         }
 
-        /// <summary>
-        /// Subscribe to ComponentChanged events for the current entity.
-        /// Auto-unsubscribes when Unbind is called.
-        /// </summary>
         protected void OnComponentChanged<T>(Action<ComponentChanged<T>> handler)
             where T : unmanaged, IComponent
         {
@@ -162,10 +155,6 @@ namespace Strada.Core.Sync
             _unsubscribeActions.Add(() => _bus.Unsubscribe(filter));
         }
 
-        /// <summary>
-        /// Subscribe to any event via EventBus.
-        /// Auto-unsubscribes when Unbind is called.
-        /// </summary>
         protected void Subscribe<TEvent>(Action<TEvent> handler) where TEvent : struct
         {
             if (_bus == null) return;
@@ -173,17 +162,11 @@ namespace Strada.Core.Sync
             _unsubscribeActions.Add(() => _bus.Unsubscribe(handler));
         }
 
-        /// <summary>
-        /// Publish an event via EventBus.
-        /// </summary>
         protected void Publish<TEvent>(TEvent message) where TEvent : struct
         {
             _bus?.Publish(message);
         }
 
-        /// <summary>
-        /// Send a signal via EventBus to ECS systems.
-        /// </summary>
         protected void SendSignal<TSignal>(TSignal signal) where TSignal : struct
         {
             _bus?.Send(signal);

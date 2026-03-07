@@ -27,7 +27,7 @@ namespace Strada.Core.Editor.DataProviders
         /// <summary>
         /// Gets whether the container is available (Play Mode with initialized container).
         /// </summary>
-        public override bool IsAvailable => 
+        public override bool IsAvailable =>
             Application.isPlaying && GameBootstrapper.Container != null;
 
         /// <summary>
@@ -36,7 +36,7 @@ namespace Strada.Core.Editor.DataProviders
         public IReadOnlyList<ServiceRegistrationInfo> GetRegistrations()
         {
             var snapshot = GetData();
-            return snapshot?.Registrations ?? new List<ServiceRegistrationInfo>();
+            return snapshot?.Registrations ?? (IReadOnlyList<ServiceRegistrationInfo>)Array.Empty<ServiceRegistrationInfo>();
         }
 
         /// <summary>
@@ -136,7 +136,7 @@ namespace Strada.Core.Editor.DataProviders
                         Dependencies = GetConstructorDependencies(serviceType)
                     };
 
-                    if (registration.HasInstance && singletons[i] != null)
+                    if (registration.HasInstance)
                     {
                         registration.ImplementationType = singletons[i].GetType();
                     }
@@ -234,73 +234,9 @@ namespace Strada.Core.Editor.DataProviders
                 }
             }
 
-            DetectCycles(graph, typeToNode);
+            graph.DetectCycles();
 
             return graph;
-        }
-
-        private void DetectCycles(DependencyGraph graph, Dictionary<Type, DependencyNode> typeToNode)
-        {
-            var visited = new HashSet<Type>();
-            var recursionStack = new HashSet<Type>();
-            var path = new List<Type>();
-
-            foreach (var node in graph.Nodes)
-            {
-                if (!visited.Contains(node.ServiceType))
-                {
-                    if (DetectCyclesDFS(node.ServiceType, graph, visited, recursionStack, path))
-                    {
-                        graph.HasCycle = true;
-                        graph.CyclePath = new List<Type>(path);
-
-                        for (int i = 0; i < path.Count - 1; i++)
-                        {
-                            DependencyEdge edge = null;
-                            foreach (var e in graph.Edges)
-                            {
-                                if (e.Source == path[i] && e.Target == path[i + 1])
-                                {
-                                    edge = e;
-                                    break;
-                                }
-                            }
-                            if (edge != null)
-                                edge.IsCircular = true;
-                        }
-                        return;
-                    }
-                }
-            }
-        }
-
-        private bool DetectCyclesDFS(Type current, DependencyGraph graph,
-            HashSet<Type> visited, HashSet<Type> recursionStack, List<Type> path)
-        {
-            visited.Add(current);
-            recursionStack.Add(current);
-            path.Add(current);
-
-            foreach (var edge in graph.Edges)
-            {
-                if (edge.Source != current)
-                    continue;
-
-                if (!visited.Contains(edge.Target))
-                {
-                    if (DetectCyclesDFS(edge.Target, graph, visited, recursionStack, path))
-                        return true;
-                }
-                else if (recursionStack.Contains(edge.Target))
-                {
-                    path.Add(edge.Target);
-                    return true;
-                }
-            }
-
-            path.Remove(current);
-            recursionStack.Remove(current);
-            return false;
         }
     }
 

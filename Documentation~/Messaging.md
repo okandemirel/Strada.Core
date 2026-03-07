@@ -296,6 +296,10 @@ MessageBus uses array-indexed dispatch for O(1) message routing:
 | Send Command | ~15ns |
 | Query | ~20ns |
 
+### Exception Isolation
+
+EventBus isolates handler exceptions — if one subscriber throws, other subscribers still receive the event. Exceptions are caught and logged without interrupting the publish loop.
+
 ### Zero Allocation
 
 All message types must be structs:

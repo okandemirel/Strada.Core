@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Strada.Core.Commands;
+using UnityEngine;
 using Strada.Core.Logging;
 
 namespace Strada.Core.Communication
@@ -39,6 +40,15 @@ namespace Strada.Core.Communication
         void RegisterSignalHandler<TSignal>(ISignalHandler<TSignal> handler) where TSignal : struct;
         void UnregisterSignalHandler<TSignal>() where TSignal : struct;
         bool HasSignalHandler<TSignal>() where TSignal : struct;
+        void RegisterQueryHandler<TQuery, TResult>(IQueryHandler<TQuery, TResult> handler) where TQuery : struct, IQuery<TResult>;
+        void RegisterQueryHandler<TQuery, TResult>(Func<TQuery, TResult> handler) where TQuery : struct, IQuery<TResult>;
+        void UnregisterSignalHandler<TSignal>() where TSignal : struct;
+        void UnregisterQueryHandler<TQuery, TResult>() where TQuery : struct, IQuery<TResult>;
+        void Subscribe<TEvent>(Action<TEvent> handler) where TEvent : struct;
+        void Unsubscribe<TEvent>(Action<TEvent> handler) where TEvent : struct;
+        int GetSubscriberCount<TEvent>() where TEvent : struct;
+        void Clear();
+
         ValueTask SendAsync<TSignal>(TSignal signal, CancellationToken cancellationToken = default) where TSignal : struct;
         void RegisterAsyncSignalHandler<TSignal>(IAsyncSignalHandler<TSignal> handler) where TSignal : struct;
         void RegisterAsyncSignalHandler<TSignal>(Func<TSignal, CancellationToken, ValueTask> handler) where TSignal : struct;
@@ -93,11 +103,6 @@ namespace Strada.Core.Communication
         private object[] _eventChannels = new object[64];
         private object[] _asyncSignalHandlers = new object[64];
         private object[] _asyncQueryHandlers = new object[64];
-        private int _maxSignalId;
-        private int _maxQueryId;
-        private int _maxEventId;
-        private int _maxAsyncSignalId;
-        private int _maxAsyncQueryId;
         private bool _disposed;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -175,6 +180,7 @@ namespace Strada.Core.Communication
 
                 _signalHandlers[id] = handler;
                 if (id > _maxSignalId) _maxSignalId = id;
+                Volatile.Write(ref _signalHandlers[id], handler);
             }
         }
 
@@ -209,8 +215,7 @@ namespace Strada.Core.Communication
             {
                 var id = QueryTypeId<TQuery>.Id;
                 EnsureCapacity(ref _queryHandlers, id);
-                _queryHandlers[id] = handler;
-                if (id > _maxQueryId) _maxQueryId = id;
+                Volatile.Write(ref _queryHandlers[id], handler);
             }
         }
 
@@ -218,6 +223,28 @@ namespace Strada.Core.Communication
             where TQuery : struct, IQuery<TResult>
         {
             RegisterQueryHandler(new DelegateQueryHandler<TQuery, TResult>(handler));
+        }
+
+        public void UnregisterSignalHandler<TSignal>() where TSignal : struct
+        {
+            lock (_lock)
+            {
+                var id = SignalTypeId<TSignal>.Id;
+                var handlers = _signalHandlers;
+                if (id < handlers.Length)
+                    Volatile.Write(ref handlers[id], null);
+            }
+        }
+
+        public void UnregisterQueryHandler<TQuery, TResult>() where TQuery : struct, IQuery<TResult>
+        {
+            lock (_lock)
+            {
+                var id = QueryTypeId<TQuery>.Id;
+                var handlers = _queryHandlers;
+                if (id < handlers.Length)
+                    Volatile.Write(ref handlers[id], null);
+            }
         }
 
         public void Subscribe<TEvent>(Action<TEvent> handler) where TEvent : struct
@@ -228,8 +255,6 @@ namespace Strada.Core.Communication
             lock (_lock)
             {
                 EnsureCapacity(ref _eventChannels, id);
-                if (id > _maxEventId) _maxEventId = id;
-
                 channel = _eventChannels[id] as EventChannel<TEvent>;
                 if (channel == null)
                 {
@@ -244,7 +269,7 @@ namespace Strada.Core.Communication
         public void Unsubscribe<TEvent>(Action<TEvent> handler) where TEvent : struct
         {
             var id = EventTypeId<TEvent>.Id;
-            var channels = _eventChannels;
+            var channels = Volatile.Read(ref _eventChannels);
             if (id >= channels.Length) return;
 
             (channels[id] as EventChannel<TEvent>)?.Unsubscribe(handler);
@@ -253,7 +278,7 @@ namespace Strada.Core.Communication
         public int GetSubscriberCount<TEvent>() where TEvent : struct
         {
             var id = EventTypeId<TEvent>.Id;
-            var channels = _eventChannels;
+            var channels = Volatile.Read(ref _eventChannels);
             if (id >= channels.Length) return 0;
 
             var channel = channels[id] as EventChannel<TEvent>;
@@ -269,11 +294,6 @@ namespace Strada.Core.Communication
                 Array.Clear(_eventChannels, 0, _eventChannels.Length);
                 Array.Clear(_asyncSignalHandlers, 0, _asyncSignalHandlers.Length);
                 Array.Clear(_asyncQueryHandlers, 0, _asyncQueryHandlers.Length);
-                _maxSignalId = 0;
-                _maxQueryId = 0;
-                _maxEventId = 0;
-                _maxAsyncSignalId = 0;
-                _maxAsyncQueryId = 0;
             }
         }
 
@@ -307,8 +327,7 @@ namespace Strada.Core.Communication
             {
                 var id = AsyncSignalTypeId<TSignal>.Id;
                 EnsureCapacity(ref _asyncSignalHandlers, id);
-                _asyncSignalHandlers[id] = handler;
-                if (id > _maxAsyncSignalId) _maxAsyncSignalId = id;
+                Volatile.Write(ref _asyncSignalHandlers[id], handler);
             }
         }
 
@@ -338,8 +357,7 @@ namespace Strada.Core.Communication
             {
                 var id = AsyncQueryTypeId<TQuery>.Id;
                 EnsureCapacity(ref _asyncQueryHandlers, id);
-                _asyncQueryHandlers[id] = handler;
-                if (id > _maxAsyncQueryId) _maxAsyncQueryId = id;
+                Volatile.Write(ref _asyncQueryHandlers[id], handler);
             }
         }
 
@@ -361,7 +379,7 @@ namespace Strada.Core.Communication
             while (newSize <= id) newSize *= 2;
             var newArray = new object[newSize];
             Array.Copy(array, newArray, array.Length);
-            array = newArray;
+            Volatile.Write(ref array, newArray);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -385,18 +403,24 @@ namespace Strada.Core.Communication
 
         private sealed class EventChannel<T>
         {
+            private Action<T>[] _handlers = new Action<T>[0];
             private volatile Action<T>[] _handlers = new Action<T>[0];
             private readonly object _lock = new object();
             private volatile bool _isDirty;
 
+            public int Count => Volatile.Read(ref _handlers).Length;
             public int Count => _handlersSnapshot.Length;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Publish(ref T message)
             {
                 var handlers = _handlers;
+                var handlers = Volatile.Read(ref _handlers);
                 for (int i = 0; i < handlers.Length; i++)
-                    handlers[i](message);
+                {
+                    try { handlers[i](message); }
+                    catch (Exception ex) { Debug.LogError($"Exception in event handler: {ex}"); }
+                }
             }
 
             public void Subscribe(Action<T> handler)
@@ -405,6 +429,11 @@ namespace Strada.Core.Communication
                 {
                     _handlerList.Add(handler);
                     RebuildSnapshot();
+                    var oldHandlers = _handlers;
+                    var newHandlers = new Action<T>[oldHandlers.Length + 1];
+                    Array.Copy(oldHandlers, newHandlers, oldHandlers.Length);
+                    newHandlers[oldHandlers.Length] = handler;
+                    Volatile.Write(ref _handlers, newHandlers);
                 }
             }
 
@@ -425,6 +454,8 @@ namespace Strada.Core.Communication
                         Array.Copy(oldHandlers, index + 1, newHandlers, index, oldHandlers.Length - index - 1);
 
                     _handlers = newHandlers;
+
+                    Volatile.Write(ref _handlers, newHandlers);
                 }
             }
 

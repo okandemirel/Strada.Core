@@ -37,9 +37,6 @@ namespace Strada.Core.Editor.Windows
         private GUIStyle _headerStyle;
         private GUIStyle _categoryStyle;
         private GUIStyle _resultStyle;
-        private GUIStyle _passedStyle;
-        private GUIStyle _failedStyle;
-        private GUIStyle _regressionStyle;
         private bool _stylesInitialized;
 
         private readonly Color _passedColor = new Color(0.4f, 0.8f, 0.4f);
@@ -104,10 +101,6 @@ namespace Strada.Core.Editor.Windows
                 padding = new RectOffset(10, 10, 5, 5),
                 margin = new RectOffset(20, 5, 2, 2)
             };
-
-            _passedStyle = new GUIStyle(EditorStyles.label);
-            _failedStyle = new GUIStyle(EditorStyles.label);
-            _regressionStyle = new GUIStyle(EditorStyles.label);
 
             _stylesInitialized = true;
         }
@@ -190,19 +183,9 @@ namespace Strada.Core.Editor.Windows
 
             EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button("Select All", GUILayout.Width(80)))
-            {
-                foreach (var key in _benchmarkSelection.Keys.ToList())
-                {
-                    _benchmarkSelection[key] = true;
-                }
-            }
+                SetAllSelections(true);
             if (GUILayout.Button("Select None", GUILayout.Width(80)))
-            {
-                foreach (var key in _benchmarkSelection.Keys.ToList())
-                {
-                    _benchmarkSelection[key] = false;
-                }
-            }
+                SetAllSelections(false);
             GUILayout.FlexibleSpace();
             EditorGUILayout.EndHorizontal();
 
@@ -254,12 +237,9 @@ namespace Strada.Core.Editor.Windows
             EditorGUILayout.LabelField($"Iterations: {benchmark.DefaultIterations}", GUILayout.Width(120));
 
             var threshold = _runner.GetThreshold(benchmark.Name);
-            if (threshold != null)
+            if (threshold?.MinOpsPerSecond != null)
             {
-                if (threshold.MinOpsPerSecond.HasValue)
-                {
-                    EditorGUILayout.LabelField($"Min: {threshold.MinOpsPerSecond:F0} ops/s", GUILayout.Width(120));
-                }
+                EditorGUILayout.LabelField($"Min: {threshold.MinOpsPerSecond:F0} ops/s", GUILayout.Width(120));
             }
 
             EditorGUI.BeginDisabledGroup(_isRunning);
@@ -278,7 +258,6 @@ namespace Strada.Core.Editor.Windows
                 EditorGUI.indentLevel--;
             }
         }
-
 
         private void DrawResultsTab()
         {
@@ -334,7 +313,6 @@ namespace Strada.Core.Editor.Windows
 
             EditorGUILayout.EndScrollView();
         }
-
 
         private void DrawResultItem(BenchmarkResult result, BenchmarkComparison comparison)
         {
@@ -532,6 +510,12 @@ namespace Strada.Core.Editor.Windows
             }
 
             EditorGUILayout.EndVertical();
+        }
+
+        private void SetAllSelections(bool selected)
+        {
+            foreach (var key in _benchmarkSelection.Keys.ToList())
+                _benchmarkSelection[key] = selected;
         }
 
         private void RunSelectedBenchmarks()

@@ -19,7 +19,6 @@ namespace Strada.Core.Editor.Utilities
         public static readonly Color InfoColor = new Color(0.4f, 0.7f, 1.0f);
 
         public static readonly Color NormalColor = new Color(0.7f, 0.9f, 0.7f);
-        public static readonly Color CriticalColor = new Color(1.0f, 0.4f, 0.4f);
 
         public static readonly Color SelectionColor = new Color(0.24f, 0.49f, 0.91f, 0.4f);
         public static readonly Color HoverColor = new Color(0.3f, 0.5f, 0.7f, 0.3f);
@@ -33,14 +32,12 @@ namespace Strada.Core.Editor.Utilities
         private static GUIStyle _headerStyle;
         private static GUIStyle _subHeaderStyle;
         private static GUIStyle _statsBoxStyle;
-        private static GUIStyle _toolbarSearchStyle;
         private static GUIStyle _selectedItemStyle;
         private static GUIStyle _foldoutHeaderStyle;
         private static GUIStyle _miniLabelStyle;
         private static GUIStyle _centeredLabelStyle;
         private static GUIStyle _linkLabelStyle;
         private static GUIStyle _badgeStyle;
-        private static GUIStyle _tooltipStyle;
 
         private static bool _stylesInitialized;
 
@@ -252,7 +249,7 @@ namespace Strada.Core.Editor.Utilities
         /// </summary>
         public static Color GetThresholdColor(double value, double warningThreshold, double criticalThreshold)
         {
-            if (value >= criticalThreshold) return CriticalColor;
+            if (value >= criticalThreshold) return ErrorColor;
             if (value >= warningThreshold) return WarningColor;
             return NormalColor;
         }
@@ -294,14 +291,6 @@ namespace Strada.Core.Editor.Utilities
             EditorGUI.DrawRect(rect, backgroundColor);
             var fillRect = new Rect(rect.x, rect.y, rect.width * Mathf.Clamp01(progress), rect.height);
             EditorGUI.DrawRect(fillRect, fillColor);
-        }
-
-        /// <summary>
-        /// Creates a tooltip content with consistent formatting.
-        /// </summary>
-        public static GUIContent CreateTooltip(string text, string tooltip)
-        {
-            return new GUIContent(text, tooltip);
         }
 
         /// <summary>

@@ -51,7 +51,6 @@ namespace Strada.Core.Editor.Validation
             }
         }
 
-
         /// <summary>
         /// Checks if a type is unmanaged (contains no reference types).
         /// </summary>

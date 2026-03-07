@@ -30,11 +30,7 @@ namespace Strada.Core.Editor.PropertyDrawers
 
             var buttonRect = EditorGUI.PrefixLabel(position, label);
 
-            var displayName = currentType?.Name ?? "(None)";
-            if (currentType != null)
-            {
-                displayName = $"{currentType.Name} ({currentType.Namespace})";
-            }
+            var displayName = currentType != null ? $"{currentType.Name} ({currentType.Namespace})" : "(None)";
 
             if (EditorGUI.DropdownButton(buttonRect, new GUIContent(displayName), FocusType.Keyboard))
             {
@@ -52,8 +48,7 @@ namespace Strada.Core.Editor.PropertyDrawers
                 return constraintAttr.BaseType;
             }
 
-            if (field?.Name?.Contains("system", StringComparison.OrdinalIgnoreCase) == true ||
-                field?.Name?.Contains("System", StringComparison.Ordinal) == true)
+            if (field?.Name?.Contains("system", StringComparison.OrdinalIgnoreCase) == true)
             {
                 return typeof(ISystem);
             }
@@ -113,7 +108,7 @@ namespace Strada.Core.Editor.PropertyDrawers
                 if (ShouldSkipAssembly(assembly))
                     continue;
 
-                foreach (var type in GetTypesFromAssembly(assembly))
+                foreach (var type in assembly.GetTypes())
                 {
                     if (type.IsClass && !type.IsAbstract && baseType.IsAssignableFrom(type))
                     {
@@ -143,11 +138,6 @@ namespace Strada.Core.Editor.PropertyDrawers
                    name.StartsWith("mscorlib", StringComparison.Ordinal) ||
                    name.StartsWith("netstandard", StringComparison.Ordinal) ||
                    name.StartsWith("Mono.", StringComparison.Ordinal);
-        }
-
-        private static Type[] GetTypesFromAssembly(Assembly assembly)
-        {
-            return assembly.GetTypes();
         }
 
         /// <summary>

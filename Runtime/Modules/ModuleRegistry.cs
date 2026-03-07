@@ -35,6 +35,13 @@ namespace Strada.Core.Modules
 
             foreach (var assembly in assemblies)
             {
+                if (assembly.IsDynamic)
+                    continue;
+
+                var name = assembly.GetName().Name;
+                if (!name.StartsWith("Strada.") && !name.StartsWith("Game.") && name != "Assembly-CSharp")
+                    continue;
+
                 if (assemblyFilter != null && !assemblyFilter(assembly))
                 {
                     continue;

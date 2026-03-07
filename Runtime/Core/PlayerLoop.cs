@@ -21,6 +21,17 @@ namespace Strada.Core.Core
         private static bool _initialized;
         private static bool _disposed;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStaticState()
+        {
+            _updateCallbacks.Clear();
+            _lateUpdateCallbacks.Clear();
+            _fixedUpdateCallbacks.Clear();
+            _initCallbacks.Clear();
+            _initialized = false;
+            _disposed = false;
+        }
+
         public static void Initialize()
         {
             if (_initialized) return;
@@ -139,31 +150,49 @@ namespace Strada.Core.Core
         private static void RunInitialization()
         {
             for (int i = 0; i < _initCallbacks.Count; i++)
-                _initCallbacks[i]?.Invoke();
+            {
+                try
+                {
+                    _initCallbacks[i]?.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogException(ex);
+                }
+            }
         }
 
         private static void RunUpdate()
         {
             if (_disposed) return;
-            var dt = Time.deltaTime;
-            for (int i = 0; i < _updateCallbacks.Count; i++)
-                _updateCallbacks[i]?.Invoke(dt);
+            InvokeCallbacks(_updateCallbacks, Time.deltaTime);
         }
 
         private static void RunLateUpdate()
         {
             if (_disposed) return;
-            var dt = Time.deltaTime;
-            for (int i = 0; i < _lateUpdateCallbacks.Count; i++)
-                _lateUpdateCallbacks[i]?.Invoke(dt);
+            InvokeCallbacks(_lateUpdateCallbacks, Time.deltaTime);
         }
 
         private static void RunFixedUpdate()
         {
             if (_disposed) return;
-            var dt = Time.fixedDeltaTime;
-            for (int i = 0; i < _fixedUpdateCallbacks.Count; i++)
-                _fixedUpdateCallbacks[i]?.Invoke(dt);
+            InvokeCallbacks(_fixedUpdateCallbacks, Time.fixedDeltaTime);
+        }
+
+        private static void InvokeCallbacks(List<Action<float>> callbacks, float dt)
+        {
+            for (int i = 0; i < callbacks.Count; i++)
+            {
+                try
+                {
+                    callbacks[i]?.Invoke(dt);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogException(ex);
+                }
+            }
         }
     }
 }

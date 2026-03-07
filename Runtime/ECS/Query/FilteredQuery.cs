@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Strada.Core.ECS.Core;
@@ -10,6 +9,29 @@ namespace Strada.Core.ECS.Query
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool PassesFilters(int entity, List<IComponentStorage> withFilters, List<IComponentStorage> withoutFilters)
+        {
+            if (withFilters != null)
+            {
+                foreach (var storage in withFilters)
+                    if (!storage.Contains(entity))
+                        return false;
+            }
+
+            if (withoutFilters != null)
+            {
+                foreach (var storage in withoutFilters)
+                    if (storage.Contains(entity))
+                        return false;
+            }
+
+            return true;
+        }
+    }
+
+    internal static class FilterHelper
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static bool PassesFilters(int entity, List<IComponentStorage> withFilters, List<IComponentStorage> withoutFilters)
         {
             if (withFilters != null)
             {
@@ -76,6 +98,7 @@ namespace Strada.Core.ECS.Query
                     int entity = entities[i];
 
                     if (!QueryFilterHelper.PassesFilters(entity, _withFilters, _withoutFilters))
+                    if (!FilterHelper.PassesFilters(entity, _withFilters, _withoutFilters))
                         continue;
 
                     action(entity, ref data[i]);
@@ -142,7 +165,7 @@ namespace Strada.Core.ECS.Query
                     if (idx1 < 0 || idx2 < 0)
                         continue;
 
-                    if (!QueryFilterHelper.PassesFilters(entity, _withFilters, _withoutFilters))
+                    if (!FilterHelper.PassesFilters(entity, _withFilters, _withoutFilters))
                         continue;
 
                     T1* p1 = set1.GetDataPtr() + idx1;
@@ -235,7 +258,7 @@ namespace Strada.Core.ECS.Query
                     if (idx1 < 0 || idx2 < 0 || idx3 < 0)
                         continue;
 
-                    if (!QueryFilterHelper.PassesFilters(entity, _withFilters, _withoutFilters))
+                    if (!FilterHelper.PassesFilters(entity, _withFilters, _withoutFilters))
                         continue;
 
                     T1* p1 = set1.GetDataPtr() + idx1;

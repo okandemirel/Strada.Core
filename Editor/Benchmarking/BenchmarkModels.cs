@@ -131,7 +131,6 @@ namespace Strada.Core.Editor.Benchmarking
         }
     }
 
-    
     /// <summary>
     /// Definition of a benchmark that can be executed.
     /// </summary>
@@ -142,8 +141,6 @@ namespace Strada.Core.Editor.Benchmarking
         public string Description { get; set; }
         public int DefaultIterations { get; set; } = 1000;
         public Func<int, BenchmarkResult> Execute { get; set; }
-        public double? MinimumThreshold { get; set; }
-        public double? MaximumTimeMs { get; set; }
     }
     
     /// <summary>

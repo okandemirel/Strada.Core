@@ -304,7 +304,8 @@ namespace Strada.Core.Communication
 
             public void Execute(IEventBus defaultBus)
             {
-                _asyncAction?.Invoke(CancellationToken.None).AsTask().Wait();
+                throw new InvalidOperationException(
+                    "Cannot execute async signal entries synchronously. Use ExecuteAsync instead.");
             }
 
             public ValueTask ExecuteAsync(IEventBus defaultBus, CancellationToken ct)

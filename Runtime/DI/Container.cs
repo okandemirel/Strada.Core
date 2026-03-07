@@ -112,11 +112,25 @@ namespace Strada.Core.DI
         public bool TryResolve<T>(out T instance) where T : class
         {
             var typeId = TypeId<T>.Id;
-            if (typeId <= _maxTypeId && _typeIdToIndex[typeId] >= 0)
+            if (typeId <= _maxTypeId)
             {
                 var index = _typeIdToIndex[typeId];
-                instance = (T)_factories[index](this);
-                return true;
+                if (index >= 0)
+                {
+                    var lifetime = _lifetimes[index];
+                    if (lifetime == Lifetime.Singleton || lifetime == Lifetime.Scoped)
+                    {
+                        lock (_lock)
+                        {
+                            instance = (T)_factories[index](this);
+                        }
+                    }
+                    else
+                    {
+                        instance = (T)_factories[index](this);
+                    }
+                    return true;
+                }
             }
             instance = null;
             return false;
@@ -164,10 +178,12 @@ namespace Strada.Core.DI
         public void Dispose()
         {
             if (_disposed) return;
-            _disposed = true;
 
             lock (_lock)
             {
+                if (_disposed) return;
+                _disposed = true;
+
                 while (_disposalStack.Count > 0)
                 {
                     try
@@ -176,6 +192,11 @@ namespace Strada.Core.DI
                     }
                     catch (Exception e)
                     {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                        UnityEngine.Debug.LogError($"Error disposing service: {e}");
+#else
+                        UnityEngine.Debug.LogError($"Error disposing service: {e.Message}");
+#endif
                         StradaLog.LogError($"Error disposing service: {e}", LogModule.DI);
                     }
                 }
@@ -195,10 +216,7 @@ namespace Strada.Core.DI
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        object IIndexResolver.ResolveByIndex(int index)
-        {
-            return _factories[index](this);
-        }
+        object IIndexResolver.ResolveByIndex(int index) => ResolveByIndex(index);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private object ResolveByType(Type type)
@@ -315,15 +333,10 @@ namespace Strada.Core.DI
             var factory = DirectFactory<T>.Delegate;
             if (factory == null) return null;
 
-            return (resolver) =>
-            {
-                if (resolver is IContainer c) return factory(c);
-                if (resolver is ContainerScope s) return factory(s);
-                return factory(container);
-            };
+            return (resolver) => factory(resolver is IContainer c ? c : container);
         }
 
-        private Func<IIndexResolver, object> CompileFactory(Type implType, Dictionary<Type, Registration> regs, Dictionary<int, int> typeIdMap)
+        private static Func<IIndexResolver, object> CompileFactory(Type implType, Dictionary<Type, Registration> regs, Dictionary<int, int> typeIdMap)
         {
             var ctor = GetBestConstructor(implType);
             var parameters = ctor.GetParameters();
@@ -338,12 +351,12 @@ namespace Strada.Core.DI
                 var pType = parameters[i].ParameterType;
                 if (!regs.TryGetValue(pType, out var depReg))
                     throw new InvalidOperationException($"Dependency '{pType.Name}' not registered for '{implType.Name}'");
-                args[i] = BuildDependencyExpr(pType, depReg, regs, typeIdMap, resolverParam);
+                args[i] = BuildDependencyExpr(pType, depReg, typeIdMap, resolverParam);
             }
             return Expression.Lambda<Func<IIndexResolver, object>>(Expression.New(ctor, args), resolverParam).Compile();
         }
 
-        private static ConstructorInfo GetBestConstructor(Type type)
+        internal static ConstructorInfo GetBestConstructor(Type type)
         {
             var ctors = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
             if (ctors.Length == 0)
@@ -366,32 +379,18 @@ namespace Strada.Core.DI
             return best;
         }
 
-        private Expression BuildDependencyExpr(Type serviceType, Registration reg, Dictionary<Type, Registration> regs, Dictionary<int, int> typeIdMap, ParameterExpression resolverParam)
+        private static readonly MethodInfo ResolveByIndexMethod =
+            typeof(IIndexResolver).GetMethod(nameof(IIndexResolver.ResolveByIndex));
+
+        private static Expression BuildDependencyExpr(Type serviceType, Registration reg, Dictionary<int, int> typeIdMap, ParameterExpression resolverParam)
         {
             if (reg.Instance != null)
                 return Expression.Constant(reg.Instance, serviceType);
 
-            if (reg.Lifetime == Lifetime.Singleton)
-            {
-                int index = typeIdMap[TypeRegistry.GetId(serviceType)];
-
-                return Expression.Convert(
-                    Expression.Call(resolverParam, typeof(IIndexResolver).GetMethod(nameof(IIndexResolver.ResolveByIndex)), Expression.Constant(index)),
-                    serviceType);
-            }
-
-            if (reg.Factory != null || reg.Lifetime == Lifetime.Scoped || reg.Lifetime == Lifetime.Transient)
-            {
-                 int index = typeIdMap[TypeRegistry.GetId(serviceType)];
-                 return Expression.Convert(
-                    Expression.Call(resolverParam, typeof(IIndexResolver).GetMethod(nameof(IIndexResolver.ResolveByIndex)), Expression.Constant(index)),
-                    serviceType);
-            }
-
-            int idx = typeIdMap[TypeRegistry.GetId(serviceType)];
+            int index = typeIdMap[TypeRegistry.GetId(serviceType)];
             return Expression.Convert(
-                    Expression.Call(resolverParam, typeof(IIndexResolver).GetMethod(nameof(IIndexResolver.ResolveByIndex)), Expression.Constant(idx)),
-                    serviceType);
+                Expression.Call(resolverParam, ResolveByIndexMethod, Expression.Constant(index)),
+                serviceType);
         }
 
         private static void ClearFactory(Type type) =>

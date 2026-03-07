@@ -16,8 +16,7 @@ namespace Strada.Core.ECS.Query
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQuery<T1> Select<T1>() where T1 : unmanaged, IComponent
         {
-            var storage = _manager.Store.GetOrCreateStorage<T1>();
-            return new EntityQuery<T1>(_manager, storage);
+            return new EntityQuery<T1>(_manager.Store.GetOrCreateStorage<T1>());
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -25,9 +24,9 @@ namespace Strada.Core.ECS.Query
             where T1 : unmanaged, IComponent
             where T2 : unmanaged, IComponent
         {
-            var s1 = _manager.Store.GetOrCreateStorage<T1>();
-            var s2 = _manager.Store.GetOrCreateStorage<T2>();
-            return new EntityQuery<T1, T2>(_manager, s1, s2);
+            return new EntityQuery<T1, T2>(
+                _manager.Store.GetOrCreateStorage<T1>(),
+                _manager.Store.GetOrCreateStorage<T2>());
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -36,10 +35,10 @@ namespace Strada.Core.ECS.Query
             where T2 : unmanaged, IComponent
             where T3 : unmanaged, IComponent
         {
-            var s1 = _manager.Store.GetOrCreateStorage<T1>();
-            var s2 = _manager.Store.GetOrCreateStorage<T2>();
-            var s3 = _manager.Store.GetOrCreateStorage<T3>();
-            return new EntityQuery<T1, T2, T3>(_manager, s1, s2, s3);
+            return new EntityQuery<T1, T2, T3>(
+                _manager.Store.GetOrCreateStorage<T1>(),
+                _manager.Store.GetOrCreateStorage<T2>(),
+                _manager.Store.GetOrCreateStorage<T3>());
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -47,7 +46,7 @@ namespace Strada.Core.ECS.Query
             where T1 : unmanaged, IComponent where T2 : unmanaged, IComponent
             where T3 : unmanaged, IComponent where T4 : unmanaged, IComponent
         {
-            return new EntityQuery<T1, T2, T3, T4>(_manager,
+            return new EntityQuery<T1, T2, T3, T4>(
                 _manager.Store.GetOrCreateStorage<T1>(), _manager.Store.GetOrCreateStorage<T2>(),
                 _manager.Store.GetOrCreateStorage<T3>(), _manager.Store.GetOrCreateStorage<T4>());
         }
@@ -57,7 +56,7 @@ namespace Strada.Core.ECS.Query
             where T1 : unmanaged, IComponent where T2 : unmanaged, IComponent where T3 : unmanaged, IComponent
             where T4 : unmanaged, IComponent where T5 : unmanaged, IComponent
         {
-            return new EntityQuery<T1, T2, T3, T4, T5>(_manager,
+            return new EntityQuery<T1, T2, T3, T4, T5>(
                 _manager.Store.GetOrCreateStorage<T1>(), _manager.Store.GetOrCreateStorage<T2>(),
                 _manager.Store.GetOrCreateStorage<T3>(), _manager.Store.GetOrCreateStorage<T4>(),
                 _manager.Store.GetOrCreateStorage<T5>());
@@ -68,7 +67,7 @@ namespace Strada.Core.ECS.Query
             where T1 : unmanaged, IComponent where T2 : unmanaged, IComponent where T3 : unmanaged, IComponent
             where T4 : unmanaged, IComponent where T5 : unmanaged, IComponent where T6 : unmanaged, IComponent
         {
-            return new EntityQuery<T1, T2, T3, T4, T5, T6>(_manager,
+            return new EntityQuery<T1, T2, T3, T4, T5, T6>(
                 _manager.Store.GetOrCreateStorage<T1>(), _manager.Store.GetOrCreateStorage<T2>(),
                 _manager.Store.GetOrCreateStorage<T3>(), _manager.Store.GetOrCreateStorage<T4>(),
                 _manager.Store.GetOrCreateStorage<T5>(), _manager.Store.GetOrCreateStorage<T6>());
@@ -80,7 +79,7 @@ namespace Strada.Core.ECS.Query
             where T4 : unmanaged, IComponent where T5 : unmanaged, IComponent where T6 : unmanaged, IComponent
             where T7 : unmanaged, IComponent
         {
-            return new EntityQuery<T1, T2, T3, T4, T5, T6, T7>(_manager,
+            return new EntityQuery<T1, T2, T3, T4, T5, T6, T7>(
                 _manager.Store.GetOrCreateStorage<T1>(), _manager.Store.GetOrCreateStorage<T2>(),
                 _manager.Store.GetOrCreateStorage<T3>(), _manager.Store.GetOrCreateStorage<T4>(),
                 _manager.Store.GetOrCreateStorage<T5>(), _manager.Store.GetOrCreateStorage<T6>(),
@@ -93,7 +92,7 @@ namespace Strada.Core.ECS.Query
             where T4 : unmanaged, IComponent where T5 : unmanaged, IComponent where T6 : unmanaged, IComponent
             where T7 : unmanaged, IComponent where T8 : unmanaged, IComponent
         {
-            return new EntityQuery<T1, T2, T3, T4, T5, T6, T7, T8>(_manager,
+            return new EntityQuery<T1, T2, T3, T4, T5, T6, T7, T8>(
                 _manager.Store.GetOrCreateStorage<T1>(), _manager.Store.GetOrCreateStorage<T2>(),
                 _manager.Store.GetOrCreateStorage<T3>(), _manager.Store.GetOrCreateStorage<T4>(),
                 _manager.Store.GetOrCreateStorage<T5>(), _manager.Store.GetOrCreateStorage<T6>(),

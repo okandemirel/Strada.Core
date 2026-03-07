@@ -244,15 +244,7 @@ namespace Strada.Core.Editor.Templates
             TemplateContextDetector.TemplateType templateType,
             string codeContent)
         {
-            var allUsings = new HashSet<string>(GetUsingsForTemplate(templateType));
-
-            var analyzedUsings = AnalyzeCodeForUsings(codeContent);
-            foreach (var u in analyzedUsings)
-            {
-                allUsings.Add(u);
-            }
-
-            return FormatUsingBlock(allUsings);
+            return GenerateUsingBlock(templateType, AnalyzeCodeForUsings(codeContent));
         }
 
         /// <summary>
@@ -265,51 +257,27 @@ namespace Strada.Core.Editor.Templates
             if (usings == null)
                 return string.Empty;
 
-            var usingList = usings.Where(u => !string.IsNullOrEmpty(u)).Distinct().ToList();
+            var usingList = usings.Where(u => !string.IsNullOrEmpty(u)).ToList();
 
-            var systemUsings = usingList
-                .Where(u => u.StartsWith("System"))
-                .OrderBy(u => u)
-                .ToList();
-
-            var unityUsings = usingList
-                .Where(u => u.StartsWith("Unity"))
-                .OrderBy(u => u)
-                .ToList();
-
-            var stradaUsings = usingList
-                .Where(u => u.StartsWith("Strada"))
-                .OrderBy(u => u)
-                .ToList();
-
-            var otherUsings = usingList
-                .Where(u => !u.StartsWith("System") && !u.StartsWith("Unity") && !u.StartsWith("Strada"))
-                .OrderBy(u => u)
-                .ToList();
+            // Group by prefix: System, Unity, Strada, then everything else
+            var groups = new[]
+            {
+                usingList.Where(u => u.StartsWith("System")).OrderBy(u => u),
+                usingList.Where(u => u.StartsWith("Unity")).OrderBy(u => u),
+                usingList.Where(u => u.StartsWith("Strada")).OrderBy(u => u),
+                usingList.Where(u => !u.StartsWith("System") && !u.StartsWith("Unity") && !u.StartsWith("Strada")).OrderBy(u => u),
+            };
 
             var result = new List<string>();
-            
-            if (systemUsings.Count > 0)
-            {
-                result.AddRange(systemUsings.Select(u => $"using {u};"));
-            }
 
-            if (unityUsings.Count > 0)
+            foreach (var group in groups)
             {
-                if (result.Count > 0) result.Add("");
-                result.AddRange(unityUsings.Select(u => $"using {u};"));
-            }
-
-            if (stradaUsings.Count > 0)
-            {
-                if (result.Count > 0) result.Add("");
-                result.AddRange(stradaUsings.Select(u => $"using {u};"));
-            }
-
-            if (otherUsings.Count > 0)
-            {
-                if (result.Count > 0) result.Add("");
-                result.AddRange(otherUsings.Select(u => $"using {u};"));
+                var items = group.Select(u => $"using {u};").ToList();
+                if (items.Count == 0)
+                    continue;
+                if (result.Count > 0)
+                    result.Add("");
+                result.AddRange(items);
             }
 
             return string.Join("\n", result);

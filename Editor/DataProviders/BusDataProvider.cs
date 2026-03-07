@@ -82,27 +82,9 @@ namespace Strada.Core.Editor.DataProviders
         {
             lock (_logLock)
             {
-                if (filter == null)
-                    return _logEntries.ToList();
-
-                var filtered = _logEntries.AsEnumerable();
-
-                if (filter.Kind.HasValue)
-                    filtered = filtered.Where(e => e.Kind == filter.Kind.Value);
-
-                if (!string.IsNullOrEmpty(filter.TypePattern))
-                {
-                    filtered = filtered.Where(e =>
-                        MatchesTypePattern(e.MessageType?.Name, filter.TypePattern));
-                }
-
-                if (filter.StartTime.HasValue)
-                    filtered = filtered.Where(e => e.Timestamp >= filter.StartTime.Value);
-
-                if (filter.EndTime.HasValue)
-                    filtered = filtered.Where(e => e.Timestamp <= filter.EndTime.Value);
-
-                return filtered.Take(filter.MaxResults).ToList();
+                var results = new List<MessageLogEntry>();
+                CollectFilteredEntries(results, filter);
+                return results;
             }
         }
 
@@ -114,33 +96,38 @@ namespace Strada.Core.Editor.DataProviders
             lock (_logLock)
             {
                 results.Clear();
-                if (filter == null)
-                {
-                    results.AddRange(_logEntries);
-                    return;
-                }
+                CollectFilteredEntries(results, filter);
+            }
+        }
 
-                var filtered = _logEntries.AsEnumerable();
+        private void CollectFilteredEntries(List<MessageLogEntry> results, MessageFilter filter)
+        {
+            if (filter == null)
+            {
+                results.AddRange(_logEntries);
+                return;
+            }
 
-                if (filter.Kind.HasValue)
-                    filtered = filtered.Where(e => e.Kind == filter.Kind.Value);
+            var filtered = _logEntries.AsEnumerable();
 
-                if (!string.IsNullOrEmpty(filter.TypePattern))
-                {
-                    filtered = filtered.Where(e =>
-                        MatchesTypePattern(e.MessageType?.Name, filter.TypePattern));
-                }
+            if (filter.Kind.HasValue)
+                filtered = filtered.Where(e => e.Kind == filter.Kind.Value);
 
-                if (filter.StartTime.HasValue)
-                    filtered = filtered.Where(e => e.Timestamp >= filter.StartTime.Value);
+            if (!string.IsNullOrEmpty(filter.TypePattern))
+            {
+                filtered = filtered.Where(e =>
+                    MatchesTypePattern(e.MessageType?.Name, filter.TypePattern));
+            }
 
-                if (filter.EndTime.HasValue)
-                    filtered = filtered.Where(e => e.Timestamp <= filter.EndTime.Value);
+            if (filter.StartTime.HasValue)
+                filtered = filtered.Where(e => e.Timestamp >= filter.StartTime.Value);
 
-                foreach (var entry in filtered.Take(filter.MaxResults))
-                {
-                    results.Add(entry);
-                }
+            if (filter.EndTime.HasValue)
+                filtered = filtered.Where(e => e.Timestamp <= filter.EndTime.Value);
+
+            foreach (var entry in filtered.Take(filter.MaxResults))
+            {
+                results.Add(entry);
             }
         }
 
@@ -208,9 +195,10 @@ namespace Strada.Core.Editor.DataProviders
             {
                 _logEntries.Add(entry);
 
-                while (_logEntries.Count > MaxLogEntries)
+                if (_logEntries.Count > MaxLogEntries)
                 {
-                    _logEntries.RemoveAt(0);
+                    var excess = _logEntries.Count - MaxLogEntries;
+                    _logEntries.RemoveRange(0, excess);
                 }
             }
 

@@ -117,13 +117,11 @@ namespace Strada.Core.Editor.Inspectors
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("EntityMediator", EditorStyles.boldLabel);
 
-            var isBoundProperty = _mediator.GetType().GetProperty("IsBound", 
+            var isBoundProperty = _mediator.GetType().GetProperty("IsBound",
                 BindingFlags.Public | BindingFlags.Instance);
             bool isBound = isBoundProperty != null && (bool)isBoundProperty.GetValue(_mediator);
 
-            var statusStyle = new GUIStyle(EditorStyles.miniLabel);
-            statusStyle.normal.textColor = isBound ? SyncedColor : NotSyncedColor;
-            EditorGUILayout.LabelField(isBound ? "Bound" : "Not Bound", statusStyle, GUILayout.Width(60));
+            DrawColoredMiniLabel(isBound ? "Bound" : "Not Bound", isBound ? SyncedColor : NotSyncedColor, GUILayout.Width(60));
 
             EditorGUILayout.EndHorizontal();
 
@@ -156,7 +154,10 @@ namespace Strada.Core.Editor.Inspectors
                 if (_bindingsFoldout)
                 {
                     EditorGUI.indentLevel++;
-                    DrawBindingsList();
+                    foreach (var binding in _bindings)
+                    {
+                        DrawBindingEntry(binding);
+                    }
                     EditorGUI.indentLevel--;
                 }
             }
@@ -166,14 +167,6 @@ namespace Strada.Core.Editor.Inspectors
             }
 
             EditorGUILayout.EndVertical();
-        }
-
-        private void DrawBindingsList()
-        {
-            foreach (var binding in _bindings)
-            {
-                DrawBindingEntry(binding);
-            }
         }
 
         private void DrawBindingEntry(IComponentBinding binding)
@@ -188,15 +181,11 @@ namespace Strada.Core.Editor.Inspectors
             var componentName = binding.ComponentType?.Name ?? "Unknown";
             EditorGUILayout.LabelField(componentName, GUILayout.MinWidth(100));
 
-            var stateStyle = new GUIStyle(EditorStyles.miniLabel);
-            stateStyle.normal.textColor = statusColor;
-            EditorGUILayout.LabelField(binding.SyncState.ToString(), stateStyle, GUILayout.Width(80));
+            DrawColoredMiniLabel(binding.SyncState.ToString(), statusColor, GUILayout.Width(80));
 
             if (binding.IsDirty)
             {
-                var dirtyStyle = new GUIStyle(EditorStyles.miniLabel);
-                dirtyStyle.normal.textColor = new Color(0.9f, 0.7f, 0.2f);
-                EditorGUILayout.LabelField("*", dirtyStyle, GUILayout.Width(10));
+                DrawColoredMiniLabel("*", new Color(0.9f, 0.7f, 0.2f), GUILayout.Width(10));
             }
 
             EditorGUILayout.EndHorizontal();
@@ -207,6 +196,13 @@ namespace Strada.Core.Editor.Inspectors
                 EditorGUILayout.HelpBox(binding.LastError, MessageType.Error);
                 EditorGUI.indentLevel--;
             }
+        }
+
+        private static void DrawColoredMiniLabel(string text, Color color, params GUILayoutOption[] options)
+        {
+            var style = new GUIStyle(EditorStyles.miniLabel);
+            style.normal.textColor = color;
+            EditorGUILayout.LabelField(text, style, options);
         }
 
         private Color GetStatusColor(BindingSyncState state)
