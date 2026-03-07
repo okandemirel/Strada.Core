@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -7,34 +7,29 @@ namespace Strada.Core.DI
 {
     internal static class TypeRegistry
     {
+        private const int MaxTypeCount = 8192;
         private static int _nextId;
-        private static readonly Dictionary<Type, int> _typeCache = new(256);
-        private static readonly object _cacheLock = new();
+        private static readonly ConcurrentDictionary<Type, int> _typeCache = new();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int GetId<T>() => TypeId<T>.Id;
 
         public static int GetId(Type type)
         {
-            if (_typeCache.TryGetValue(type, out int id))
-                return id;
-
-            lock (_cacheLock)
-            {
-                if (_typeCache.TryGetValue(type, out id))
-                    return id;
-
-                id = (int)typeof(TypeId<>)
-                    .MakeGenericType(type)
+            return _typeCache.GetOrAdd(type, static t =>
+                (int)typeof(TypeId<>)
+                    .MakeGenericType(t)
                     .GetField("Id")
-                    .GetValue(null);
-
-                _typeCache[type] = id;
-                return id;
-            }
+                    .GetValue(null));
         }
 
-        internal static int AllocateId() => Interlocked.Increment(ref _nextId);
+        internal static int AllocateId()
+        {
+            int id = Interlocked.Increment(ref _nextId);
+            if (id > MaxTypeCount)
+                throw new InvalidOperationException("Maximum number of registered types (8192) exceeded");
+            return id;
+        }
 
         private static class TypeId<T>
         {
@@ -43,10 +38,7 @@ namespace Strada.Core.DI
             static TypeId()
             {
                 Id = AllocateId();
-                lock (_cacheLock)
-                {
-                    _typeCache[typeof(T)] = Id;
-                }
+                _typeCache[typeof(T)] = Id;
             }
         }
     }
