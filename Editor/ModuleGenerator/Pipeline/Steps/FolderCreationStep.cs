@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using Strada.Core.Editor.ModuleGenerator.Config;
 using Strada.Core.Editor.ModuleGenerator.Models;
@@ -45,12 +46,20 @@ namespace Strada.Core.Editor.ModuleGenerator.Pipeline.Steps
             }
 
             var components = context.Definition.Components;
-            if (components.FolderResources) CreateOptionalFolder(basePath, "Resources", context);
-            if (components.FolderPrefabs) CreateOptionalFolder(basePath, "Prefabs", context);
-            if (components.FolderScenes) CreateOptionalFolder(basePath, "Scenes", context);
-            if (components.FolderSprites) CreateOptionalFolder(basePath, "Sprites", context);
-            if (components.FolderArt) CreateOptionalFolder(basePath, "Art", context);
-            if (components.FolderAudio) CreateOptionalFolder(basePath, "Audio", context);
+            var optionalFolders = new (bool Enabled, string Name)[]
+            {
+                (components.FolderResources, "Resources"),
+                (components.FolderPrefabs, "Prefabs"),
+                (components.FolderScenes, "Scenes"),
+                (components.FolderSprites, "Sprites"),
+                (components.FolderArt, "Art"),
+                (components.FolderAudio, "Audio"),
+            };
+
+            foreach (var (enabled, folderName) in optionalFolders)
+            {
+                if (enabled) CreateOptionalFolder(basePath, folderName, context);
+            }
 
             AssetDatabase.Refresh();
 

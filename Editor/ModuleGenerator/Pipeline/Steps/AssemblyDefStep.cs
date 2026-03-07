@@ -37,89 +37,26 @@ namespace Strada.Core.Editor.ModuleGenerator.Pipeline.Steps
                 }
             }
 
-            var refsJson = string.Join(",\n        ", references.Select(r => $"\"{r}\""));
-
-            var mainAsmdef = $@"{{
-    ""name"": ""{ns}"",
-    ""rootNamespace"": ""{ns}"",
-    ""references"": [
-        {refsJson}
-    ],
-    ""includePlatforms"": [],
-    ""excludePlatforms"": [],
-    ""allowUnsafeCode"": true,
-    ""overrideReferences"": false,
-    ""precompiledReferences"": [],
-    ""autoReferenced"": true,
-    ""defineConstraints"": [],
-    ""versionDefines"": [],
-    ""noEngineReferences"": false
-}}";
-
-            var mainPath = $"{basePath}/{name}.asmdef";
-            File.WriteAllText(mainPath, mainAsmdef);
-            context.AddCreatedFile(mainPath);
-            context.AssemblyDefPath = mainPath;
+            WriteAsmdef($"{basePath}/{name}.asmdef", ns, ns, references, context,
+                autoReferenced: true, overrideReferences: false);
+            context.AssemblyDefPath = $"{basePath}/{name}.asmdef";
 
             if (context.Definition.Components.EditorScripts)
             {
-                var editorAsmdef = $@"{{
-    ""name"": ""{ns}.Editor"",
-    ""rootNamespace"": ""{ns}.Editor"",
-    ""references"": [
-        ""{ns}"",
-        ""Strada.Core"",
-        ""Strada.Core.Editor""
-    ],
-    ""includePlatforms"": [
-        ""Editor""
-    ],
-    ""excludePlatforms"": [],
-    ""allowUnsafeCode"": true,
-    ""overrideReferences"": false,
-    ""precompiledReferences"": [],
-    ""autoReferenced"": true,
-    ""defineConstraints"": [],
-    ""versionDefines"": [],
-    ""noEngineReferences"": false
-}}";
-
-                var editorPath = $"{basePath}/Editor/{name}.Editor.asmdef";
-                File.WriteAllText(editorPath, editorAsmdef);
-                context.AddCreatedFile(editorPath);
+                WriteAsmdef($"{basePath}/Editor/{name}.Editor.asmdef",
+                    $"{ns}.Editor", $"{ns}.Editor",
+                    new List<string> { ns, "Strada.Core", "Strada.Core.Editor" }, context,
+                    includePlatforms: new[] { "Editor" }, autoReferenced: true, overrideReferences: false);
             }
 
             if (context.Definition.Components.RuntimeTests || context.Definition.Components.EditorTests)
             {
-                var testAsmdef = $@"{{
-    ""name"": ""{ns}.Tests"",
-    ""rootNamespace"": ""{ns}.Tests"",
-    ""references"": [
-        ""{ns}"",
-        ""Strada.Core"",
-        ""UnityEngine.TestRunner"",
-        ""UnityEditor.TestRunner""
-    ],
-    ""includePlatforms"": [
-        ""Editor""
-    ],
-    ""excludePlatforms"": [],
-    ""allowUnsafeCode"": true,
-    ""overrideReferences"": true,
-    ""precompiledReferences"": [
-        ""nunit.framework.dll""
-    ],
-    ""autoReferenced"": false,
-    ""defineConstraints"": [
-        ""UNITY_INCLUDE_TESTS""
-    ],
-    ""versionDefines"": [],
-    ""noEngineReferences"": false
-}}";
-
-                var testPath = $"{basePath}/Tests/{name}.Tests.asmdef";
-                File.WriteAllText(testPath, testAsmdef);
-                context.AddCreatedFile(testPath);
+                WriteAsmdef($"{basePath}/Tests/{name}.Tests.asmdef",
+                    $"{ns}.Tests", $"{ns}.Tests",
+                    new List<string> { ns, "Strada.Core", "UnityEngine.TestRunner", "UnityEditor.TestRunner" }, context,
+                    includePlatforms: new[] { "Editor" }, autoReferenced: false, overrideReferences: true,
+                    precompiledReferences: new[] { "nunit.framework.dll" },
+                    defineConstraints: new[] { "UNITY_INCLUDE_TESTS" });
             }
 
             context.RequiresRecompilation = true;
@@ -138,6 +75,46 @@ namespace Strada.Core.Editor.ModuleGenerator.Pipeline.Steps
             }
 
             AssetDatabase.Refresh();
+        }
+
+        private void WriteAsmdef(string path, string asmName, string rootNamespace,
+            List<string> references, GenerationContext context,
+            string[] includePlatforms = null,
+            bool autoReferenced = true,
+            bool overrideReferences = false,
+            string[] precompiledReferences = null,
+            string[] defineConstraints = null)
+        {
+            var refsJson = string.Join(",\n        ", references.Select(r => $"\"{r}\""));
+            var platformsJson = FormatJsonArray(includePlatforms);
+            var precompiledJson = FormatJsonArray(precompiledReferences);
+            var constraintsJson = FormatJsonArray(defineConstraints);
+
+            var content = $@"{{
+    ""name"": ""{asmName}"",
+    ""rootNamespace"": ""{rootNamespace}"",
+    ""references"": [
+        {refsJson}
+    ],
+    ""includePlatforms"": [{platformsJson}],
+    ""excludePlatforms"": [],
+    ""allowUnsafeCode"": true,
+    ""overrideReferences"": {overrideReferences.ToString().ToLower()},
+    ""precompiledReferences"": [{precompiledJson}],
+    ""autoReferenced"": {autoReferenced.ToString().ToLower()},
+    ""defineConstraints"": [{constraintsJson}],
+    ""versionDefines"": [],
+    ""noEngineReferences"": false
+}}";
+
+            File.WriteAllText(path, content);
+            context.AddCreatedFile(path);
+        }
+
+        private static string FormatJsonArray(string[] items)
+        {
+            if (items == null || items.Length == 0) return "";
+            return "\n        " + string.Join(",\n        ", items.Select(i => $"\"{i}\"")) + "\n    ";
         }
     }
 }

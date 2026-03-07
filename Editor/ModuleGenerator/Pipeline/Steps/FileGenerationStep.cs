@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Strada.Core.Editor.ModuleGenerator.Config;
@@ -32,101 +33,89 @@ namespace Strada.Core.Editor.ModuleGenerator.Pipeline.Steps
             var ns = context.Definition.FullNamespace;
             var components = context.Definition.Components;
 
+            var fileEntries = BuildFileEntries(basePath, name, ns, components, context.Definition.ModuleType);
+
             int filesCreated = 0;
-
-            if (components.ModuleConfig && context.Definition.ModuleType == ModuleType.Main)
+            foreach (var entry in fileEntries)
             {
-                CreateFile($"{basePath}/Scripts/{name}ModuleConfig.cs", GenerateModuleConfig(name, ns), context);
-                filesCreated++;
-            }
-
-            if (components.ServiceInterface)
-            {
-                CreateFile($"{basePath}/Scripts/Interfaces/I{name}Service.cs", GenerateServiceInterface(name, ns), context);
-                filesCreated++;
-            }
-
-            if (components.Service)
-            {
-                CreateFile($"{basePath}/Scripts/Services/{name}Service.cs", GenerateService(name, ns, components.ServiceInterface), context);
-                filesCreated++;
-            }
-
-            if (components.Controller)
-            {
-                CreateFile($"{basePath}/Scripts/Controllers/{name}Controller.cs", GenerateController(name, ns, components.ServiceInterface), context);
-                filesCreated++;
-            }
-
-            if (components.Model)
-            {
-                CreateFile($"{basePath}/Scripts/Models/{name}Model.cs", GenerateModel(name, ns), context);
-                filesCreated++;
-            }
-
-            if (components.View)
-            {
-                CreateFile($"{basePath}/Scripts/Views/{name}View.cs", GenerateView(name, ns), context);
-                filesCreated++;
-            }
-
-            if (components.EcsSystem)
-            {
-                CreateFile($"{basePath}/Scripts/Systems/{name}System.cs", GenerateSystem(name, ns), context);
-                filesCreated++;
-            }
-
-            if (components.EcsComponent)
-            {
-                CreateFile($"{basePath}/Scripts/Components/{name}Component.cs", GenerateComponent(name, ns), context);
-                filesCreated++;
-            }
-
-            if (components.EntityMediator)
-            {
-                CreateFile($"{basePath}/Scripts/Views/{name}Mediator.cs", GenerateMediator(name, ns), context);
-                filesCreated++;
-            }
-
-            if (components.ConfigData)
-            {
-                CreateFile($"{basePath}/Scripts/Data/UnityObjects/CD_{name}.cs", GenerateConfigData(name, ns), context);
-                filesCreated++;
-            }
-
-            if (components.ValueObject)
-            {
-                CreateFile($"{basePath}/Scripts/Data/ValueObjects/{name}Config.cs", GenerateValueObject(name, ns), context);
-                filesCreated++;
-            }
-
-            if (components.Events)
-            {
-                CreateFile($"{basePath}/Scripts/Events/{name}Events.cs", GenerateEvents(name, ns), context);
-                filesCreated++;
-            }
-
-            if (components.Signals)
-            {
-                CreateFile($"{basePath}/Scripts/Events/{name}Signals.cs", GenerateSignals(name, ns), context);
-                filesCreated++;
-            }
-
-            if (components.RuntimeTests)
-            {
-                CreateFile($"{basePath}/Tests/Runtime/{name}Tests.cs", GenerateRuntimeTests(name, ns), context);
-                filesCreated++;
-            }
-
-            if (components.EditorTests)
-            {
-                CreateFile($"{basePath}/Tests/Editor/{name}EditorTests.cs", GenerateEditorTests(name, ns), context);
-                filesCreated++;
+                if (entry.Enabled)
+                {
+                    CreateFile(entry.Path, entry.ContentGenerator(), context);
+                    filesCreated++;
+                }
             }
 
             AssetDatabase.Refresh();
 
             return StepResult.Ok($"Created {filesCreated} files");
+        }
+
+        private List<FileEntry> BuildFileEntries(string basePath, string name, string ns,
+            ModuleComponents components, ModuleType moduleType)
+        {
+            return new List<FileEntry>
+            {
+                new FileEntry(
+                    components.ModuleConfig && moduleType == ModuleType.Main,
+                    $"{basePath}/Scripts/{name}ModuleConfig.cs",
+                    () => GenerateModuleConfig(name, ns)),
+                new FileEntry(
+                    components.ServiceInterface,
+                    $"{basePath}/Scripts/Interfaces/I{name}Service.cs",
+                    () => GenerateServiceInterface(name, ns)),
+                new FileEntry(
+                    components.Service,
+                    $"{basePath}/Scripts/Services/{name}Service.cs",
+                    () => GenerateService(name, ns, components.ServiceInterface)),
+                new FileEntry(
+                    components.Controller,
+                    $"{basePath}/Scripts/Controllers/{name}Controller.cs",
+                    () => GenerateController(name, ns, components.ServiceInterface)),
+                new FileEntry(
+                    components.Model,
+                    $"{basePath}/Scripts/Models/{name}Model.cs",
+                    () => GenerateModel(name, ns)),
+                new FileEntry(
+                    components.View,
+                    $"{basePath}/Scripts/Views/{name}View.cs",
+                    () => GenerateView(name, ns)),
+                new FileEntry(
+                    components.EcsSystem,
+                    $"{basePath}/Scripts/Systems/{name}System.cs",
+                    () => GenerateSystem(name, ns)),
+                new FileEntry(
+                    components.EcsComponent,
+                    $"{basePath}/Scripts/Components/{name}Component.cs",
+                    () => GenerateComponent(name, ns)),
+                new FileEntry(
+                    components.EntityMediator,
+                    $"{basePath}/Scripts/Views/{name}Mediator.cs",
+                    () => GenerateMediator(name, ns)),
+                new FileEntry(
+                    components.ConfigData,
+                    $"{basePath}/Scripts/Data/UnityObjects/CD_{name}.cs",
+                    () => GenerateConfigData(name, ns)),
+                new FileEntry(
+                    components.ValueObject,
+                    $"{basePath}/Scripts/Data/ValueObjects/{name}Config.cs",
+                    () => GenerateValueObject(name, ns)),
+                new FileEntry(
+                    components.Events,
+                    $"{basePath}/Scripts/Events/{name}Events.cs",
+                    () => GenerateEvents(name, ns)),
+                new FileEntry(
+                    components.Signals,
+                    $"{basePath}/Scripts/Events/{name}Signals.cs",
+                    () => GenerateSignals(name, ns)),
+                new FileEntry(
+                    components.RuntimeTests,
+                    $"{basePath}/Tests/Runtime/{name}Tests.cs",
+                    () => GenerateRuntimeTests(name, ns)),
+                new FileEntry(
+                    components.EditorTests,
+                    $"{basePath}/Tests/Editor/{name}EditorTests.cs",
+                    () => GenerateEditorTests(name, ns)),
+            };
         }
 
         private void CreateFile(string path, string content, GenerationContext context)
@@ -158,343 +147,291 @@ namespace Strada.Core.Editor.ModuleGenerator.Pipeline.Steps
             AssetDatabase.Refresh();
         }
 
-        private string GenerateModuleConfig(string name, string ns)
+        private string WrapInNamespace(string ns, string[] usings, Action<StringBuilder> writeBody)
         {
             var sb = new StringBuilder();
-            sb.AppendLine("using UnityEngine;");
-            sb.AppendLine("using Strada.Core.DI;");
-            sb.AppendLine("using Strada.Core.Modules;");
-            sb.AppendLine();
+            foreach (var u in usings)
+                sb.AppendLine(u);
+            if (usings.Length > 0)
+                sb.AppendLine();
             sb.AppendLine($"namespace {ns}");
             sb.AppendLine("{");
-            AddSummary(sb, $"Module configuration for {name}.", 1);
-            sb.AppendLine($"    [CreateAssetMenu(fileName = \"{name}ModuleConfig\", menuName = \"{name}/Module Config\")]");
-            sb.AppendLine($"    public class {name}ModuleConfig : ModuleConfig");
-            sb.AppendLine("    {");
-            sb.AppendLine("        protected override void Configure(IModuleBuilder builder)");
-            sb.AppendLine("        {");
-            sb.AppendLine($"            builder.RegisterService<I{name}Service, {name}Service>();");
-            sb.AppendLine($"            builder.RegisterController<{name}Controller>();");
-            sb.AppendLine("        }");
-            sb.AppendLine();
-            sb.AppendLine("        public override void Initialize(IServiceLocator services)");
-            sb.AppendLine("        {");
-            sb.AppendLine("            var container = services.Get<IContainer>();");
-            sb.AppendLine("        }");
-            sb.AppendLine();
-            sb.AppendLine("        public override void Shutdown()");
-            sb.AppendLine("        {");
-            sb.AppendLine("        }");
-            sb.AppendLine("    }");
+            writeBody(sb);
             sb.AppendLine("}");
             return sb.ToString();
+        }
+
+        private string GenerateModuleConfig(string name, string ns)
+        {
+            return WrapInNamespace(ns, new[] { "using UnityEngine;", "using Strada.Core.DI;", "using Strada.Core.Modules;" }, sb =>
+            {
+                AddSummary(sb, $"Module configuration for {name}.", 1);
+                sb.AppendLine($"    [CreateAssetMenu(fileName = \"{name}ModuleConfig\", menuName = \"{name}/Module Config\")]");
+                sb.AppendLine($"    public class {name}ModuleConfig : ModuleConfig");
+                sb.AppendLine("    {");
+                sb.AppendLine("        protected override void Configure(IModuleBuilder builder)");
+                sb.AppendLine("        {");
+                sb.AppendLine($"            builder.RegisterService<I{name}Service, {name}Service>();");
+                sb.AppendLine($"            builder.RegisterController<{name}Controller>();");
+                sb.AppendLine("        }");
+                sb.AppendLine();
+                sb.AppendLine("        public override void Initialize(IServiceLocator services)");
+                sb.AppendLine("        {");
+                sb.AppendLine("            var container = services.Get<IContainer>();");
+                sb.AppendLine("        }");
+                sb.AppendLine();
+                sb.AppendLine("        public override void Shutdown()");
+                sb.AppendLine("        {");
+                sb.AppendLine("        }");
+                sb.AppendLine("    }");
+            });
         }
 
         private string GenerateServiceInterface(string name, string ns)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine($"namespace {ns}");
-            sb.AppendLine("{");
-            AddSummary(sb, $"Service interface for {name} functionality.", 1);
-            sb.AppendLine($"    public interface I{name}Service");
-            sb.AppendLine("    {");
-            sb.AppendLine("        void Initialize();");
-            sb.AppendLine("    }");
-            sb.AppendLine("}");
-            return sb.ToString();
+            return WrapInNamespace(ns, Array.Empty<string>(), sb =>
+            {
+                AddSummary(sb, $"Service interface for {name} functionality.", 1);
+                sb.AppendLine($"    public interface I{name}Service");
+                sb.AppendLine("    {");
+                sb.AppendLine("        void Initialize();");
+                sb.AppendLine("    }");
+            });
         }
 
         private string GenerateService(string name, string ns, bool hasInterface)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine("using Strada.Core.DI.Attributes;");
-            sb.AppendLine("using Strada.Core.Communication;");
-            sb.AppendLine();
-            sb.AppendLine($"namespace {ns}");
-            sb.AppendLine("{");
-            AddSummary(sb, $"Service implementation for {name}.", 1);
             var iface = hasInterface ? $" : I{name}Service" : "";
-            sb.AppendLine($"    public class {name}Service{iface}");
-            sb.AppendLine("    {");
-            sb.AppendLine("        [Inject] private readonly EventBus _eventBus;");
-            sb.AppendLine();
-            sb.AppendLine("        public void Initialize()");
-            sb.AppendLine("        {");
-            sb.AppendLine("        }");
-            sb.AppendLine("    }");
-            sb.AppendLine("}");
-            return sb.ToString();
+            return WrapInNamespace(ns, new[] { "using Strada.Core.DI.Attributes;", "using Strada.Core.Communication;" }, sb =>
+            {
+                AddSummary(sb, $"Service implementation for {name}.", 1);
+                sb.AppendLine($"    public class {name}Service{iface}");
+                sb.AppendLine("    {");
+                sb.AppendLine("        [Inject] private readonly EventBus _eventBus;");
+                sb.AppendLine();
+                sb.AppendLine("        public void Initialize()");
+                sb.AppendLine("        {");
+                sb.AppendLine("        }");
+                sb.AppendLine("    }");
+            });
         }
 
         private string GenerateController(string name, string ns, bool hasServiceInterface)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine("using Strada.Core.DI.Attributes;");
-            sb.AppendLine("using Strada.Core.Communication;");
-            sb.AppendLine();
-            sb.AppendLine($"namespace {ns}");
-            sb.AppendLine("{");
-            AddSummary(sb, $"Controller for {name} functionality.", 1);
-            sb.AppendLine($"    public class {name}Controller");
-            sb.AppendLine("    {");
-            if (hasServiceInterface)
+            return WrapInNamespace(ns, new[] { "using Strada.Core.DI.Attributes;", "using Strada.Core.Communication;" }, sb =>
             {
-                sb.AppendLine($"        [Inject] private readonly I{name}Service _service;");
-            }
-            sb.AppendLine("        [Inject] private readonly EventBus _eventBus;");
-            sb.AppendLine();
-            sb.AppendLine("        public void Initialize()");
-            sb.AppendLine("        {");
-            sb.AppendLine("        }");
-            sb.AppendLine();
-            sb.AppendLine("        public void Tick(float deltaTime)");
-            sb.AppendLine("        {");
-            sb.AppendLine("        }");
-            sb.AppendLine("    }");
-            sb.AppendLine("}");
-            return sb.ToString();
+                AddSummary(sb, $"Controller for {name} functionality.", 1);
+                sb.AppendLine($"    public class {name}Controller");
+                sb.AppendLine("    {");
+                if (hasServiceInterface)
+                {
+                    sb.AppendLine($"        [Inject] private readonly I{name}Service _service;");
+                }
+                sb.AppendLine("        [Inject] private readonly EventBus _eventBus;");
+                sb.AppendLine();
+                sb.AppendLine("        public void Initialize()");
+                sb.AppendLine("        {");
+                sb.AppendLine("        }");
+                sb.AppendLine();
+                sb.AppendLine("        public void Tick(float deltaTime)");
+                sb.AppendLine("        {");
+                sb.AppendLine("        }");
+                sb.AppendLine("    }");
+            });
         }
 
         private string GenerateModel(string name, string ns)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine("using Strada.Core.Sync;");
-            sb.AppendLine();
-            sb.AppendLine($"namespace {ns}");
-            sb.AppendLine("{");
-            AddSummary(sb, $"Model for {name} state management.", 1);
-            sb.AppendLine($"    public class {name}Model");
-            sb.AppendLine("    {");
-            sb.AppendLine($"        public ReactiveProperty<int> Value {{ get; }} = new(0);");
-            sb.AppendLine();
-            sb.AppendLine("        public void Reset()");
-            sb.AppendLine("        {");
-            sb.AppendLine("            Value.Value = 0;");
-            sb.AppendLine("        }");
-            sb.AppendLine("    }");
-            sb.AppendLine("}");
-            return sb.ToString();
+            return WrapInNamespace(ns, new[] { "using Strada.Core.Sync;" }, sb =>
+            {
+                AddSummary(sb, $"Model for {name} state management.", 1);
+                sb.AppendLine($"    public class {name}Model");
+                sb.AppendLine("    {");
+                sb.AppendLine($"        public ReactiveProperty<int> Value {{ get; }} = new(0);");
+                sb.AppendLine();
+                sb.AppendLine("        public void Reset()");
+                sb.AppendLine("        {");
+                sb.AppendLine("            Value.Value = 0;");
+                sb.AppendLine("        }");
+                sb.AppendLine("    }");
+            });
         }
 
         private string GenerateView(string name, string ns)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine("using UnityEngine;");
-            sb.AppendLine("using Strada.Core.Patterns;");
-            sb.AppendLine();
-            sb.AppendLine($"namespace {ns}");
-            sb.AppendLine("{");
-            AddSummary(sb, $"View for {name} visual representation.", 1);
-            sb.AppendLine($"    public class {name}View : View");
-            sb.AppendLine("    {");
-            sb.AppendLine("        public override void Initialize()");
-            sb.AppendLine("        {");
-            sb.AppendLine("            base.Initialize();");
-            sb.AppendLine("        }");
-            sb.AppendLine();
-            sb.AppendLine("        protected override void OnShow()");
-            sb.AppendLine("        {");
-            sb.AppendLine("        }");
-            sb.AppendLine();
-            sb.AppendLine("        protected override void OnHide()");
-            sb.AppendLine("        {");
-            sb.AppendLine("        }");
-            sb.AppendLine("    }");
-            sb.AppendLine("}");
-            return sb.ToString();
+            return WrapInNamespace(ns, new[] { "using UnityEngine;", "using Strada.Core.Patterns;" }, sb =>
+            {
+                AddSummary(sb, $"View for {name} visual representation.", 1);
+                sb.AppendLine($"    public class {name}View : View");
+                sb.AppendLine("    {");
+                sb.AppendLine("        public override void Initialize()");
+                sb.AppendLine("        {");
+                sb.AppendLine("            base.Initialize();");
+                sb.AppendLine("        }");
+                sb.AppendLine();
+                sb.AppendLine("        protected override void OnShow()");
+                sb.AppendLine("        {");
+                sb.AppendLine("        }");
+                sb.AppendLine();
+                sb.AppendLine("        protected override void OnHide()");
+                sb.AppendLine("        {");
+                sb.AppendLine("        }");
+                sb.AppendLine("    }");
+            });
         }
 
         private string GenerateSystem(string name, string ns)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine("using Strada.Core.ECS;");
-            sb.AppendLine("using Strada.Core.ECS.Systems;");
-            sb.AppendLine();
-            sb.AppendLine($"namespace {ns}");
-            sb.AppendLine("{");
-            AddSummary(sb, $"ECS System for {name} processing.", 1);
-            sb.AppendLine("    [SystemOrder(0)]");
-            sb.AppendLine($"    public class {name}System : SystemBase");
-            sb.AppendLine("    {");
-            sb.AppendLine("        protected override void OnInitialize()");
-            sb.AppendLine("        {");
-            sb.AppendLine("        }");
-            sb.AppendLine();
-            sb.AppendLine("        protected override void OnUpdate(float deltaTime)");
-            sb.AppendLine("        {");
-            sb.AppendLine("        }");
-            sb.AppendLine();
-            sb.AppendLine("        protected override void OnDispose()");
-            sb.AppendLine("        {");
-            sb.AppendLine("        }");
-            sb.AppendLine("    }");
-            sb.AppendLine("}");
-            return sb.ToString();
+            return WrapInNamespace(ns, new[] { "using Strada.Core.ECS;", "using Strada.Core.ECS.Systems;" }, sb =>
+            {
+                AddSummary(sb, $"ECS System for {name} processing.", 1);
+                sb.AppendLine("    [SystemOrder(0)]");
+                sb.AppendLine($"    public class {name}System : SystemBase");
+                sb.AppendLine("    {");
+                sb.AppendLine("        protected override void OnInitialize()");
+                sb.AppendLine("        {");
+                sb.AppendLine("        }");
+                sb.AppendLine();
+                sb.AppendLine("        protected override void OnUpdate(float deltaTime)");
+                sb.AppendLine("        {");
+                sb.AppendLine("        }");
+                sb.AppendLine();
+                sb.AppendLine("        protected override void OnDispose()");
+                sb.AppendLine("        {");
+                sb.AppendLine("        }");
+                sb.AppendLine("    }");
+            });
         }
 
         private string GenerateComponent(string name, string ns)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine("using System.Runtime.InteropServices;");
-            sb.AppendLine("using Strada.Core.ECS;");
-            sb.AppendLine();
-            sb.AppendLine($"namespace {ns}");
-            sb.AppendLine("{");
-            AddSummary(sb, $"ECS Component for {name} data.", 1);
-            sb.AppendLine("    [StructLayout(LayoutKind.Sequential)]");
-            sb.AppendLine($"    public struct {name}Component : IComponent");
-            sb.AppendLine("    {");
-            sb.AppendLine("        public float Value;");
-            sb.AppendLine("    }");
-            sb.AppendLine("}");
-            return sb.ToString();
+            return WrapInNamespace(ns, new[] { "using System.Runtime.InteropServices;", "using Strada.Core.ECS;" }, sb =>
+            {
+                AddSummary(sb, $"ECS Component for {name} data.", 1);
+                sb.AppendLine("    [StructLayout(LayoutKind.Sequential)]");
+                sb.AppendLine($"    public struct {name}Component : IComponent");
+                sb.AppendLine("    {");
+                sb.AppendLine("        public float Value;");
+                sb.AppendLine("    }");
+            });
         }
 
         private string GenerateMediator(string name, string ns)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine("using Strada.Core.Sync;");
-            sb.AppendLine();
-            sb.AppendLine($"namespace {ns}");
-            sb.AppendLine("{");
-            AddSummary(sb, $"Entity mediator for {name} view binding.", 1);
-            sb.AppendLine($"    public class {name}Mediator : EntityMediator<{name}View>");
-            sb.AppendLine("    {");
-            sb.AppendLine("        protected override void OnBind()");
-            sb.AppendLine("        {");
-            sb.AppendLine("        }");
-            sb.AppendLine();
-            sb.AppendLine("        protected override void OnUnbind()");
-            sb.AppendLine("        {");
-            sb.AppendLine("        }");
-            sb.AppendLine("    }");
-            sb.AppendLine("}");
-            return sb.ToString();
+            return WrapInNamespace(ns, new[] { "using Strada.Core.Sync;" }, sb =>
+            {
+                AddSummary(sb, $"Entity mediator for {name} view binding.", 1);
+                sb.AppendLine($"    public class {name}Mediator : EntityMediator<{name}View>");
+                sb.AppendLine("    {");
+                sb.AppendLine("        protected override void OnBind()");
+                sb.AppendLine("        {");
+                sb.AppendLine("        }");
+                sb.AppendLine();
+                sb.AppendLine("        protected override void OnUnbind()");
+                sb.AppendLine("        {");
+                sb.AppendLine("        }");
+                sb.AppendLine("    }");
+            });
         }
 
         private string GenerateConfigData(string name, string ns)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine("using UnityEngine;");
-            sb.AppendLine("using Strada.Core.Data;");
-            sb.AppendLine();
-            sb.AppendLine($"namespace {ns}");
-            sb.AppendLine("{");
-            AddSummary(sb, $"Configuration data for {name}.", 1);
-            sb.AppendLine($"    [CreateAssetMenu(fileName = \"CD_{name}\", menuName = \"{name}/Config/{name}\")]");
-            sb.AppendLine($"    public class CD_{name} : ConfigData<{name}Config>");
-            sb.AppendLine("    {");
-            sb.AppendLine("    }");
-            sb.AppendLine("}");
-            return sb.ToString();
+            return WrapInNamespace(ns, new[] { "using UnityEngine;", "using Strada.Core.Data;" }, sb =>
+            {
+                AddSummary(sb, $"Configuration data for {name}.", 1);
+                sb.AppendLine($"    [CreateAssetMenu(fileName = \"CD_{name}\", menuName = \"{name}/Config/{name}\")]");
+                sb.AppendLine($"    public class CD_{name} : ConfigData<{name}Config>");
+                sb.AppendLine("    {");
+                sb.AppendLine("    }");
+            });
         }
 
         private string GenerateValueObject(string name, string ns)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine("using System;");
-            sb.AppendLine("using UnityEngine;");
-            sb.AppendLine();
-            sb.AppendLine($"namespace {ns}");
-            sb.AppendLine("{");
-            AddSummary(sb, $"Value object for {name} configuration.", 1);
-            sb.AppendLine("    [Serializable]");
-            sb.AppendLine($"    public class {name}Config");
-            sb.AppendLine("    {");
-            sb.AppendLine("        [SerializeField] private string _id;");
-            sb.AppendLine("        [SerializeField] private int _value;");
-            sb.AppendLine();
-            sb.AppendLine("        public string Id => _id;");
-            sb.AppendLine("        public int Value => _value;");
-            sb.AppendLine("    }");
-            sb.AppendLine("}");
-            return sb.ToString();
+            return WrapInNamespace(ns, new[] { "using System;", "using UnityEngine;" }, sb =>
+            {
+                AddSummary(sb, $"Value object for {name} configuration.", 1);
+                sb.AppendLine("    [Serializable]");
+                sb.AppendLine($"    public class {name}Config");
+                sb.AppendLine("    {");
+                sb.AppendLine("        [SerializeField] private string _id;");
+                sb.AppendLine("        [SerializeField] private int _value;");
+                sb.AppendLine();
+                sb.AppendLine("        public string Id => _id;");
+                sb.AppendLine("        public int Value => _value;");
+                sb.AppendLine("    }");
+            });
         }
 
         private string GenerateEvents(string name, string ns)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine($"namespace {ns}");
-            sb.AppendLine("{");
-            AddSummary(sb, $"Events for {name} state changes.", 1);
-            sb.AppendLine($"    public readonly struct {name}ChangedEvent");
-            sb.AppendLine("    {");
-            sb.AppendLine("        public readonly int Value;");
-            sb.AppendLine();
-            sb.AppendLine($"        public {name}ChangedEvent(int value)");
-            sb.AppendLine("        {");
-            sb.AppendLine("            Value = value;");
-            sb.AppendLine("        }");
-            sb.AppendLine("    }");
-            sb.AppendLine("}");
-            return sb.ToString();
+            return WrapInNamespace(ns, Array.Empty<string>(), sb =>
+            {
+                AddSummary(sb, $"Events for {name} state changes.", 1);
+                sb.AppendLine($"    public readonly struct {name}ChangedEvent");
+                sb.AppendLine("    {");
+                sb.AppendLine("        public readonly int Value;");
+                sb.AppendLine();
+                sb.AppendLine($"        public {name}ChangedEvent(int value)");
+                sb.AppendLine("        {");
+                sb.AppendLine("            Value = value;");
+                sb.AppendLine("        }");
+                sb.AppendLine("    }");
+            });
         }
 
         private string GenerateSignals(string name, string ns)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine("using Strada.Core.ECS;");
-            sb.AppendLine();
-            sb.AppendLine($"namespace {ns}");
-            sb.AppendLine("{");
-            AddSummary(sb, $"Signals for {name} actions.", 1);
-            sb.AppendLine($"    public struct {name}Signal");
-            sb.AppendLine("    {");
-            sb.AppendLine("        public Entity Entity;");
-            sb.AppendLine("    }");
-            sb.AppendLine("}");
-            return sb.ToString();
+            return WrapInNamespace(ns, new[] { "using Strada.Core.ECS;" }, sb =>
+            {
+                AddSummary(sb, $"Signals for {name} actions.", 1);
+                sb.AppendLine($"    public struct {name}Signal");
+                sb.AppendLine("    {");
+                sb.AppendLine("        public Entity Entity;");
+                sb.AppendLine("    }");
+            });
         }
 
         private string GenerateRuntimeTests(string name, string ns)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine("using NUnit.Framework;");
-            sb.AppendLine();
-            sb.AppendLine($"namespace {ns}.Tests");
-            sb.AppendLine("{");
-            sb.AppendLine("    [TestFixture]");
-            sb.AppendLine($"    public class {name}Tests");
-            sb.AppendLine("    {");
-            sb.AppendLine("        [SetUp]");
-            sb.AppendLine("        public void SetUp()");
-            sb.AppendLine("        {");
-            sb.AppendLine("        }");
-            sb.AppendLine();
-            sb.AppendLine("        [TearDown]");
-            sb.AppendLine("        public void TearDown()");
-            sb.AppendLine("        {");
-            sb.AppendLine("        }");
-            sb.AppendLine();
-            sb.AppendLine("        [Test]");
-            sb.AppendLine("        public void Example_Test()");
-            sb.AppendLine("        {");
-            sb.AppendLine("            Assert.Pass();");
-            sb.AppendLine("        }");
-            sb.AppendLine("    }");
-            sb.AppendLine("}");
-            return sb.ToString();
+            return WrapInNamespace($"{ns}.Tests", new[] { "using NUnit.Framework;" }, sb =>
+            {
+                sb.AppendLine("    [TestFixture]");
+                sb.AppendLine($"    public class {name}Tests");
+                sb.AppendLine("    {");
+                sb.AppendLine("        [SetUp]");
+                sb.AppendLine("        public void SetUp()");
+                sb.AppendLine("        {");
+                sb.AppendLine("        }");
+                sb.AppendLine();
+                sb.AppendLine("        [TearDown]");
+                sb.AppendLine("        public void TearDown()");
+                sb.AppendLine("        {");
+                sb.AppendLine("        }");
+                sb.AppendLine();
+                sb.AppendLine("        [Test]");
+                sb.AppendLine("        public void Example_Test()");
+                sb.AppendLine("        {");
+                sb.AppendLine("            Assert.Pass();");
+                sb.AppendLine("        }");
+                sb.AppendLine("    }");
+            });
         }
 
         private string GenerateEditorTests(string name, string ns)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine("using NUnit.Framework;");
-            sb.AppendLine("using UnityEditor;");
-            sb.AppendLine();
-            sb.AppendLine($"namespace {ns}.Tests");
-            sb.AppendLine("{");
-            sb.AppendLine("    [TestFixture]");
-            sb.AppendLine($"    public class {name}EditorTests");
-            sb.AppendLine("    {");
-            sb.AppendLine("        [Test]");
-            sb.AppendLine("        public void Editor_Test()");
-            sb.AppendLine("        {");
-            sb.AppendLine("            Assert.Pass();");
-            sb.AppendLine("        }");
-            sb.AppendLine("    }");
-            sb.AppendLine("}");
-            return sb.ToString();
+            return WrapInNamespace($"{ns}.Tests", new[] { "using NUnit.Framework;", "using UnityEditor;" }, sb =>
+            {
+                sb.AppendLine("    [TestFixture]");
+                sb.AppendLine($"    public class {name}EditorTests");
+                sb.AppendLine("    {");
+                sb.AppendLine("        [Test]");
+                sb.AppendLine("        public void Editor_Test()");
+                sb.AppendLine("        {");
+                sb.AppendLine("            Assert.Pass();");
+                sb.AppendLine("        }");
+                sb.AppendLine("    }");
+            });
         }
 
         private void AddSummary(StringBuilder sb, string summary, int indent)
@@ -505,6 +442,20 @@ namespace Strada.Core.Editor.ModuleGenerator.Pipeline.Steps
             sb.AppendLine($"{padding}/// <summary>");
             sb.AppendLine($"{padding}/// {summary}");
             sb.AppendLine($"{padding}/// </summary>");
+        }
+
+        private readonly struct FileEntry
+        {
+            public readonly bool Enabled;
+            public readonly string Path;
+            public readonly Func<string> ContentGenerator;
+
+            public FileEntry(bool enabled, string path, Func<string> contentGenerator)
+            {
+                Enabled = enabled;
+                Path = path;
+                ContentGenerator = contentGenerator;
+            }
         }
     }
 }
