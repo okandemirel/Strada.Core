@@ -74,12 +74,25 @@ namespace Strada.Core.ECS.Storage
 
         public T Get(int entityIndex)
         {
-            return _data[_sparse[entityIndex]];
+            if (entityIndex < 0 || entityIndex >= _sparse.Length)
+                throw new ArgumentOutOfRangeException(nameof(entityIndex), $"Entity index {entityIndex} is out of range [0, {_sparse.Length})");
+
+            int denseIndex = _sparse[entityIndex];
+            if (denseIndex < 0 || denseIndex >= _count)
+                throw new InvalidOperationException($"Entity {entityIndex} does not exist in sparse set");
+
+            return _data[denseIndex];
         }
 
         public ref T GetRef(int entityIndex)
         {
+            if (entityIndex < 0 || entityIndex >= _sparse.Length)
+                throw new ArgumentOutOfRangeException(nameof(entityIndex), $"Entity index {entityIndex} is out of range [0, {_sparse.Length})");
+
             int denseIndex = _sparse[entityIndex];
+            if (denseIndex < 0 || denseIndex >= _count)
+                throw new InvalidOperationException($"Entity {entityIndex} does not exist in sparse set");
+
             return ref ((T*)_data.GetUnsafePtr())[denseIndex];
         }
 
@@ -101,7 +114,14 @@ namespace Strada.Core.ECS.Storage
 
         public void Set(int entityIndex, T component)
         {
-            _data[_sparse[entityIndex]] = component;
+            if (entityIndex < 0 || entityIndex >= _sparse.Length)
+                throw new ArgumentOutOfRangeException(nameof(entityIndex), $"Entity index {entityIndex} is out of range [0, {_sparse.Length})");
+
+            int denseIndex = _sparse[entityIndex];
+            if (denseIndex < 0 || denseIndex >= _count)
+                throw new InvalidOperationException($"Entity {entityIndex} does not exist in sparse set");
+
+            _data[denseIndex] = component;
         }
 
         public int* GetDenseEntityPtr() => (int*)_dense.GetUnsafePtr();
@@ -172,11 +192,18 @@ namespace Strada.Core.ECS.Storage
             _count = 0;
         }
 
+        private const int MaxSparseCapacity = 1_048_576;
+
         private void EnsureSparseCapacity(int required)
         {
             if (required <= _sparse.Length) return;
 
+            if (required > MaxSparseCapacity)
+                throw new InvalidOperationException(
+                    $"Entity index requires sparse capacity {required} which exceeds maximum {MaxSparseCapacity}");
+
             int newCapacity = Math.Max(required, _sparse.Length * 3 / 2);
+            if (newCapacity > MaxSparseCapacity) newCapacity = MaxSparseCapacity;
             var newSparse = new NativeArray<int>(newCapacity, _allocator);
 
             NativeArray<int>.Copy(_sparse, newSparse, _sparse.Length);

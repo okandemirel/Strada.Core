@@ -41,7 +41,7 @@ namespace Strada.Core.DI
         private readonly int _maxTypeId;
         private readonly Type[] _registeredTypes;
         private int _registeredCount;
-        private bool _disposed;
+        private volatile bool _disposed;
 
         internal Container(Dictionary<Type, Registration> registrations, bool autoRegisterSelf = false)
         {
@@ -83,11 +83,7 @@ namespace Strada.Core.DI
             {
                 var index = _typeIdToIndex[typeId];
                 if (index >= 0)
-                {
-                    // Singleton uses lock-free Interlocked.CompareExchange internally
-                    // Only Scoped needs locking for scope-specific instance tracking
                     return (T)_factories[index](this);
-                }
             }
             ThrowNotRegistered<T>();
             return default;
@@ -101,13 +97,6 @@ namespace Strada.Core.DI
         private void ThrowDisposed() =>
             throw new ObjectDisposedException(nameof(Container));
 
-        /// <summary>
-        /// Resolves an instance of the specified service type using a Type parameter.
-        /// </summary>
-        /// <param name="type">The service type to resolve.</param>
-        /// <returns>An instance of the requested service type.</returns>
-        /// <exception cref="InvalidOperationException">Thrown when the type is not registered.</exception>
-        /// <exception cref="ObjectDisposedException">Thrown when the container has been disposed.</exception>
         public object Resolve(Type type)
         {
             if (_disposed) ThrowDisposed();
@@ -126,7 +115,6 @@ namespace Strada.Core.DI
             if (typeId <= _maxTypeId && _typeIdToIndex[typeId] >= 0)
             {
                 var index = _typeIdToIndex[typeId];
-                // Singleton uses lock-free Interlocked.CompareExchange internally
                 instance = (T)_factories[index](this);
                 return true;
             }
@@ -256,9 +244,9 @@ namespace Strada.Core.DI
             {
                 var reg = kvp.Value;
                 int index = typeIdMap[TypeRegistry.GetId(kvp.Key)];
-                
+
                 _lifetimes[index] = reg.Lifetime;
-                
+
                 Func<IIndexResolver, object> rawFactory;
 
                 if (reg.Instance != null)
@@ -283,11 +271,11 @@ namespace Strada.Core.DI
                 {
                     _factories[index] = _ =>
                     {
-                        var instance = _singletons[index];
+                        var instance = Volatile.Read(ref _singletons[index]);
                         if (instance != null) return instance;
-                        
+
                         instance = rawFactory(this);
-                        
+
                         var prev = Interlocked.CompareExchange(ref _singletons[index], instance, null);
                         if (prev != null)
                         {
@@ -299,7 +287,7 @@ namespace Strada.Core.DI
                         {
                             lock (_lock) _disposalStack.Push(disposable);
                         }
-                        
+
                         return instance;
                     };
                 }
@@ -386,12 +374,12 @@ namespace Strada.Core.DI
             if (reg.Lifetime == Lifetime.Singleton)
             {
                 int index = typeIdMap[TypeRegistry.GetId(serviceType)];
-                
+
                 return Expression.Convert(
                     Expression.Call(resolverParam, typeof(IIndexResolver).GetMethod(nameof(IIndexResolver.ResolveByIndex)), Expression.Constant(index)),
                     serviceType);
             }
-            
+
             if (reg.Factory != null || reg.Lifetime == Lifetime.Scoped || reg.Lifetime == Lifetime.Transient)
             {
                  int index = typeIdMap[TypeRegistry.GetId(serviceType)];
@@ -399,7 +387,7 @@ namespace Strada.Core.DI
                     Expression.Call(resolverParam, typeof(IIndexResolver).GetMethod(nameof(IIndexResolver.ResolveByIndex)), Expression.Constant(index)),
                     serviceType);
             }
-            
+
             int idx = typeIdMap[TypeRegistry.GetId(serviceType)];
             return Expression.Convert(
                     Expression.Call(resolverParam, typeof(IIndexResolver).GetMethod(nameof(IIndexResolver.ResolveByIndex)), Expression.Constant(idx)),

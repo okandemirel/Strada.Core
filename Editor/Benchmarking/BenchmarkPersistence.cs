@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using UnityEngine;
@@ -191,10 +192,16 @@ namespace Strada.Core.Editor.Benchmarking
         
         public BenchmarkSession ToSession()
         {
+            if (!DateTime.TryParseExact(timestamp, "o", CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var parsedTimestamp))
+            {
+                Debug.LogWarning($"[BenchmarkPersistence] Invalid timestamp format '{timestamp}', using DateTime.MinValue");
+                parsedTimestamp = DateTime.MinValue;
+            }
+
             var session = new BenchmarkSession
             {
                 SessionId = sessionId,
-                Timestamp = DateTime.Parse(timestamp),
+                Timestamp = parsedTimestamp,
                 UnityVersion = unityVersion,
                 Platform = platform
             };
@@ -246,11 +253,17 @@ namespace Strada.Core.Editor.Benchmarking
         
         public BenchmarkResult ToResult()
         {
+            if (!DateTime.TryParseExact(timestamp, "o", CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var parsedTimestamp))
+            {
+                Debug.LogWarning($"[BenchmarkPersistence] Invalid result timestamp format '{timestamp}', using DateTime.MinValue");
+                parsedTimestamp = DateTime.MinValue;
+            }
+
             return new BenchmarkResult
             {
                 Name = name,
                 Category = category,
-                Timestamp = DateTime.Parse(timestamp),
+                Timestamp = parsedTimestamp,
                 Iterations = iterations,
                 TotalTimeMs = totalTimeMs,
                 AverageTimeMs = averageTimeMs,

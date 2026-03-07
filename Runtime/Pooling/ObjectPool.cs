@@ -7,6 +7,7 @@ namespace Strada.Core.Pooling
     public sealed class ObjectPool<T> : IDisposable where T : class
     {
         private readonly Stack<T> _available;
+        private readonly HashSet<T> _inPool;
         private readonly Func<T> _factory;
         private readonly Action<T> _onSpawn;
         private readonly Action<T> _onDespawn;
@@ -28,6 +29,7 @@ namespace Strada.Core.Pooling
             _onDespawn = onDespawn;
             _maxSize = maxSize;
             _available = new Stack<T>(Math.Max(initialSize, 16));
+            _inPool = new HashSet<T>(ReferenceEqualityComparer<T>.Instance);
 
             Prewarm(initialSize);
         }
@@ -40,6 +42,7 @@ namespace Strada.Core.Pooling
             if (_available.Count > 0)
             {
                 instance = _available.Pop();
+                _inPool.Remove(instance);
             }
             else
             {
@@ -70,7 +73,11 @@ namespace Strada.Core.Pooling
             _onDespawn?.Invoke(instance);
 
             if (_available.Count < _maxSize)
+            {
+                if (!_inPool.Add(instance))
+                    return;
                 _available.Push(instance);
+            }
         }
 
         public void Prewarm(int count)
@@ -95,6 +102,7 @@ namespace Strada.Core.Pooling
                 if (instance is IDisposable d)
                     d.Dispose();
             }
+            _inPool.Clear();
             _totalCreated = 0;
         }
 
@@ -104,5 +112,13 @@ namespace Strada.Core.Pooling
             _disposed = true;
             Clear();
         }
+    }
+
+    internal sealed class ReferenceEqualityComparer<T> : IEqualityComparer<T> where T : class
+    {
+        public static readonly ReferenceEqualityComparer<T> Instance = new();
+
+        public bool Equals(T x, T y) => ReferenceEquals(x, y);
+        public int GetHashCode(T obj) => RuntimeHelpers.GetHashCode(obj);
     }
 }

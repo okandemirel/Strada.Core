@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using Strada.Core.ECS;
 using UnityEditor;
 using UnityEngine;
@@ -59,6 +60,10 @@ namespace Strada.Core.Editor.CodeGen
                         int order = attr?.Order ?? 0;
                         result.Add(new SystemInfo(type, order));
                     }
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning($"[Strada] Failed to scan assembly '{assembly.GetName().Name}': {e.Message}");
                 }
                 catch (ReflectionTypeLoadException ex)
                 {
@@ -127,6 +132,7 @@ namespace Strada.Core.Editor.CodeGen
             foreach (var s in systems)
             {
                 var typeName = GetFullTypeName(s.Type);
+                if (!IsValidTypeName(typeName)) continue;
                 sb.AppendLine($"            typeof({typeName}),");
             }
 
@@ -138,6 +144,7 @@ namespace Strada.Core.Editor.CodeGen
             foreach (var s in systems)
             {
                 var typeName = GetFullTypeName(s.Type);
+                if (!IsValidTypeName(typeName)) continue;
                 sb.AppendLine($"            builder.Register<{typeName}>(Lifetime.Singleton);");
             }
 
@@ -150,6 +157,7 @@ namespace Strada.Core.Editor.CodeGen
             foreach (var s in systems)
             {
                 var typeName = GetFullTypeName(s.Type);
+                if (!IsValidTypeName(typeName)) continue;
                 sb.AppendLine($"            systems.Add(container.Resolve<{typeName}>());");
             }
 
@@ -159,6 +167,13 @@ namespace Strada.Core.Editor.CodeGen
             sb.AppendLine("}");
 
             return sb.ToString();
+        }
+
+        private static readonly Regex ValidTypeNameRegex = new Regex(@"^[\w.<>,\s]+$", RegexOptions.Compiled);
+
+        private static bool IsValidTypeName(string typeName)
+        {
+            return !string.IsNullOrEmpty(typeName) && ValidTypeNameRegex.IsMatch(typeName);
         }
 
         private static string GetFullTypeName(Type type)

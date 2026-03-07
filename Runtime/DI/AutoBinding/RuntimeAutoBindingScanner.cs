@@ -62,8 +62,9 @@ namespace Strada.Core.DI.AutoBinding
                 {
                     ScanAssembly(assembly, entries);
                 }
-                catch (ReflectionTypeLoadException)
+                catch (ReflectionTypeLoadException e)
                 {
+                    UnityEngine.Debug.LogWarning($"[Strada] Failed to load types from assembly '{name}': {e.Message}");
                 }
             }
 
