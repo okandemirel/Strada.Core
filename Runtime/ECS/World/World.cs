@@ -6,7 +6,7 @@ namespace Strada.Core.ECS.World
 {
     public sealed class World : IDisposable
     {
-        private static World _current;
+        private static volatile World _current;
 
         private readonly EntityManager _entities;
         private readonly SystemScheduler _scheduler;
@@ -21,7 +21,7 @@ namespace Strada.Core.ECS.World
         public static World Current
         {
             get => _current;
-            set => _current = value;
+            internal set => _current = value;
         }
 
         /// <summary>
