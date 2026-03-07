@@ -248,6 +248,10 @@ score.Subscribe(handler);
 score.Unsubscribe(handler);
 ```
 
+### Thread Safety
+
+ReactiveProperty uses snapshot iteration (`ToArray()`) when notifying handlers, making it safe to subscribe/unsubscribe from within a handler callback. ReactiveCollection also supports unsubscription via `OffAdd()`, `OffRemove()`, and `OffClear()` methods.
+
 ### Change Detection
 
 ReactiveProperty only notifies when value actually changes:
@@ -738,6 +742,11 @@ void Clear()
 void OnAdd(Action<T> handler)
 void OnRemove(Action<T> handler)
 void OnClear(Action handler)
+
+// Unsubscribe methods
+void OffAdd(Action<T> handler)
+void OffRemove(Action<T> handler)
+void OffClear(Action handler)
 
 void Dispose()
 ```

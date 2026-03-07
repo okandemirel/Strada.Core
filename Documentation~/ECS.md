@@ -233,6 +233,10 @@ public class MovementSystem : SystemBase
 }
 ```
 
+### System Safety
+
+`SystemBase.OnUpdate` is wrapped in exception isolation — if an update throws, the error is logged but does not crash other systems. Entity validation (`Exists()` checks) and overflow guards are built into `EntityManager` operations.
+
 ### Generic System (Auto-Query)
 
 ```csharp
@@ -447,6 +451,7 @@ Benefits:
 - O(1) add/remove/has operations
 - Cache-friendly iteration (dense array)
 - No entity fragmentation
+- Bounds checking enabled with `ENABLE_UNITY_COLLECTIONS_CHECKS`
 
 ---
 
