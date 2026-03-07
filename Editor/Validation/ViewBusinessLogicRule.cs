@@ -61,8 +61,6 @@ namespace Strada.Core.Editor.Validation
             "Unbind"   // Data binding
         };
 
-        private const int MaxMethodComplexity = 10;
-
         public bool AppliesTo(Type type)
         {
             if (type == null || type.IsInterface || type.IsAbstract)
@@ -70,7 +68,6 @@ namespace Strada.Core.Editor.Validation
 
             return typeof(View).IsAssignableFrom(type);
         }
-
 
         public IEnumerable<ValidationIssue> Validate(Type type)
         {

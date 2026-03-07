@@ -27,11 +27,6 @@ namespace Strada.Core.Editor.Validation
 
         private static readonly string[] UnityTypeNames = new[]
         {
-            "MonoBehaviour",
-            "Component",
-            "Transform",
-            "GameObject",
-            "ScriptableObject",
             "Rigidbody",
             "Rigidbody2D",
             "Collider",

@@ -49,13 +49,8 @@ namespace Strada.Core.Editor.Validation
 
         public bool UnregisterRule(string ruleId)
         {
-            var rule = _rules.FirstOrDefault(r => r.RuleId == ruleId);
-            if (rule == null)
-                return false;
-
-            return _rules.Remove(rule);
+            return _rules.RemoveAll(r => r.RuleId == ruleId) > 0;
         }
-
 
         public IEnumerable<ValidationIssue> ValidateType(Type type)
         {

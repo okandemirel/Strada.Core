@@ -80,7 +80,6 @@ namespace Strada.Core.Editor.Validation
         bool AppliesTo(Type type);
     }
 
-
     /// <summary>
     /// Interface for the architecture validator service.
     /// </summary>
