@@ -43,9 +43,6 @@ namespace Strada.Core.Pooling
             {
                 instance = _available.Pop();
                 _inPool.Remove(instance);
-
-                if (instance is IPoolable reused)
-                    reused.OnDespawn();
             }
             else
             {

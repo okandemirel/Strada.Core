@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using Strada.Core.DI.Attributes;
 
@@ -17,8 +16,10 @@ namespace Strada.Core.DI.AutoBinding
 
     public static class RuntimeAutoBindingScanner
     {
-        private static List<AutoBindingEntry> _cachedEntries;
-        private static string _cachedKey;
+        private static readonly string[] DefaultIncludePatterns = { "Strada.*", "Game.*", "Assembly-CSharp" };
+        private static readonly string[] DefaultExcludePatterns = { "Unity.*", "System.*", "Mono.*", "mscorlib", "*.Tests", "*.Editor" };
+
+        private static CacheSnapshot _cache;
         private static readonly object _lock = new();
 
         public static void RegisterAll(
@@ -40,15 +41,22 @@ namespace Strada.Core.DI.AutoBinding
             IReadOnlyList<string> includePatterns = null,
             IReadOnlyList<string> excludePatterns = null)
         {
-            includePatterns ??= new[] { "Strada.*", "Game.*", "Assembly-CSharp" };
-            excludePatterns ??= new[] { "Unity.*", "System.*", "Mono.*", "mscorlib", "*.Tests", "*.Editor" };
+            includePatterns ??= DefaultIncludePatterns;
+            excludePatterns ??= DefaultExcludePatterns;
 
-            var key = BuildCacheKey(includePatterns, excludePatterns);
+            var cached = _cache;
+            if (MatchesCachedPatterns(cached, includePatterns, excludePatterns))
+            {
+                return cached.Entries;
+            }
 
             lock (_lock)
             {
-                if (_cachedEntries != null && _cachedKey == key)
-                    return _cachedEntries;
+                cached = _cache;
+                if (MatchesCachedPatterns(cached, includePatterns, excludePatterns))
+                {
+                    return cached.Entries;
+                }
             }
 
             var entries = new List<AutoBindingEntry>();
@@ -87,8 +95,7 @@ namespace Strada.Core.DI.AutoBinding
 
             lock (_lock)
             {
-                _cachedEntries = entries;
-                _cachedKey = key;
+                _cache = new CacheSnapshot(CopyPatterns(includePatterns), CopyPatterns(excludePatterns), entries);
             }
 
             return entries;
@@ -212,27 +219,62 @@ namespace Strada.Core.DI.AutoBinding
             return name.Equals(pattern, StringComparison.OrdinalIgnoreCase);
         }
 
-        private static string BuildCacheKey(IReadOnlyList<string> includePatterns, IReadOnlyList<string> excludePatterns)
+        private static bool MatchesCachedPatterns(CacheSnapshot cached, IReadOnlyList<string> includePatterns, IReadOnlyList<string> excludePatterns)
         {
-            var includes = includePatterns.OrderBy(p => p, StringComparer.Ordinal);
-            var excludes = excludePatterns.OrderBy(p => p, StringComparer.Ordinal);
-            return string.Join("|", includes) + "||" + string.Join("|", excludes);
+            return cached != null &&
+                   PatternListsEqual(cached.IncludePatterns, includePatterns) &&
+                   PatternListsEqual(cached.ExcludePatterns, excludePatterns);
+        }
+
+        private static bool PatternListsEqual(IReadOnlyList<string> cachedPatterns, IReadOnlyList<string> patterns)
+        {
+            if (ReferenceEquals(cachedPatterns, patterns))
+                return true;
+
+            if (cachedPatterns == null || patterns == null || cachedPatterns.Count != patterns.Count)
+                return false;
+
+            for (int i = 0; i < cachedPatterns.Count; i++)
+            {
+                if (!string.Equals(cachedPatterns[i], patterns[i], StringComparison.Ordinal))
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static string[] CopyPatterns(IReadOnlyList<string> patterns)
+        {
+            var copy = new string[patterns.Count];
+            for (int i = 0; i < patterns.Count; i++)
+                copy[i] = patterns[i];
+            return copy;
         }
 
         public static void ClearCache()
         {
             lock (_lock)
             {
-                _cachedEntries = null;
-                _cachedKey = null;
+                _cache = null;
             }
         }
 
         public static int GetCachedCount()
         {
-            lock (_lock)
+            return _cache?.Entries.Count ?? 0;
+        }
+
+        private sealed class CacheSnapshot
+        {
+            public readonly string[] IncludePatterns;
+            public readonly string[] ExcludePatterns;
+            public readonly List<AutoBindingEntry> Entries;
+
+            public CacheSnapshot(string[] includePatterns, string[] excludePatterns, List<AutoBindingEntry> entries)
             {
-                return _cachedEntries?.Count ?? 0;
+                IncludePatterns = includePatterns;
+                ExcludePatterns = excludePatterns;
+                Entries = entries;
             }
         }
     }
