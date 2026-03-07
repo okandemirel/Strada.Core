@@ -99,10 +99,7 @@ namespace Strada.Core.ECS.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void DestroyEntity(Entity entity)
         {
-            if (!IsActiveIndex(entity.Index))
-                return;
-
-            if (_versions[entity.Index] != entity.Version)
+            if (!Exists(entity))
                 return;
 
             _store.RemoveEntity(entity.Index);
@@ -230,8 +227,6 @@ namespace Strada.Core.ECS.Core
         /// Gets all active entity indices. Allocates a managed list for compatibility.
         /// For performance-critical code, use GetActiveEntitiesNonAlloc instead.
         /// </summary>
-
-
         public IEnumerable<int> GetAllEntities()
         {
             var result = new List<int>(_entityCount);
@@ -354,11 +349,7 @@ namespace Strada.Core.ECS.Core
             }
             activeIndices = activeList.ToArray();
 
-            versions = new int[_versions.Length];
-            for (int i = 0; i < _versions.Length; i++)
-            {
-                versions[i] = _versions[i];
-            }
+            versions = _versions.ToArray();
         }
     }
 }
