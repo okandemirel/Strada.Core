@@ -119,22 +119,34 @@ namespace Strada.Core.Patterns
         public void OnUpdate(float deltaTime)
         {
             for (int i = 0; i < _tickables.Count; i++)
-                _tickables[i].Tick(deltaTime);
+            {
+                try { _tickables[i].Tick(deltaTime); }
+                catch (Exception ex) { UnityEngine.Debug.LogError($"Exception in pattern update: {ex}"); }
+            }
         }
 
         public void OnFixedUpdate(float fixedDeltaTime)
         {
             for (int i = 0; i < _fixedControllers.Count; i++)
-                _fixedControllers[i].FixedTick(fixedDeltaTime);
+            {
+                try { _fixedControllers[i].FixedTick(fixedDeltaTime); }
+                catch (Exception ex) { UnityEngine.Debug.LogError($"Exception in pattern update: {ex}"); }
+            }
 
             for (int i = 0; i < _fixedTickables.Count; i++)
-                _fixedTickables[i].FixedTick(fixedDeltaTime);
+            {
+                try { _fixedTickables[i].FixedTick(fixedDeltaTime); }
+                catch (Exception ex) { UnityEngine.Debug.LogError($"Exception in pattern update: {ex}"); }
+            }
         }
 
         public void OnLateUpdate(float deltaTime)
         {
             for (int i = 0; i < _lateTickables.Count; i++)
-                _lateTickables[i].LateTick(deltaTime);
+            {
+                try { _lateTickables[i].LateTick(deltaTime); }
+                catch (Exception ex) { UnityEngine.Debug.LogError($"Exception in pattern update: {ex}"); }
+            }
         }
 
         /// <summary>

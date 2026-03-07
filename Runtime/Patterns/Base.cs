@@ -32,6 +32,7 @@ namespace Strada.Core.Patterns
         [Inject]
         public void Construct(IContainer container)
         {
+            if (Container != null) return;
             Container = container;
             container.TryResolve(out World world);
             World = world;
