@@ -22,14 +22,7 @@ namespace Strada.Core.Sync
 
         public ReactiveProperty(T initialValue) => _value = initialValue;
 
-        /// <summary>
-        /// Gets the number of active subscribers to this property.
-        /// </summary>
         public int SubscriberCount => _handlers.Count;
-
-        /// <summary>
-        /// Gets whether this property has any active subscribers.
-        /// </summary>
         public bool HasSubscribers => _handlers.Count > 0;
 
         public T Value

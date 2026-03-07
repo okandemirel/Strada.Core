@@ -5,18 +5,11 @@ using Strada.Core.ECS.Core;
 
 namespace Strada.Core.Sync
 {
-    /// <summary>
-    /// Represents the synchronization state of a component binding.
-    /// </summary>
     public enum BindingSyncState
     {
-        /// <summary>Binding has not been synced yet.</summary>
         NotSynced,
-        /// <summary>Binding is in sync with ECS data.</summary>
         Synced,
-        /// <summary>Binding encountered an error during sync.</summary>
         Error,
-        /// <summary>Entity no longer exists.</summary>
         EntityDestroyed
     }
 
@@ -50,7 +43,6 @@ namespace Strada.Core.Sync
             _entity = entity;
             _selector = selector;
             _onChanged = onChanged;
-            _setter = null;
 
             if (_entities.HasComponent<TComponent>(_entity))
             {
