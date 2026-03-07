@@ -13,14 +13,18 @@ namespace Strada.Core.Editor.Windows
         private const string PackageJsonPath = "Packages/com.strada.core/package.json";
 
         private static readonly Vector2 WindowSize = new(420, 520);
+        private static readonly Color SeparatorColor = new(0.5f, 0.5f, 0.5f, 0.3f);
 
         private string _version = "1.0.0-alpha.1";
         private string _unityVersion = "6000.0+";
         private Vector2 _scrollPosition;
         private GUIStyle _headerStyle;
+        private GUIStyle _subtitleStyle;
+        private GUIStyle _versionBoxStyle;
         private GUIStyle _sectionStyle;
         private GUIStyle _linkStyle;
         private GUIStyle _featureStyle;
+        private GUIStyle _copyrightStyle;
         private bool _stylesInitialized;
 
         [MenuItem("Strada/About Strada", priority = 1000)]
@@ -80,6 +84,21 @@ namespace Strada.Core.Editor.Windows
                 margin = new RectOffset(15, 0, 1, 1)
             };
 
+            _subtitleStyle = new GUIStyle(EditorStyles.centeredGreyMiniLabel) { fontSize = 11 };
+
+            _versionBoxStyle = new GUIStyle(EditorStyles.helpBox)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 12,
+                fontStyle = FontStyle.Bold,
+                padding = new RectOffset(20, 20, 8, 8)
+            };
+
+            _copyrightStyle = new GUIStyle(EditorStyles.centeredGreyMiniLabel)
+            {
+                fontSize = 10
+            };
+
             _stylesInitialized = true;
         }
 
@@ -106,8 +125,7 @@ namespace Strada.Core.Editor.Windows
             EditorGUILayout.LabelField("Strada Framework", _headerStyle);
             EditorGUILayout.Space(5);
 
-            var subtitleStyle = new GUIStyle(EditorStyles.centeredGreyMiniLabel) { fontSize = 11 };
-            EditorGUILayout.LabelField("Unified MVCS + ECS Architecture for Unity", subtitleStyle);
+            EditorGUILayout.LabelField("Unified MVCS + ECS Architecture for Unity", _subtitleStyle);
 
             EditorGUILayout.Space(10);
             DrawSeparator();
@@ -120,14 +138,7 @@ namespace Strada.Core.Editor.Windows
             EditorGUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
 
-            var versionBox = new GUIStyle(EditorStyles.helpBox)
-            {
-                alignment = TextAnchor.MiddleCenter,
-                fontSize = 12,
-                fontStyle = FontStyle.Bold,
-                padding = new RectOffset(20, 20, 8, 8)
-            };
-            GUILayout.Box($"Version {_version}", versionBox);
+            GUILayout.Box($"Version {_version}", _versionBoxStyle);
 
             GUILayout.FlexibleSpace();
             EditorGUILayout.EndHorizontal();
@@ -205,11 +216,13 @@ namespace Strada.Core.Editor.Windows
 
         private bool DrawLink(string text)
         {
-            var rect = GUILayoutUtility.GetRect(new GUIContent($"  \u2192 {text}"), _linkStyle);
+            var label = $"  \u2192 {text}";
+            var content = new GUIContent(label);
+            var rect = GUILayoutUtility.GetRect(content, _linkStyle);
             EditorGUIUtility.AddCursorRect(rect, MouseCursor.Link);
 
             if (Event.current.type == EventType.Repaint)
-                _linkStyle.Draw(rect, $"  \u2192 {text}", rect.Contains(Event.current.mousePosition), false, false, false);
+                _linkStyle.Draw(rect, label, rect.Contains(Event.current.mousePosition), false, false, false);
 
             return Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition);
         }
@@ -230,32 +243,20 @@ namespace Strada.Core.Editor.Windows
         {
             EditorGUILayout.LabelField("Framework Statistics", _sectionStyle);
 
-            DrawStatItem("Public Types", "552+");
-            DrawStatItem("Test Cases", "324+");
-            DrawStatItem("Documentation", "5,000+ lines");
+            DrawRequirementItem("Public Types", "552+");
+            DrawRequirementItem("Test Cases", "324+");
+            DrawRequirementItem("Documentation", "5,000+ lines");
 
             EditorGUILayout.Space(5);
             DrawSeparator();
-        }
-
-        private void DrawStatItem(string label, string value)
-        {
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.Label($"  {label}:", _featureStyle, GUILayout.Width(120));
-            GUILayout.Label(value, EditorStyles.label);
-            EditorGUILayout.EndHorizontal();
         }
 
         private void DrawFooter()
         {
             EditorGUILayout.Space(10);
 
-            var copyrightStyle = new GUIStyle(EditorStyles.centeredGreyMiniLabel)
-            {
-                fontSize = 10
-            };
-            EditorGUILayout.LabelField("\u00a9 2025 Strada Framework Team", copyrightStyle);
-            EditorGUILayout.LabelField("All rights reserved", copyrightStyle);
+            EditorGUILayout.LabelField("\u00a9 2025 Strada Framework Team", _copyrightStyle);
+            EditorGUILayout.LabelField("All rights reserved", _copyrightStyle);
 
             EditorGUILayout.Space(10);
         }
@@ -266,7 +267,7 @@ namespace Strada.Core.Editor.Windows
             var rect = EditorGUILayout.GetControlRect(false, 1);
             rect.x += 10;
             rect.width -= 20;
-            EditorGUI.DrawRect(rect, new Color(0.5f, 0.5f, 0.5f, 0.3f));
+            EditorGUI.DrawRect(rect, SeparatorColor);
             EditorGUILayout.Space(2);
         }
     }
