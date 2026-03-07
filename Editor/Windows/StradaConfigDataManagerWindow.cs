@@ -34,6 +34,10 @@ namespace Strada.Core.Editor.Windows
         private string[] _availableConfigTypes;
         private Type[] _configTypeList;
 
+        private GUIStyle _configNameStyle;
+        private GUIStyle _configNameErrorStyle;
+        private bool _stylesInitialized;
+
         public enum ConfigCategory
         {
             All,
@@ -115,8 +119,21 @@ namespace Strada.Core.Editor.Windows
         }
 
 
+        private void InitializeStyles()
+        {
+            if (_stylesInitialized) return;
+            _configNameStyle = new GUIStyle(EditorStyles.linkLabel);
+            _configNameErrorStyle = new GUIStyle(EditorStyles.linkLabel)
+            {
+                normal = { textColor = Color.red }
+            };
+            _stylesInitialized = true;
+        }
+
         private void OnGUI()
         {
+            InitializeStyles();
+
             if (_needsRefresh)
             {
                 RefreshConfigList();
@@ -143,37 +160,21 @@ namespace Strada.Core.Editor.Windows
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
 
             GUILayout.Label("Name:", GUILayout.Width(40));
-            var newSearch = EditorGUILayout.TextField(_searchFilter, EditorStyles.toolbarSearchField, GUILayout.Width(150));
-            if (newSearch != _searchFilter)
-            {
-                _searchFilter = newSearch;
-            }
+            _searchFilter = EditorGUILayout.TextField(_searchFilter, EditorStyles.toolbarSearchField, GUILayout.Width(150));
 
             GUILayout.Space(5);
 
             GUILayout.Label("Type:", GUILayout.Width(35));
-            var newTypeFilter = EditorGUILayout.TextField(_typeFilter, EditorStyles.toolbarSearchField, GUILayout.Width(120));
-            if (newTypeFilter != _typeFilter)
-            {
-                _typeFilter = newTypeFilter;
-            }
+            _typeFilter = EditorGUILayout.TextField(_typeFilter, EditorStyles.toolbarSearchField, GUILayout.Width(120));
 
             GUILayout.Space(10);
 
             GUILayout.Label("Category:", GUILayout.Width(60));
-            var newCategory = (ConfigCategory)EditorGUILayout.EnumPopup(_selectedCategory, EditorStyles.toolbarPopup, GUILayout.Width(100));
-            if (newCategory != _selectedCategory)
-            {
-                _selectedCategory = newCategory;
-            }
+            _selectedCategory = (ConfigCategory)EditorGUILayout.EnumPopup(_selectedCategory, EditorStyles.toolbarPopup, GUILayout.Width(100));
 
             GUILayout.FlexibleSpace();
 
-            var newShowErrors = GUILayout.Toggle(_showValidationErrors, "Show Errors Only", EditorStyles.toolbarButton, GUILayout.Width(100));
-            if (newShowErrors != _showValidationErrors)
-            {
-                _showValidationErrors = newShowErrors;
-            }
+            _showValidationErrors = GUILayout.Toggle(_showValidationErrors, "Show Errors Only", EditorStyles.toolbarButton, GUILayout.Width(100));
 
             GUILayout.Space(5);
 
@@ -475,12 +476,14 @@ namespace Strada.Core.Editor.Windows
             if (_showValidationErrors && !hasError)
                 return;
 
+            var isSelected = _selectedConfigs.Contains(config);
+
             var bgColor = GUI.backgroundColor;
             if (hasError)
             {
                 GUI.backgroundColor = new Color(1f, 0.5f, 0.5f, 0.3f);
             }
-            else if (_selectedConfigs.Contains(config))
+            else if (isSelected)
             {
                 GUI.backgroundColor = new Color(0.5f, 0.7f, 1f, 0.3f);
             }
@@ -488,7 +491,6 @@ namespace Strada.Core.Editor.Windows
             EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
             GUI.backgroundColor = bgColor;
 
-            var isSelected = _selectedConfigs.Contains(config);
             var newSelected = EditorGUILayout.Toggle(isSelected, GUILayout.Width(20));
             if (newSelected != isSelected)
             {
@@ -516,13 +518,7 @@ namespace Strada.Core.Editor.Windows
                 GUILayout.Label(icon, GUILayout.Width(20), GUILayout.Height(20));
             }
 
-            var nameStyle = new GUIStyle(EditorStyles.linkLabel);
-            if (hasError)
-            {
-                nameStyle.normal.textColor = Color.red;
-            }
-            
-            if (GUILayout.Button(config.Name, nameStyle))
+            if (GUILayout.Button(config.Name, hasError ? _configNameErrorStyle : _configNameStyle))
             {
                 Selection.activeObject = config.Asset;
                 EditorGUIUtility.PingObject(config.Asset);
@@ -658,24 +654,26 @@ namespace Strada.Core.Editor.Windows
             var lowerName = name.ToLower();
             var typeName = assetType?.Name.ToLower() ?? "";
 
-            if (lowerName.Contains("player")) return ConfigCategory.Player;
-            if (lowerName.Contains("enemy") || lowerName.Contains("ai")) return ConfigCategory.Enemy;
-            if (lowerName.Contains("weapon") || lowerName.Contains("gun") || lowerName.Contains("sword")) return ConfigCategory.Weapon;
-            if (lowerName.Contains("level") || lowerName.Contains("stage") || lowerName.Contains("map")) return ConfigCategory.Level;
-            if (lowerName.Contains("input") || lowerName.Contains("control")) return ConfigCategory.Input;
-            if (lowerName.Contains("audio") || lowerName.Contains("sound") || lowerName.Contains("music")) return ConfigCategory.Audio;
-            if (lowerName.Contains("ui") || lowerName.Contains("menu") || lowerName.Contains("hud")) return ConfigCategory.UI;
-            if (lowerName.Contains("game") || lowerName.Contains("settings") || lowerName.Contains("config")) return ConfigCategory.Game;
+            var category = MatchCategory(lowerName);
+            if (category != ConfigCategory.Other)
+                return category;
 
-            if (typeName.Contains("player")) return ConfigCategory.Player;
-            if (typeName.Contains("enemy")) return ConfigCategory.Enemy;
-            if (typeName.Contains("weapon")) return ConfigCategory.Weapon;
-            if (typeName.Contains("level")) return ConfigCategory.Level;
-            if (typeName.Contains("input")) return ConfigCategory.Input;
-            if (typeName.Contains("audio")) return ConfigCategory.Audio;
-            if (typeName.Contains("ui")) return ConfigCategory.UI;
-            if (typeName.Contains("game")) return ConfigCategory.Game;
-            
+            return MatchCategory(typeName);
+        }
+
+        private static ConfigCategory MatchCategory(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return ConfigCategory.Other;
+
+            if (text.Contains("player")) return ConfigCategory.Player;
+            if (text.Contains("enemy") || text.Contains("ai")) return ConfigCategory.Enemy;
+            if (text.Contains("weapon") || text.Contains("gun") || text.Contains("sword")) return ConfigCategory.Weapon;
+            if (text.Contains("level") || text.Contains("stage") || text.Contains("map")) return ConfigCategory.Level;
+            if (text.Contains("input") || text.Contains("control")) return ConfigCategory.Input;
+            if (text.Contains("audio") || text.Contains("sound") || text.Contains("music")) return ConfigCategory.Audio;
+            if (text.Contains("ui") || text.Contains("menu") || text.Contains("hud")) return ConfigCategory.UI;
+            if (text.Contains("game") || text.Contains("settings") || text.Contains("config")) return ConfigCategory.Game;
+
             return ConfigCategory.Other;
         }
 
@@ -720,11 +718,6 @@ namespace Strada.Core.Editor.Windows
                         result.IsValid = string.IsNullOrEmpty(errorMsg);
                         result.ErrorMessage = errorMsg;
                     }
-                    else if (returnType == typeof(void))
-                    {
-                        validateMethod.Invoke(config.Asset, null);
-                        result.IsValid = true;
-                    }
                     else
                     {
                         validateMethod.Invoke(config.Asset, null);
@@ -738,11 +731,6 @@ namespace Strada.Core.Editor.Windows
                     result.IsValid = false;
                     result.ErrorMessage = ex.InnerException?.Message ?? ex.Message;
                 }
-            }
-            else
-            {
-                result.IsValid = true;
-                result.ErrorMessage = null;
             }
 
             _validationResults[config] = result;

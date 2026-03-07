@@ -60,9 +60,9 @@ namespace Strada.Core.Editor.Windows
         private readonly Color _queryColor = new Color(0.9f, 0.7f, 0.4f);
         private readonly Color _warningColor = new Color(1.0f, 0.6f, 0.2f);
         private readonly Color _selectedColor = new Color(0.24f, 0.49f, 0.91f, 0.4f);
+        private readonly Color _resizeHandleColor = new Color(0.15f, 0.15f, 0.15f, 1f);
 
         private BusDataProvider _busDataProvider;
-
 
         public static void ShowWindow()
         {
@@ -97,16 +97,12 @@ namespace Strada.Core.Editor.Windows
 
         private void OnPlayModeStateChanged(PlayModeStateChange state)
         {
-            if (state == PlayModeStateChange.EnteredPlayMode)
+            if (state == PlayModeStateChange.EnteredPlayMode || state == PlayModeStateChange.ExitingPlayMode)
             {
                 _displayedEntries.Clear();
                 _selectedMessageIndex = -1;
-            }
-            else if (state == PlayModeStateChange.ExitingPlayMode)
-            {
-                _displayedEntries.Clear();
-                _selectedMessageIndex = -1;
-                _isPaused = false;
+                if (state == PlayModeStateChange.ExitingPlayMode)
+                    _isPaused = false;
             }
             Repaint();
         }
@@ -472,20 +468,19 @@ namespace Strada.Core.Editor.Windows
         {
             GUILayout.Label("Legend:", GUILayout.Width(50));
 
-            var rect = GUILayoutUtility.GetRect(10, 10);
-            EditorGUI.DrawRect(rect, _eventColor);
-            GUILayout.Label("Event", GUILayout.Width(35));
-
-            rect = GUILayoutUtility.GetRect(10, 10);
-            EditorGUI.DrawRect(rect, _commandColor);
-            GUILayout.Label("Cmd", GUILayout.Width(30));
-
-            rect = GUILayoutUtility.GetRect(10, 10);
-            EditorGUI.DrawRect(rect, _queryColor);
-            GUILayout.Label("Query", GUILayout.Width(35));
+            DrawLegendSwatch(_eventColor, "Event", 35);
+            DrawLegendSwatch(_commandColor, "Cmd", 30);
+            DrawLegendSwatch(_queryColor, "Query", 35);
 
             GUILayout.Label("⚠", _warningIconStyle, GUILayout.Width(15));
             GUILayout.Label("No Handler", GUILayout.Width(65));
+        }
+
+        private void DrawLegendSwatch(Color color, string label, float labelWidth)
+        {
+            var rect = GUILayoutUtility.GetRect(10, 10);
+            EditorGUI.DrawRect(rect, color);
+            GUILayout.Label(label, GUILayout.Width(labelWidth));
         }
 
         private void DrawSplitView()
@@ -629,7 +624,7 @@ namespace Strada.Core.Editor.Windows
                 }
             }
 
-            EditorGUI.DrawRect(resizeRect, new Color(0.15f, 0.15f, 0.15f, 1f));
+            EditorGUI.DrawRect(resizeRect, _resizeHandleColor);
         }
 
         private void DrawMessageDetailsPanel()
@@ -657,28 +652,13 @@ namespace Strada.Core.Editor.Windows
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField("Type:", EditorStyles.boldLabel, GUILayout.Width(80));
-            EditorGUILayout.SelectableLabel(entry.MessageType?.FullName ?? "Unknown", EditorStyles.textField, GUILayout.Height(18));
-            EditorGUILayout.EndHorizontal();
-
-            EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField("Kind:", EditorStyles.boldLabel, GUILayout.Width(80));
-            var kindStyle = GetKindStyle(entry.Kind);
-            EditorGUILayout.LabelField(entry.Kind.ToString(), kindStyle);
-            EditorGUILayout.EndHorizontal();
-
-            EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField("Timestamp:", EditorStyles.boldLabel, GUILayout.Width(80));
-            EditorGUILayout.LabelField(entry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff"));
-            EditorGUILayout.EndHorizontal();
+            DrawDetailRow("Type:", entry.MessageType?.FullName ?? "Unknown");
+            DrawDetailRow("Kind:", entry.Kind.ToString(), GetKindStyle(entry.Kind));
+            DrawDetailRow("Timestamp:", entry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff"));
 
             if (entry.Kind == MessageKind.Event)
             {
-                EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.LabelField("Subscribers:", EditorStyles.boldLabel, GUILayout.Width(80));
-                EditorGUILayout.LabelField(entry.SubscriberCount.ToString());
-                EditorGUILayout.EndHorizontal();
+                DrawDetailRow("Subscribers:", entry.SubscriberCount.ToString());
             }
 
             if (entry.Kind == MessageKind.Command)
@@ -701,10 +681,7 @@ namespace Strada.Core.Editor.Windows
 
             if (entry.Kind == MessageKind.Query && entry.ProcessingTimeMs > 0)
             {
-                EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.LabelField("Processing:", EditorStyles.boldLabel, GUILayout.Width(80));
-                EditorGUILayout.LabelField($"{entry.ProcessingTimeMs:F3} ms");
-                EditorGUILayout.EndHorizontal();
+                DrawDetailRow("Processing:", $"{entry.ProcessingTimeMs:F3} ms");
             }
 
             EditorGUILayout.EndVertical();
@@ -726,6 +703,14 @@ namespace Strada.Core.Editor.Windows
             EditorGUILayout.EndVertical();
 
             EditorGUILayout.EndScrollView();
+        }
+
+        private void DrawDetailRow(string label, string value, GUIStyle valueStyle = null)
+        {
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField(label, EditorStyles.boldLabel, GUILayout.Width(80));
+            EditorGUILayout.LabelField(value, valueStyle ?? EditorStyles.label);
+            EditorGUILayout.EndHorizontal();
         }
 
         private void DrawPayloadFields(object payload)
