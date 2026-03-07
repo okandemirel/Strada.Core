@@ -198,8 +198,7 @@ namespace Strada.Core.Editor.Profiling
                 };
             }
             
-            var samples = buffer.ToList();
-            return CalculateMetrics(systemType, samples);
+            return CalculateMetrics(systemType, buffer);
         }
         
         /// <summary>
@@ -212,7 +211,7 @@ namespace Strada.Core.Editor.Profiling
             {
                 if (kvp.Value.Count > 0)
                 {
-                    metrics.Add(CalculateMetrics(kvp.Key, kvp.Value.ToList()));
+                    metrics.Add(CalculateMetrics(kvp.Key, kvp.Value));
                 }
             }
             return metrics;
@@ -237,9 +236,10 @@ namespace Strada.Core.Editor.Profiling
             return result;
         }
         
-        private SystemMetrics CalculateMetrics(Type systemType, List<SystemTimingSample> samples)
+        private SystemMetrics CalculateMetrics(Type systemType, CircularBuffer<SystemTimingSample> buffer)
         {
-            if (samples.Count == 0)
+            int count = buffer.Count;
+            if (count == 0)
             {
                 return new SystemMetrics
                 {
@@ -247,28 +247,29 @@ namespace Strada.Core.Editor.Profiling
                     Phase = _systemPhases.GetValueOrDefault(systemType, UpdatePhase.Update)
                 };
             }
-            
+
             double sum = 0;
             double min = double.MaxValue;
             double max = double.MinValue;
-            
-            foreach (var sample in samples)
+
+            for (int i = 0; i < count; i++)
             {
-                sum += sample.ExecutionTimeMs;
-                if (sample.ExecutionTimeMs < min) min = sample.ExecutionTimeMs;
-                if (sample.ExecutionTimeMs > max) max = sample.ExecutionTimeMs;
+                double ms = buffer[i].ExecutionTimeMs;
+                sum += ms;
+                if (ms < min) min = ms;
+                if (ms > max) max = ms;
             }
-            
-            double average = sum / samples.Count;
+
+            double average = sum / count;
 
             double sumSquaredDiff = 0;
-            foreach (var sample in samples)
+            for (int i = 0; i < count; i++)
             {
-                double diff = sample.ExecutionTimeMs - average;
+                double diff = buffer[i].ExecutionTimeMs - average;
                 sumSquaredDiff += diff * diff;
             }
-            double stdDev = Math.Sqrt(sumSquaredDiff / samples.Count);
-            
+            double stdDev = Math.Sqrt(sumSquaredDiff / count);
+
             return new SystemMetrics
             {
                 SystemType = systemType,
@@ -277,8 +278,8 @@ namespace Strada.Core.Editor.Profiling
                 MinMs = min == double.MaxValue ? 0 : min,
                 MaxMs = max == double.MinValue ? 0 : max,
                 StandardDeviation = stdDev,
-                SampleCount = samples.Count,
-                LastExecutionMs = samples[samples.Count - 1].ExecutionTimeMs
+                SampleCount = count,
+                LastExecutionMs = buffer[count - 1].ExecutionTimeMs
             };
         }
         
@@ -348,14 +349,28 @@ namespace Strada.Core.Editor.Profiling
         
         public int Count => _count;
         public int Capacity => _buffer.Length;
-        
+
         public CircularBuffer(int capacity)
         {
             _buffer = new T[capacity];
             _head = 0;
             _count = 0;
         }
-        
+
+        /// <summary>
+        /// Gets the element at the given logical index (0 = oldest).
+        /// </summary>
+        public T this[int index]
+        {
+            get
+            {
+                if (index < 0 || index >= _count)
+                    throw new ArgumentOutOfRangeException(nameof(index));
+                int start = (_count < _buffer.Length) ? 0 : _head;
+                return _buffer[(start + index) % _buffer.Length];
+            }
+        }
+
         public void Add(T item)
         {
             _buffer[_head] = item;
@@ -363,24 +378,20 @@ namespace Strada.Core.Editor.Profiling
             if (_count < _buffer.Length)
                 _count++;
         }
-        
+
         public void Clear()
         {
             _head = 0;
             _count = 0;
             Array.Clear(_buffer, 0, _buffer.Length);
         }
-        
+
         public List<T> ToList()
         {
             var result = new List<T>(_count);
-            if (_count == 0) return result;
-            
-            int start = (_count < _buffer.Length) ? 0 : _head;
             for (int i = 0; i < _count; i++)
             {
-                int index = (start + i) % _buffer.Length;
-                result.Add(_buffer[index]);
+                result.Add(this[i]);
             }
             return result;
         }

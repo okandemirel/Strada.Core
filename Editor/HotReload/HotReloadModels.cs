@@ -118,12 +118,7 @@ namespace Strada.Core.Editor.HotReload
         /// Entity index.
         /// </summary>
         public int EntityIndex { get; set; }
-        
-        /// <summary>
-        /// Entity version.
-        /// </summary>
-        public int EntityVersion { get; set; }
-        
+
         /// <summary>
         /// Component data keyed by component type name.
         /// </summary>

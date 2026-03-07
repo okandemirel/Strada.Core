@@ -17,7 +17,6 @@ namespace Strada.Core.Editor.HotReload
         private const string NotificationsEnabledPrefKey = "Strada.HotReload.NotificationsEnabled";
         
         private static readonly Queue<ConfigChangeInfo> _pendingChanges = new Queue<ConfigChangeInfo>();
-        private static readonly Dictionary<string, ConfigData> _configCache = new Dictionary<string, ConfigData>();
         private static readonly Dictionary<Type, List<IConfigDependentService>> _dependentServices = new Dictionary<Type, List<IConfigDependentService>>();
         private static readonly Dictionary<string, object> _previousConfigStates = new Dictionary<string, object>();
         
@@ -75,14 +74,9 @@ namespace Strada.Core.Editor.HotReload
         
         private static void OnPlayModeStateChanged(PlayModeStateChange state)
         {
-            switch (state)
+            if (state == PlayModeStateChange.ExitingPlayMode)
             {
-                case PlayModeStateChange.EnteredPlayMode:
-                    CacheCurrentConfigs();
-                    break;
-                case PlayModeStateChange.ExitingPlayMode:
-                    ClearCaches();
-                    break;
+                ClearCaches();
             }
         }
         
@@ -220,17 +214,9 @@ namespace Strada.Core.Editor.HotReload
                 }
 
                 EntityStatePreserver.RestoreState(entityState);
-                
+
                 result.Success = result.Errors.Count == 0;
-                
-                _lastReloadState = new HotReloadState
-                {
-                    LastReloadTime = result.Timestamp,
-                    LastConfigPath = result.ConfigPath,
-                    WasSuccessful = result.Success,
-                    ErrorMessage = result.Success ? null : string.Join("; ", result.Errors)
-                };
-                
+
                 if (NotificationsEnabled)
                 {
                     if (result.Success)
@@ -249,17 +235,17 @@ namespace Strada.Core.Editor.HotReload
                 result.Errors.Add(ex.Message);
 
                 TryRollback(change);
-                
-                _lastReloadState = new HotReloadState
-                {
-                    LastReloadTime = DateTime.Now,
-                    LastConfigPath = change.AssetPath,
-                    WasSuccessful = false,
-                    ErrorMessage = ex.Message
-                };
-                
+
                 Debug.LogError($"[HotReload] Failed to reload {change.AssetPath}: {ex.Message}");
             }
+
+            _lastReloadState = new HotReloadState
+            {
+                LastReloadTime = DateTime.Now,
+                LastConfigPath = result.ConfigPath,
+                WasSuccessful = result.Success,
+                ErrorMessage = result.Success ? null : string.Join("; ", result.Errors)
+            };
             
             OnHotReloadComplete?.Invoke(result);
         }
@@ -304,26 +290,8 @@ namespace Strada.Core.Editor.HotReload
             }
         }
         
-        private static void CacheCurrentConfigs()
-        {
-            _configCache.Clear();
-            
-            var guids = AssetDatabase.FindAssets("t:ScriptableObject");
-            foreach (var guid in guids)
-            {
-                var path = AssetDatabase.GUIDToAssetPath(guid);
-                var asset = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
-                
-                if (asset is ConfigData config && asset.name.StartsWith("CD_"))
-                {
-                    _configCache[path] = config;
-                }
-            }
-        }
-        
         private static void ClearCaches()
         {
-            _configCache.Clear();
             _previousConfigStates.Clear();
             _pendingChanges.Clear();
             _lastReloadState = default;

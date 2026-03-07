@@ -42,7 +42,6 @@ namespace Strada.Core.Editor.HotReload
                     var entitySnapshot = new EntityStateSnapshot
                     {
                         EntityIndex = entityIndex,
-                        EntityVersion = 0, // Version tracking handled by EntityManager internally
                         Components = new Dictionary<string, object>()
                     };
 
