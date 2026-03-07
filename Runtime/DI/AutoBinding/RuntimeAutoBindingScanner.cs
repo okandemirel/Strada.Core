@@ -18,6 +18,7 @@ namespace Strada.Core.DI.AutoBinding
     public static class RuntimeAutoBindingScanner
     {
         private static List<AutoBindingEntry> _cachedEntries;
+        private static string _cachedKey;
         private static readonly object _lock = new();
 
         public static void RegisterAll(
@@ -37,14 +38,16 @@ namespace Strada.Core.DI.AutoBinding
             IReadOnlyList<string> includePatterns = null,
             IReadOnlyList<string> excludePatterns = null)
         {
-            lock (_lock)
-            {
-                if (_cachedEntries != null)
-                    return _cachedEntries;
-            }
-
             includePatterns ??= new[] { "Strada.*", "Game.*", "Assembly-CSharp" };
             excludePatterns ??= new[] { "Unity.*", "System.*", "Mono.*", "mscorlib", "*.Tests", "*.Editor" };
+
+            var key = BuildCacheKey(includePatterns, excludePatterns);
+
+            lock (_lock)
+            {
+                if (_cachedEntries != null && _cachedKey == key)
+                    return _cachedEntries;
+            }
 
             var entries = new List<AutoBindingEntry>();
 
@@ -62,14 +65,28 @@ namespace Strada.Core.DI.AutoBinding
                 {
                     ScanAssembly(assembly, entries);
                 }
-                catch (ReflectionTypeLoadException)
+                catch (ReflectionTypeLoadException ex)
                 {
+                    UnityEngine.Debug.LogWarning($"Partial type load from assembly {assembly.GetName().Name}: {ex.Message}");
+                    var loadedTypes = ex.Types;
+                    if (loadedTypes != null)
+                    {
+                        foreach (var type in loadedTypes)
+                        {
+                            if (type == null || type.IsAbstract || type.IsInterface || type.IsGenericTypeDefinition)
+                                continue;
+                            var entry = TryCreateEntry(type);
+                            if (entry != null)
+                                entries.Add(entry);
+                        }
+                    }
                 }
             }
 
             lock (_lock)
             {
                 _cachedEntries = entries;
+                _cachedKey = key;
             }
 
             return entries;
@@ -164,6 +181,13 @@ namespace Strada.Core.DI.AutoBinding
 
             if (entry.ServiceType != entry.ImplementationType)
             {
+                if (!entry.ServiceType.IsAssignableFrom(entry.ImplementationType))
+                {
+                    UnityEngine.Debug.LogWarning(
+                        $"AutoBinding skipped: {entry.ImplementationType.FullName} is not assignable to {entry.ServiceType.FullName}");
+                    return;
+                }
+
                 var method = builderType.GetMethods()
                     .First(m => m.Name == "Register" &&
                                 m.GetGenericArguments().Length == 2 &&
@@ -205,12 +229,19 @@ namespace Strada.Core.DI.AutoBinding
         private static bool MatchesPattern(string name, string pattern)
         {
             if (pattern.StartsWith("*") && pattern.EndsWith("*"))
-                return name.Contains(pattern.Trim('*'));
+                return name.Contains(pattern.Trim('*'), StringComparison.OrdinalIgnoreCase);
             if (pattern.StartsWith("*"))
-                return name.EndsWith(pattern.TrimStart('*'));
+                return name.EndsWith(pattern.TrimStart('*'), StringComparison.OrdinalIgnoreCase);
             if (pattern.EndsWith("*"))
-                return name.StartsWith(pattern.TrimEnd('*'));
+                return name.StartsWith(pattern.TrimEnd('*'), StringComparison.OrdinalIgnoreCase);
             return name.Equals(pattern, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string BuildCacheKey(IReadOnlyList<string> includePatterns, IReadOnlyList<string> excludePatterns)
+        {
+            var includes = includePatterns.OrderBy(p => p, StringComparer.Ordinal);
+            var excludes = excludePatterns.OrderBy(p => p, StringComparer.Ordinal);
+            return string.Join("|", includes) + "||" + string.Join("|", excludes);
         }
 
         public static void ClearCache()
@@ -218,6 +249,7 @@ namespace Strada.Core.DI.AutoBinding
             lock (_lock)
             {
                 _cachedEntries = null;
+                _cachedKey = null;
             }
         }
 
