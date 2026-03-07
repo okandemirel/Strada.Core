@@ -5,6 +5,7 @@ using Strada.Core.ECS.Core;
 using Strada.Core.ECS.Query;
 using Strada.Core.ECS.Storage;
 using Strada.Core.Sync;
+using UnityEngine;
 
 namespace Strada.Core.ECS.Systems
 {
@@ -34,7 +35,14 @@ namespace Strada.Core.ECS.Systems
         public void Update(float deltaTime)
         {
             if (!_initialized || _disposed) return;
-            OnUpdate(deltaTime);
+            try
+            {
+                OnUpdate(deltaTime);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+            }
         }
 
         public void Dispose()

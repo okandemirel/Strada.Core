@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -8,8 +9,7 @@ namespace Strada.Core.DI
 {
     public static class InjectionProcessor
     {
-        private static readonly Dictionary<Type, TypeInjectionInfo> _cache = new(64);
-        private static readonly object _lock = new();
+        private static readonly ConcurrentDictionary<Type, TypeInjectionInfo> _cache = new();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Inject(object target, IContainer container)
@@ -34,18 +34,7 @@ namespace Strada.Core.DI
 
         private static TypeInjectionInfo GetOrCreateInfo(Type type)
         {
-            if (_cache.TryGetValue(type, out var info))
-                return info;
-
-            lock (_lock)
-            {
-                if (_cache.TryGetValue(type, out info))
-                    return info;
-
-                info = BuildInjectionInfo(type);
-                _cache[type] = info;
-                return info;
-            }
+            return _cache.GetOrAdd(type, BuildInjectionInfo);
         }
 
         private static TypeInjectionInfo BuildInjectionInfo(Type type)
@@ -108,6 +97,15 @@ namespace Strada.Core.DI
             {
                 var prop = properties[i];
                 var value = container.Resolve(prop.PropertyType);
+
+                if (value != null && !prop.PropertyType.IsAssignableFrom(value.GetType()))
+                {
+                    UnityEngine.Debug.LogWarning(
+                        $"[InjectionProcessor] Skipping property '{prop.Name}' on '{target.GetType().Name}': " +
+                        $"resolved type '{value.GetType().Name}' is not assignable to '{prop.PropertyType.Name}'.");
+                    continue;
+                }
+
                 prop.SetValue(target, value);
             }
         }
@@ -119,6 +117,15 @@ namespace Strada.Core.DI
             {
                 var field = fields[i];
                 var value = container.Resolve(field.FieldType);
+
+                if (value != null && !field.FieldType.IsAssignableFrom(value.GetType()))
+                {
+                    UnityEngine.Debug.LogWarning(
+                        $"[InjectionProcessor] Skipping field '{field.Name}' on '{target.GetType().Name}': " +
+                        $"resolved type '{value.GetType().Name}' is not assignable to '{field.FieldType.Name}'.");
+                    continue;
+                }
+
                 field.SetValue(target, value);
             }
         }
@@ -138,10 +145,7 @@ namespace Strada.Core.DI
 
         public static void ClearCache()
         {
-            lock (_lock)
-            {
-                _cache.Clear();
-            }
+            _cache.Clear();
         }
 
         private readonly struct TypeInjectionInfo

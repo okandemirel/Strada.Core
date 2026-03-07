@@ -1,8 +1,10 @@
+using System;
 using System.IO;
 using System.Text;
 using Strada.Core.Editor.ModuleGenerator.Config;
 using Strada.Core.Editor.ModuleGenerator.Models;
 using UnityEditor;
+using UnityEngine;
 
 namespace Strada.Core.Editor.ModuleGenerator.Pipeline.Steps
 {
@@ -129,14 +131,18 @@ namespace Strada.Core.Editor.ModuleGenerator.Pipeline.Steps
 
         private void CreateFile(string path, string content, GenerationContext context)
         {
-            var dir = Path.GetDirectoryName(path);
+            var fullPath = Path.GetFullPath(path);
+            if (!fullPath.StartsWith(Application.dataPath))
+                throw new InvalidOperationException($"Path outside project: {fullPath}");
+
+            var dir = Path.GetDirectoryName(fullPath);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
             {
                 Directory.CreateDirectory(dir);
             }
 
-            File.WriteAllText(path, content);
-            context.AddCreatedFile(path);
+            File.WriteAllText(fullPath, content);
+            context.AddCreatedFile(fullPath);
         }
 
         public void Rollback(GenerationContext context)

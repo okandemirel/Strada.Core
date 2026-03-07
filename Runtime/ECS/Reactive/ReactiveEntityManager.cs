@@ -38,7 +38,15 @@ namespace Strada.Core.ECS.Reactive
         public Entity CreateEntity() => _entityManager.CreateEntity();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void DestroyEntity(Entity entity) => _entityManager.DestroyEntity(entity);
+        public void DestroyEntity(Entity entity)
+        {
+            foreach (var storage in _reactiveStorages.Values)
+            {
+                if (storage is IReactiveStorage reactive)
+                    reactive.Remove(entity.Index);
+            }
+            _entityManager.DestroyEntity(entity);
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddReactiveComponent<T>(Entity entity, T component) where T : unmanaged, IComponent

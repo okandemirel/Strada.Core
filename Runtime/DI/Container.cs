@@ -19,7 +19,7 @@ namespace Strada.Core.DI
         private readonly int _maxTypeId;
         private readonly Type[] _registeredTypes;
         private int _registeredCount;
-        private bool _disposed;
+        private volatile bool _disposed;
 
         internal Container(Dictionary<Type, Registration> registrations, bool autoRegisterSelf = false)
         {
@@ -128,10 +128,12 @@ namespace Strada.Core.DI
         public void Dispose()
         {
             if (_disposed) return;
-            _disposed = true;
 
             lock (_lock)
             {
+                if (_disposed) return;
+                _disposed = true;
+
                 while (_disposalStack.Count > 0)
                 {
                     try
@@ -140,7 +142,11 @@ namespace Strada.Core.DI
                     }
                     catch (Exception e)
                     {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
                         UnityEngine.Debug.LogError($"Error disposing service: {e}");
+#else
+                        UnityEngine.Debug.LogError($"Error disposing service: {e.Message}");
+#endif
                     }
                 }
             }
@@ -235,7 +241,7 @@ namespace Strada.Core.DI
                 {
                     _factories[index] = _ =>
                     {
-                        var instance = _singletons[index];
+                        var instance = Volatile.Read(ref _singletons[index]);
                         if (instance != null) return instance;
                         
                         instance = rawFactory(this);

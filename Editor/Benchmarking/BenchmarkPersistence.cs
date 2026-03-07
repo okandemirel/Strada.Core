@@ -14,14 +14,24 @@ namespace Strada.Core.Editor.Benchmarking
     {
         private const string DefaultDirectory = "BenchmarkResults";
         private const string SessionFilePattern = "benchmark_session_*.json";
+
+        private static string ProjectRoot =>
+            Path.GetDirectoryName(Application.dataPath);
+
+        private static void ValidatePath(string path)
+        {
+            var fullPath = Path.GetFullPath(path);
+            var projectRoot = Path.GetFullPath(ProjectRoot);
+            if (!fullPath.StartsWith(projectRoot))
+                throw new InvalidOperationException($"Path outside project: {fullPath}");
+        }
         
         /// <summary>
         /// Gets the default directory for benchmark results.
         /// </summary>
         public static string GetDefaultDirectory()
         {
-            var projectPath = Path.GetDirectoryName(Application.dataPath);
-            return Path.Combine(projectPath, DefaultDirectory);
+            return Path.Combine(ProjectRoot, DefaultDirectory);
         }
         
         /// <summary>
@@ -36,12 +46,13 @@ namespace Strada.Core.Editor.Benchmarking
                 throw new ArgumentNullException(nameof(session));
             
             directory = directory ?? GetDefaultDirectory();
-            
+            ValidatePath(directory);
+
             if (!Directory.Exists(directory))
             {
                 Directory.CreateDirectory(directory);
             }
-            
+
             var filename = $"benchmark_session_{session.Timestamp:yyyyMMdd_HHmmss}_{session.SessionId}.json";
             var path = Path.Combine(directory, filename);
             
@@ -59,6 +70,7 @@ namespace Strada.Core.Editor.Benchmarking
         /// <returns>The loaded session, or null if loading fails.</returns>
         public static BenchmarkSession LoadSession(string path)
         {
+            ValidatePath(path);
             if (!File.Exists(path))
                 return null;
             
@@ -125,6 +137,7 @@ namespace Strada.Core.Editor.Benchmarking
         /// </summary>
         public static bool DeleteSession(string path)
         {
+            ValidatePath(path);
             try
             {
                 if (File.Exists(path))
@@ -146,6 +159,7 @@ namespace Strada.Core.Editor.Benchmarking
         /// </summary>
         public static bool ExportSession(BenchmarkSession session, string path)
         {
+            ValidatePath(path);
             try
             {
                 var wrapper = new BenchmarkSessionWrapper(session);

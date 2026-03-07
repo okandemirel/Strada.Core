@@ -262,6 +262,9 @@ namespace Strada.Core.Modules
                 return _container.Resolve(systemType) as ISystem;
             }
 
+            if (!typeof(ISystem).IsAssignableFrom(systemType))
+                throw new InvalidOperationException($"Type {systemType.Name} does not implement ISystem");
+
             return Activator.CreateInstance(systemType) as ISystem;
         }
 

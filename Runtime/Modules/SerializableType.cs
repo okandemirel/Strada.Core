@@ -13,6 +13,7 @@ namespace Strada.Core.Modules
         [SerializeField] private string _assemblyQualifiedName;
 
         private Type _cachedType;
+        private bool _resolveAttempted;
 
         /// <summary>
         /// Gets or sets the Type represented by this SerializableType.
@@ -21,15 +22,19 @@ namespace Strada.Core.Modules
         {
             get
             {
-                if (_cachedType == null && !string.IsNullOrEmpty(_assemblyQualifiedName))
+                if (_cachedType == null && !_resolveAttempted && !string.IsNullOrEmpty(_assemblyQualifiedName))
                 {
+                    _resolveAttempted = true;
                     _cachedType = Type.GetType(_assemblyQualifiedName);
+                    if (_cachedType == null)
+                        Debug.LogWarning($"[SerializableType] Failed to resolve type: {_assemblyQualifiedName}");
                 }
                 return _cachedType;
             }
             set
             {
                 _cachedType = value;
+                _resolveAttempted = value != null;
                 _assemblyQualifiedName = value?.AssemblyQualifiedName;
             }
         }
@@ -74,6 +79,7 @@ namespace Strada.Core.Modules
         {
             // Clear cache so it will be resolved fresh on next access
             _cachedType = null;
+            _resolveAttempted = false;
         }
 
         public override string ToString()
