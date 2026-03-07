@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Strada.Core.ECS.Core;
@@ -6,6 +5,29 @@ using Strada.Core.ECS.Storage;
 
 namespace Strada.Core.ECS.Query
 {
+    internal static class FilterHelper
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static bool PassesFilters(int entity, List<IComponentStorage> withFilters, List<IComponentStorage> withoutFilters)
+        {
+            if (withFilters != null)
+            {
+                foreach (var storage in withFilters)
+                    if (!storage.Contains(entity))
+                        return false;
+            }
+
+            if (withoutFilters != null)
+            {
+                foreach (var storage in withoutFilters)
+                    if (storage.Contains(entity))
+                        return false;
+            }
+
+            return true;
+        }
+    }
+
     public struct FilteredQueryBuilder<T1> where T1 : unmanaged, IComponent
     {
         private readonly EntityManager _manager;
@@ -52,32 +74,12 @@ namespace Strada.Core.ECS.Query
                 {
                     int entity = entities[i];
 
-                    if (!PassesFilters(entity))
+                    if (!FilterHelper.PassesFilters(entity, _withFilters, _withoutFilters))
                         continue;
 
                     action(entity, ref data[i]);
                 }
             }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool PassesFilters(int entity)
-        {
-            if (_withFilters != null)
-            {
-                foreach (var storage in _withFilters)
-                    if (!storage.Contains(entity))
-                        return false;
-            }
-
-            if (_withoutFilters != null)
-            {
-                foreach (var storage in _withoutFilters)
-                    if (storage.Contains(entity))
-                        return false;
-            }
-
-            return true;
         }
     }
 
@@ -139,7 +141,7 @@ namespace Strada.Core.ECS.Query
                     if (idx1 < 0 || idx2 < 0)
                         continue;
 
-                    if (!PassesFilters(entity))
+                    if (!FilterHelper.PassesFilters(entity, _withFilters, _withoutFilters))
                         continue;
 
                     T1* p1 = set1.GetDataPtr() + idx1;
@@ -148,26 +150,6 @@ namespace Strada.Core.ECS.Query
                     action(entity, ref *p1, ref *p2);
                 }
             }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool PassesFilters(int entity)
-        {
-            if (_withFilters != null)
-            {
-                foreach (var storage in _withFilters)
-                    if (!storage.Contains(entity))
-                        return false;
-            }
-
-            if (_withoutFilters != null)
-            {
-                foreach (var storage in _withoutFilters)
-                    if (storage.Contains(entity))
-                        return false;
-            }
-
-            return true;
         }
     }
 
@@ -252,7 +234,7 @@ namespace Strada.Core.ECS.Query
                     if (idx1 < 0 || idx2 < 0 || idx3 < 0)
                         continue;
 
-                    if (!PassesFilters(entity))
+                    if (!FilterHelper.PassesFilters(entity, _withFilters, _withoutFilters))
                         continue;
 
                     T1* p1 = set1.GetDataPtr() + idx1;
@@ -262,26 +244,6 @@ namespace Strada.Core.ECS.Query
                     action(entity, ref *p1, ref *p2, ref *p3);
                 }
             }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool PassesFilters(int entity)
-        {
-            if (_withFilters != null)
-            {
-                foreach (var storage in _withFilters)
-                    if (!storage.Contains(entity))
-                        return false;
-            }
-
-            if (_withoutFilters != null)
-            {
-                foreach (var storage in _withoutFilters)
-                    if (storage.Contains(entity))
-                        return false;
-            }
-
-            return true;
         }
     }
 }

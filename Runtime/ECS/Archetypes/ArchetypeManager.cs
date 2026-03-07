@@ -31,30 +31,30 @@ namespace Strada.Core.ECS.Archetypes
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Entity CreateEntity<T>() where T : IEntityDescriptor, new()
+        private IEntityDescriptor EnsureDescriptor<T>() where T : IEntityDescriptor, new()
         {
             if (!_descriptors.TryGetValue(typeof(T), out var descriptor))
             {
                 RegisterDescriptor<T>();
                 descriptor = _descriptors[typeof(T)];
             }
+            return descriptor;
+        }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Entity CreateEntity<T>() where T : IEntityDescriptor, new()
+        {
+            var descriptor = EnsureDescriptor<T>();
             var entity = _entities.CreateEntity();
             descriptor.InitializeComponents(_entities, entity);
             _entitiesByArchetype[typeof(T)].Add(entity);
-
             return entity;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void CreateEntities<T>(Span<Entity> buffer) where T : IEntityDescriptor, new()
         {
-            if (!_descriptors.TryGetValue(typeof(T), out var descriptor))
-            {
-                RegisterDescriptor<T>();
-                descriptor = _descriptors[typeof(T)];
-            }
-
+            var descriptor = EnsureDescriptor<T>();
             var list = _entitiesByArchetype[typeof(T)];
 
             for (int i = 0; i < buffer.Length; i++)

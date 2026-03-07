@@ -30,11 +30,7 @@ namespace Strada.Core.ECS.World
             if (_initialized) return;
             _initialized = true;
 
-            var initSystems = _systemsByPhase[(int)UpdatePhase.Initialization];
-            for (int i = 0; i < initSystems.Count; i++)
-                initSystems[i].Initialize();
-
-            for (int phase = 1; phase < _systemsByPhase.Length; phase++)
+            for (int phase = 0; phase < _systemsByPhase.Length; phase++)
             {
                 var systems = _systemsByPhase[phase];
                 for (int i = 0; i < systems.Count; i++)
@@ -43,49 +39,24 @@ namespace Strada.Core.ECS.World
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Update(float deltaTime)
+        public void Update(float deltaTime) => RunPhase(UpdatePhase.Update, deltaTime);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void LateUpdate(float deltaTime) => RunPhase(UpdatePhase.LateUpdate, deltaTime);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void FixedUpdate(float fixedDeltaTime) => RunPhase(UpdatePhase.FixedUpdate, fixedDeltaTime);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void RunPhase(UpdatePhase phase, float deltaTime)
         {
-            var systems = _systemsByPhase[(int)UpdatePhase.Update];
+            var systems = _systemsByPhase[(int)phase];
             for (int i = 0; i < systems.Count; i++)
             {
 #if UNITY_EDITOR
                 var sw = System.Diagnostics.Stopwatch.StartNew();
 #endif
                 systems[i].Update(deltaTime);
-#if UNITY_EDITOR
-                sw.Stop();
-                _lastExecutionTimes[systems[i].GetType()] = sw.Elapsed.TotalMilliseconds;
-#endif
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void LateUpdate(float deltaTime)
-        {
-            var systems = _systemsByPhase[(int)UpdatePhase.LateUpdate];
-            for (int i = 0; i < systems.Count; i++)
-            {
-#if UNITY_EDITOR
-                var sw = System.Diagnostics.Stopwatch.StartNew();
-#endif
-                systems[i].Update(deltaTime);
-#if UNITY_EDITOR
-                sw.Stop();
-                _lastExecutionTimes[systems[i].GetType()] = sw.Elapsed.TotalMilliseconds;
-#endif
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void FixedUpdate(float fixedDeltaTime)
-        {
-            var systems = _systemsByPhase[(int)UpdatePhase.FixedUpdate];
-            for (int i = 0; i < systems.Count; i++)
-            {
-#if UNITY_EDITOR
-                var sw = System.Diagnostics.Stopwatch.StartNew();
-#endif
-                systems[i].Update(fixedDeltaTime);
 #if UNITY_EDITOR
                 sw.Stop();
                 _lastExecutionTimes[systems[i].GetType()] = sw.Elapsed.TotalMilliseconds;
