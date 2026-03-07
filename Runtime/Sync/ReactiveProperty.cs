@@ -82,10 +82,10 @@ namespace Strada.Core.Sync
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Notify()
         {
-            int count = _handlers.Count;
-            for (int i = 0; i < count; i++)
+            var snapshot = _handlers.ToArray();
+            for (int i = 0; i < snapshot.Length; i++)
             {
-                _handlers[i](_value);
+                snapshot[i](_value);
             }
         }
 
@@ -152,22 +152,29 @@ namespace Strada.Core.Sync
         public void OnRemove(Action<T> handler) => _removeHandlers.Add(handler);
         public void OnClear(Action handler) => _clearHandlers.Add(handler);
 
+        public void OffAdd(Action<T> handler) => _addHandlers.Remove(handler);
+        public void OffRemove(Action<T> handler) => _removeHandlers.Remove(handler);
+        public void OffClear(Action handler) => _clearHandlers.Remove(handler);
+
         private void NotifyAdd(T item)
         {
-            for (int i = 0; i < _addHandlers.Count; i++)
-                _addHandlers[i](item);
+            var snapshot = _addHandlers.ToArray();
+            for (int i = 0; i < snapshot.Length; i++)
+                snapshot[i](item);
         }
 
         private void NotifyRemove(T item)
         {
-            for (int i = 0; i < _removeHandlers.Count; i++)
-                _removeHandlers[i](item);
+            var snapshot = _removeHandlers.ToArray();
+            for (int i = 0; i < snapshot.Length; i++)
+                snapshot[i](item);
         }
 
         private void NotifyClear()
         {
-            for (int i = 0; i < _clearHandlers.Count; i++)
-                _clearHandlers[i]();
+            var snapshot = _clearHandlers.ToArray();
+            for (int i = 0; i < snapshot.Length; i++)
+                snapshot[i]();
         }
 
         public void Dispose()
