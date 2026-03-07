@@ -14,7 +14,8 @@ namespace Strada.Core.DI
         private readonly int _maxTypeId;
         private readonly object[] _parentSingletons;
         private readonly object[] _scopedInstances;
-        private bool _disposed;
+        private volatile bool _disposed;
+        private readonly object _disposeLock = new object();
 
         public IContainer Parent => _parent;
 
@@ -147,13 +148,19 @@ namespace Strada.Core.DI
             if (_disposed)
                 return;
 
-            _disposed = true;
-
-            for (int i = 0; i < _scopedInstances.Length; i++)
+            lock (_disposeLock)
             {
-                var instance = Volatile.Read(ref _scopedInstances[i]);
-                (instance as IDisposable)?.Dispose();
-                _scopedInstances[i] = null;
+                if (_disposed)
+                    return;
+
+                _disposed = true;
+
+                for (int i = 0; i < _scopedInstances.Length; i++)
+                {
+                    var instance = Volatile.Read(ref _scopedInstances[i]);
+                    (instance as IDisposable)?.Dispose();
+                    _scopedInstances[i] = null;
+                }
             }
         }
     }
