@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -55,7 +57,7 @@ namespace Strada.Core.Editor.ModuleGenerator.Pipeline.Steps
         }
 
         private List<FileEntry> BuildFileEntries(string basePath, string name, string ns,
-            ModuleComponents components, ModuleType moduleType)
+            ComponentSelection components, ModuleType moduleType)
         {
             return new List<FileEntry>
             {
