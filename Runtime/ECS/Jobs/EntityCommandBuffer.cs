@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using Strada.Core.ECS.Core;
 using Unity.Burst;

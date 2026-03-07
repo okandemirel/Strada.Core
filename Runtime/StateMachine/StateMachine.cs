@@ -150,7 +150,7 @@ namespace Strada.Core.StateMachine
         }
     }
 
-    internal readonly struct Transition<TState> where TState : class, IState
+    public readonly struct Transition<TState> where TState : class, IState
     {
         public readonly Type ToType;
         public readonly Func<bool> Condition;

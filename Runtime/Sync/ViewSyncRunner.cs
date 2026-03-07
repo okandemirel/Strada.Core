@@ -2,6 +2,13 @@ using UnityEngine;
 
 namespace Strada.Core.Sync
 {
+    public enum ViewSyncMode
+    {
+        DirtyOnly,
+        ForceAll,
+        Manual
+    }
+
     public class ViewSyncRunner : MonoBehaviour
     {
         [Tooltip("Sync mode: DirtyOnly (reactive), ForceAll (every frame), or Manual (disabled)")]
