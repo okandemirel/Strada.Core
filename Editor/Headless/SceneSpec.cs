@@ -69,7 +69,23 @@ namespace Strada.Core.Editor.Headless
         /// those at runtime, and one left behind is a duplicate on frame zero.
         /// </summary>
         public bool keepInScene = true;
+        /// <summary>
+        /// Local position / euler rotation / scale, each a 3-float array; any
+        /// of them may be omitted (null or empty) to keep the default. Until
+        /// 2026-09-10 every object the builder created sat at the origin at
+        /// scale one — a camera, a light and a board all in one point.
+        /// </summary>
+        public SceneSpecTransform transform;
         public List<SceneSpecComponent> components = new List<SceneSpecComponent>();
+    }
+
+    [Serializable]
+    public class SceneSpecTransform
+    {
+        public float[] position;
+        /// <summary>Euler angles in degrees.</summary>
+        public float[] rotation;
+        public float[] scale;
     }
 
     [Serializable]
@@ -114,9 +130,23 @@ namespace Strada.Core.Editor.Headless
         public int intValue;
         public bool boolValue;
         public float floatValue;
+        /// <summary>Components of a vector2/vector3/color (rgb or rgba, 0–1), or the items of a floatList.</summary>
+        public float[] floatValues;
+        /// <summary>Items of an intList.</summary>
+        public int[] intValues;
+        /// <summary>Items of a stringList.</summary>
+        public string[] stringValues;
         /// <summary>"reference" | "string" | "int" | "bool" | "float".</summary>
         /// <summary>
-        /// "reference" | "referenceList" | "prefab" | "string" | "int" | "bool" | "float".
+        /// "reference" | "referenceList" | "prefab" | "string" | "int" | "bool" | "float"
+        /// | "vector2" | "vector3" | "color" | "enum" | "intList" | "floatList" | "stringList".
+        ///
+        /// vector2/vector3/color read floatValues; color also accepts a hex
+        /// string ("#RRGGBB" / "#RRGGBBAA") in stringValue. enum reads
+        /// stringValue by name. The list kinds fill a T[] or List&lt;T&gt;.
+        /// A member that is a public property rather than a serialized field
+        /// (Unity's own components: Camera.orthographic, Light.intensity,
+        /// Canvas.renderMode) is set through the property.
         ///
         /// "reference" and "prefab" can name the same object and mean different
         /// things: a reference to the instance living in the scene, or to the

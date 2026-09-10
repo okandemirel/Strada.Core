@@ -149,6 +149,21 @@ namespace Strada.Core.Editor.Headless
                 if (objects.TryGetValue(o.parent, out var parent) && objects.TryGetValue(o.id, out var child))
                     child.transform.SetParent(parent.transform);
             }
+            // Transforms after parenting, so the values are LOCAL to the parent
+            // the spec named. Any component left out keeps its default. Until
+            // 2026-09-10 every object sat at the origin at scale one.
+            foreach (var o in spec.objects)
+            {
+                if (o.transform == null || !objects.TryGetValue(o.id, out var go)) continue;
+                var t = go.transform;
+                if (o.transform.position != null && o.transform.position.Length == 3)
+                    t.localPosition = new Vector3(o.transform.position[0], o.transform.position[1], o.transform.position[2]);
+                if (o.transform.rotation != null && o.transform.rotation.Length == 3)
+                    t.localEulerAngles = new Vector3(o.transform.rotation[0], o.transform.rotation[1], o.transform.rotation[2]);
+                if (o.transform.scale != null && o.transform.scale.Length == 3)
+                    t.localScale = new Vector3(o.transform.scale[0], o.transform.scale[1], o.transform.scale[2]);
+                Assigned.Add($"{o.id}.transform");
+            }
 
             // Keyed by position, not by type name: an object can legitimately
             // carry two components of the same type, and keying by type made the
@@ -343,17 +358,27 @@ namespace Strada.Core.Editor.Headless
                 if (pass == "prefab" != isPrefabField) continue;
 
                 var field = FindSerializedField(target.GetType(), f.name);
+                PropertyInfo property = null;
                 if (field == null)
                 {
-                    Problems.Add($"{label}: no serialized field '{f.name}'");
-                    continue;
+                    // Unity's own components expose properties, not fields:
+                    // Camera.orthographic, Light.intensity, Canvas.renderMode.
+                    // Until 2026-09-10 a spec could add such a component and
+                    // set nothing on it.
+                    property = FindSettableProperty(target.GetType(), f.name);
+                    if (property == null)
+                    {
+                        Problems.Add($"{label}: no serialized field or settable property '{f.name}'");
+                        continue;
+                    }
                 }
+                var memberType = field != null ? field.FieldType : property.PropertyType;
 
                 object value;
                 switch (f.kind)
                 {
                     case "reference":
-                        value = ResolveReference(f.reference, assetPaths, objects, field.FieldType);
+                        value = ResolveReference(f.reference, assetPaths, objects, memberType);
                         if (value == null)
                         {
                             Problems.Add($"{label}.{f.name}: unresolved reference '{f.reference}'");
@@ -361,7 +386,7 @@ namespace Strada.Core.Editor.Headless
                         }
                         break;
                     case "referenceList":
-                        value = BuildReferenceList(f, field.FieldType, assetPaths, objects, prefabPaths);
+                        value = BuildReferenceList(f, memberType, assetPaths, objects, prefabPaths);
                         if (value == null)
                         {
                             Problems.Add(
@@ -371,7 +396,7 @@ namespace Strada.Core.Editor.Headless
                         }
                         break;
                     case "prefab":
-                        value = ResolvePrefab(f.reference, prefabPaths, field.FieldType);
+                        value = ResolvePrefab(f.reference, prefabPaths, memberType);
                         if (value == null)
                         {
                             Problems.Add(
@@ -383,10 +408,48 @@ namespace Strada.Core.Editor.Headless
                     case "int": value = f.intValue; break;
                     case "bool": value = f.boolValue; break;
                     case "float": value = f.floatValue; break;
+                    case "vector2":
+                        if (f.floatValues == null || f.floatValues.Length < 2) { Problems.Add($"{label}.{f.name}: vector2 needs floatValues [x, y]"); continue; }
+                        value = new Vector2(f.floatValues[0], f.floatValues[1]);
+                        break;
+                    case "vector3":
+                        if (f.floatValues == null || f.floatValues.Length < 3) { Problems.Add($"{label}.{f.name}: vector3 needs floatValues [x, y, z]"); continue; }
+                        value = new Vector3(f.floatValues[0], f.floatValues[1], f.floatValues[2]);
+                        break;
+                    case "color":
+                        value = ParseColor(f, label);
+                        if (value == null) continue;
+                        break;
+                    case "enum":
+                        if (!memberType.IsEnum) { Problems.Add($"{label}.{f.name}: '{memberType.Name}' is not an enum"); continue; }
+                        try { value = Enum.Parse(memberType, f.stringValue ?? string.Empty, true); }
+                        catch { Problems.Add($"{label}.{f.name}: '{f.stringValue}' is not a value of {memberType.Name}"); continue; }
+                        break;
+                    case "intList":
+                        value = BuildPrimitiveList(memberType, f.intValues ?? new int[0], label, f.name);
+                        if (value == null) continue;
+                        break;
+                    case "floatList":
+                        value = BuildPrimitiveList(memberType, f.floatValues ?? new float[0], label, f.name);
+                        if (value == null) continue;
+                        break;
+                    case "stringList":
+                        value = BuildPrimitiveList(memberType, f.stringValues ?? new string[0], label, f.name);
+                        if (value == null) continue;
+                        break;
                     default: value = f.stringValue; break;
                 }
 
-                field.SetValue(target, value);
+                try
+                {
+                    if (field != null) field.SetValue(target, value);
+                    else property.SetValue(target, value, null);
+                }
+                catch (Exception e)
+                {
+                    Problems.Add($"{label}.{f.name}: could not assign {f.kind} — {e.GetType().Name}: {e.Message}");
+                    continue;
+                }
                 Assigned.Add($"{label}.{f.name}");
             }
 
@@ -503,6 +566,38 @@ namespace Strada.Core.Editor.Headless
             if (objects.TryGetValue(id, out var go))
                 return wanted == typeof(GameObject) ? (object)go : go.GetComponent(wanted);
 
+            return null;
+        }
+
+        /// <summary>A public property with a setter, walking the hierarchy.</summary>
+        private static PropertyInfo FindSettableProperty(Type type, string name)
+        {
+            for (var t = type; t != null; t = t.BaseType)
+            {
+                var p = t.GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+                if (p != null && p.CanWrite) return p;
+            }
+            return null;
+        }
+
+        /// <summary>A Color from floatValues (rgb or rgba, 0–1) or a hex stringValue.</summary>
+        private static object ParseColor(SceneSpecField f, string label)
+        {
+            if (f.floatValues != null && f.floatValues.Length >= 3)
+                return new Color(f.floatValues[0], f.floatValues[1], f.floatValues[2], f.floatValues.Length >= 4 ? f.floatValues[3] : 1f);
+            if (!string.IsNullOrEmpty(f.stringValue) && ColorUtility.TryParseHtmlString(f.stringValue, out var c))
+                return c;
+            Problems.Add($"{label}.{f.name}: color needs floatValues [r, g, b(, a)] in 0–1 or a hex stringValue");
+            return null;
+        }
+
+        /// <summary>Fills a T[] or List&lt;T&gt; member from a primitive array; null (with a problem) when the member cannot hold it.</summary>
+        private static object BuildPrimitiveList<T>(Type memberType, T[] items, string label, string name)
+        {
+            if (memberType.IsArray && memberType.GetElementType() == typeof(T)) return items;
+            if (memberType.IsGenericType && memberType.GetGenericTypeDefinition() == typeof(List<>) && memberType.GetGenericArguments()[0] == typeof(T))
+                return new List<T>(items);
+            Problems.Add($"{label}.{name}: a {typeof(T).Name} list cannot fill a '{memberType.Name}'");
             return null;
         }
 
