@@ -55,10 +55,76 @@ namespace Strada.Core.Play
             public int sessionCount = -1;
             public List<SessionRecord> sessions = new List<SessionRecord>();
             public List<string> errors = new List<string>();
+            public RuntimeDump runtime;
             public int targetFrameRate;
             public int vSyncCount;
             public int screenWidth;
             public int screenHeight;
+        }
+
+
+        [Serializable]
+        public class RuntimeDump
+        {
+            public int renderers;
+            public int worldRenderers;
+            public int spriteRenderers;
+            public int meshRenderers;
+            public int canvases;
+            public int particleSystems;
+            public int audioSources;
+            public int audioPlaying;
+            public List<string> sprites = new List<string>();
+            public List<string> meshes = new List<string>();
+            public int primitiveMeshes;
+        }
+
+        /// <summary>What is actually on screen at the end of play: the file scan cannot see what code instantiates.</summary>
+        static RuntimeDump DumpRuntime()
+        {
+            var d = new RuntimeDump();
+            try
+            {
+                var seenSprites = new HashSet<string>();
+                var seenMeshes = new HashSet<string>();
+                foreach (var r in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+                {
+                    d.renderers++;
+                    var sr = r as SpriteRenderer;
+                    if (sr != null)
+                    {
+                        d.spriteRenderers++; d.worldRenderers++;
+                        var name = sr.sprite != null ? sr.sprite.name : null;
+                        if (!string.IsNullOrEmpty(name) && seenSprites.Add(name) && d.sprites.Count < 40) d.sprites.Add(name);
+                        continue;
+                    }
+                    if (r is MeshRenderer || r is SkinnedMeshRenderer)
+                    {
+                        d.meshRenderers++; d.worldRenderers++;
+                        Mesh mesh = null;
+                        var smr = r as SkinnedMeshRenderer;
+                        if (smr != null) mesh = smr.sharedMesh;
+                        else { var mf = r.GetComponent<MeshFilter>(); if (mf != null) mesh = mf.sharedMesh; }
+                        var mname = mesh != null ? mesh.name : null;
+                        if (!string.IsNullOrEmpty(mname))
+                        {
+                            if (mname == "Cube" || mname == "Sphere" || mname == "Capsule" || mname == "Cylinder" || mname == "Plane" || mname == "Quad") d.primitiveMeshes++;
+                            if (seenMeshes.Add(mname) && d.meshes.Count < 40) d.meshes.Add(mname);
+                        }
+                        continue;
+                    }
+                    if (r is ParticleSystemRenderer || r is TrailRenderer || r is LineRenderer) d.worldRenderers++;
+                }
+                d.canvases = UnityEngine.Object.FindObjectsByType<Canvas>(FindObjectsSortMode.None).Length;
+                d.particleSystems = UnityEngine.Object.FindObjectsByType<ParticleSystem>(FindObjectsSortMode.None).Length;
+                foreach (var a in UnityEngine.Object.FindObjectsByType<AudioSource>(FindObjectsSortMode.None))
+                {
+                    d.audioSources++;
+                    if (a.isPlaying) d.audioPlaying++;
+                }
+            }
+            catch (Exception) { /* a dump that fails leaves zeros; the frames still speak */ }
+            return d;
         }
 
         [Serializable]
@@ -274,6 +340,7 @@ namespace Strada.Core.Play
                     if (!s.reachedOutcome) break;
                 }
                 if (record.playFrames == 0) record.playSeconds = wallPlaySeconds;
+                record.runtime = DumpRuntime();
                 Capture(captureDir);
                 // Screenshots are written asynchronously at the end of a frame.
                 yield return null;
