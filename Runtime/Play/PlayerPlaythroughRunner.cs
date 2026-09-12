@@ -390,7 +390,13 @@ namespace Strada.Core.Play
                         }
                         yield return null;
                         frame++;
-                        if (frame % FramesBetweenCaptures == 0) { Capture(captureDir); skipDelta = true; }
+                        // THE FRAME AFTER A CAPTURE is excluded because writing a
+                        // screenshot stalls it — but only when one was actually
+                        // written. Past the frame budget Capture() does nothing and
+                        // every fifteenth frame was still discarded, so a player
+                        // hitching 200 ms on those frames reported 60 fps and a
+                        // 16.7 ms worst frame (Codex 2026-09-12 AA).
+                        if (frame % FramesBetweenCaptures == 0) skipDelta = Capture(captureDir);
                     }
                     s.seconds = Time.realtimeSinceStartup - playStarted;
                     wallPlaySeconds += s.seconds;
@@ -426,17 +432,20 @@ namespace Strada.Core.Play
             }
         }
 
-        void Capture(string dir)
+        /// <summary>Takes a screenshot; false when nothing was captured (no directory, or the frame budget is spent).</summary>
+        bool Capture(string dir)
         {
-            if (dir == null || record.framesCaptured >= MaxFrames) return;
+            if (dir == null || record.framesCaptured >= MaxFrames) return false;
             try
             {
                 ScreenCapture.CaptureScreenshot(Path.Combine(dir, "frame_" + record.framesCaptured.ToString("D5") + ".png"));
                 record.framesCaptured++;
+                return true;
             }
             catch (Exception e)
             {
                 if (record.errors.Count < 20) record.errors.Add("[Capture] " + e.GetType().Name + ": " + e.Message);
+                return false;
             }
         }
     }
