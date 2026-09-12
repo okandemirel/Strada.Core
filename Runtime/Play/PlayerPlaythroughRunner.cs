@@ -80,6 +80,40 @@ namespace Strada.Core.Play
         }
 
         /// <summary>What is actually on screen at the end of play: the file scan cannot see what code instantiates.</summary>
+        /// <summary>
+        /// A stable, cheap description of what is loaded RIGHT NOW: the active
+        /// scene's path, the sorted names of its root objects, and the number
+        /// of renderers. Independent of anything the game claims about itself
+        /// (Codex 2026-09-13 AG#1).
+        /// </summary>
+        static string ContentFingerprint()
+        {
+            try
+            {
+                var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+                var names = new List<string>();
+                foreach (var root in scene.GetRootGameObjects())
+                {
+                    names.Add(root.name);
+                    if (names.Count >= 60) break;
+                }
+                names.Sort(StringComparer.Ordinal);
+                var renderers = UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None).Length;
+                var text = scene.path + "|" + string.Join(",", names) + "|r" + renderers.ToString();
+                unchecked
+                {
+                    // FNV-1a: short, stable, and no dependency on a hash library.
+                    var hash = 2166136261u;
+                    for (var i = 0; i < text.Length; i++) { hash ^= text[i]; hash *= 16777619u; }
+                    return hash.ToString("x8") + "-" + names.Count.ToString() + "-" + renderers.ToString();
+                }
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
         static RuntimeDump DumpRuntime()
         {
             var d = new RuntimeDump();
@@ -160,6 +194,18 @@ namespace Strada.Core.Play
             public string identitySource = "unverified";
             /// <summary>The index the game reported as active, when it can report one; 0 otherwise.</summary>
             public int observedIndex;
+            /// <summary>
+            /// What the RUNNER saw of the content, independently of what the
+            /// game said it started: the active scene, the names of the root
+            /// objects and how much they draw.
+            ///
+            /// A catalogue reporting three levels, a StartSession that always
+            /// loads the first, and an ActiveSession echoing the request gave
+            /// three "verified" sessions of one level (Codex 2026-09-13
+            /// AG#1). Distinct content must LOOK distinct: two sessions with
+            /// the same fingerprint are one level played twice.
+            /// </summary>
+            public string contentFingerprint;
         }
 
         const int MaxFrames = 40;
@@ -353,6 +399,7 @@ namespace Strada.Core.Play
                         // "cannot tell" verified the session we hoped for (Codex
                         // 2026-09-12 AA#3). Only a game that registers no identity
                         // service keeps the benefit of the doubt.
+                        s.contentFingerprint = ContentFingerprint();
                         s.identityVerified = observed == s.requestedIndex;
                         s.identitySource = s.identityVerified ? "active-session" : "unverified";
                         if (observed > 0) s.index = observed;
@@ -392,6 +439,10 @@ namespace Strada.Core.Play
                         // not "cannot tell": accepting it verified a session the
                         // game had not started (Codex 2026-09-12 AA#3). Only a
                         // game with no identity service keeps its own acceptance.
+                        // WHAT THE RUNNER ITSELF SEES of the loaded content
+                        // (AG#1): the game's own identity claim is checked
+                        // against nothing else, and this is something else.
+                        s.contentFingerprint = ContentFingerprint();
                         s.identityVerified = activeNow == null || running == s.requestedIndex;
                         s.identitySource = activeNow == null
                             ? "start-acceptance"
