@@ -148,6 +148,16 @@ namespace Strada.Core.Play
             /// 2026-09-12 X).
             /// </summary>
             public bool identityVerified;
+            /// <summary>
+            /// WHERE the identity came from: "active-session" (the game's own
+            /// IActiveSession named this session), "start-acceptance" (the
+            /// driver accepted the request and the game registers no identity
+            /// service, so nothing contradicted it) or "unverified". A
+            /// verified flag alone hid the difference between a game that
+            /// confirmed the content and one that merely did not deny it
+            /// (Codex 2026-09-12 AC J1).
+            /// </summary>
+            public string identitySource = "unverified";
             /// <summary>The index the game reported as active, when it can report one; 0 otherwise.</summary>
             public int observedIndex;
         }
@@ -327,6 +337,7 @@ namespace Strada.Core.Play
                         // 2026-09-12 AA#3). Only a game that registers no identity
                         // service keeps the benefit of the doubt.
                         s.identityVerified = observed == s.requestedIndex;
+                        s.identitySource = s.identityVerified ? "active-session" : "unverified";
                         if (observed > 0) s.index = observed;
                     }
                     else
@@ -365,6 +376,9 @@ namespace Strada.Core.Play
                         // game had not started (Codex 2026-09-12 AA#3). Only a
                         // game with no identity service keeps its own acceptance.
                         s.identityVerified = activeNow == null || running == s.requestedIndex;
+                        s.identitySource = activeNow == null
+                            ? "start-acceptance"
+                            : (s.identityVerified ? "active-session" : "unverified");
                         if (running > 0) s.index = running;
                     }
 
