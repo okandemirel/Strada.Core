@@ -312,6 +312,11 @@ namespace Strada.Core.Play
                             catch (Exception e) { if (record.errors.Count < 20) record.errors.Add("[ActiveSession] " + e.GetType().Name + ": " + e.Message); }
                         }
                         s.observedIndex = observed;
+                        // A PRESENT SERVICE REPORTING ZERO means NO session is
+                        // running — the contract says so — and reading that as
+                        // "cannot tell" verified the session we hoped for (Codex
+                        // 2026-09-12 AA#3). Only a game that registers no identity
+                        // service keeps the benefit of the doubt.
                         s.identityVerified = observed == s.requestedIndex;
                         if (observed > 0) s.index = observed;
                     }
@@ -346,7 +351,11 @@ namespace Strada.Core.Play
                             catch (Exception e) { if (record.errors.Count < 20) record.errors.Add("[ActiveSession] " + e.GetType().Name + ": " + e.Message); }
                         }
                         s.observedIndex = running;
-                        s.identityVerified = running == 0 || running == s.requestedIndex;
+                        // A PRESENT SERVICE REPORTING ZERO is no session running,
+                        // not "cannot tell": accepting it verified a session the
+                        // game had not started (Codex 2026-09-12 AA#3). Only a
+                        // game with no identity service keeps its own acceptance.
+                        s.identityVerified = activeNow == null || running == s.requestedIndex;
                         if (running > 0) s.index = running;
                     }
 
