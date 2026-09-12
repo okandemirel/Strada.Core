@@ -208,7 +208,13 @@ namespace Strada.Core.Play
             public string contentFingerprint;
         }
 
-        const int MaxFrames = 40;
+        // THE GLOBAL CEILING MUST FIT EVERY SESSION'S OWN BUDGET. Forty
+        // frames shared across twelve sessions meant the fourth session got
+        // none — and the judge, which now requires a frame of every session
+        // that played, refused the whole run (Codex 2026-09-13 AH#3). Sized
+        // from the per-session budget so the reservation is real; a
+        // screenshot is a small PNG.
+        const int MaxFrames = MaxSessionsPerRun * MaxFramesPerSession + 8;
         const int FramesBetweenCaptures = 15;
         const int MaxSessionsPerRun = 12;
         /// <summary>
@@ -312,6 +318,11 @@ namespace Strada.Core.Play
             var started = Time.realtimeSinceStartup;
             var captureDir = Arg("-stradaCaptureDir");
             var maxActions = ArgInt("-stradaPlaythroughMaxActions", 60);
+            // DOES THE DOCUMENT REQUIRE A SESSION TO END? An endless or
+            // sandbox session that stays interactive is behaving as designed,
+            // and this runner exited 30 for it — which the caller reads as a
+            // player that died (Codex 2026-09-13 AH#1).
+            var outcomeRequired = ArgInt("-stradaPlaythroughOutcomeRequired", 0) == 1;
             var deadlineSeconds = ArgInt("-stradaPlaythroughDeadline", 45);
             var bootSeconds = ArgInt("-stradaPlaythroughBootDeadline", 30);
             record.session = ArgInt("-stradaPlaythroughSession", 1);
@@ -523,7 +534,10 @@ namespace Strada.Core.Play
                     // was spent mid-play still shows how it ENDED (AG#6).
                     sessionFrames = 0;
                     Capture(captureDir);
-                    if (!s.reachedOutcome) break;
+                    // A SESSION THAT DID NOT END stops the run only when an
+                    // outcome was required: otherwise the next session is
+                    // still owed its turn (AH#1).
+                    if (!s.reachedOutcome && outcomeRequired) break;
                 }
                 if (record.playFrames == 0) record.playSeconds = wallPlaySeconds;
                 record.runtime = DumpRuntime();
@@ -531,7 +545,7 @@ namespace Strada.Core.Play
                 // Screenshots are written asynchronously at the end of a frame.
                 yield return null;
                 yield return null;
-                if (allEnded && record.sessions.Count > 0) exitCode = 0;
+                if (record.sessions.Count > 0 && (allEnded || !outcomeRequired)) exitCode = 0;
             }
             finally
             {
