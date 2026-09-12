@@ -259,7 +259,16 @@ namespace Strada.Core.Play
                     record.missing = "GameBootstrapper.Services stayed null for " + bootSeconds + " s — the entry scene holds no GameBootstrapper, or its config is unassigned, or a module threw while starting";
                     yield break;
                 }
-                record.bootSeconds = Time.realtimeSinceStartup - started;
+                // FROM THE PROCESS'S OWN START, not from the moment this
+                // runner armed. `Arm()` runs AfterSceneLoad, so a scene that
+                // spends ten seconds in Awake reported a boot of nearly zero —
+                // and the coordinator now prefers the player's boot figure over
+                // the editor's, so that understatement answered the document's
+                // cold-boot budget (Codex 2026-09-12 AB J4.2).
+                // `Time.realtimeSinceStartup` is measured from application
+                // launch, which is what a cold-boot requirement means; the
+                // runner's own arming time stays the play-loop's origin.
+                record.bootSeconds = Time.realtimeSinceStartup;
 
                 IPlaythroughDriver driver = null;
                 var serviceDeadline = Time.realtimeSinceStartup + 10f;
