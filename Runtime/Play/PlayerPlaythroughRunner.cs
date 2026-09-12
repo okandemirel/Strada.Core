@@ -221,6 +221,13 @@ namespace Strada.Core.Play
         /// so a judge can tell which content was actually seen.
         /// </summary>
         const int MaxFramesPerSession = 12;
+        /// <summary>
+        /// How long the runner waits for the session it asked for to become
+        /// active. An asynchronous load takes more than one frame, and
+        /// sampling identity once marked the level unverified for ever (Codex
+        /// 2026-09-13 AG#4).
+        /// </summary>
+        const float SessionReadySeconds = 5f;
 
         /// <summary>The session a capture belongs to, and how many it has had.</summary>
         int capturingSession;
@@ -431,8 +438,23 @@ namespace Strada.Core.Play
                         var running = 0;
                         if (activeNow != null)
                         {
-                            try { running = activeNow.ActiveSession; }
-                            catch (Exception e) { if (record.errors.Count < 20) record.errors.Add("[ActiveSession] " + e.GetType().Name + ": " + e.Message); }
+                            // A LOAD MAY TAKE MORE THAN ONE FRAME. Identity was
+                            // sampled once, so a StartSession that accepts an
+                            // asynchronous load reported "no session running"
+                            // and the level was permanently unverified even
+                            // though it then played and won (Codex 2026-09-13
+                            // AG#4). The requested session is waited for,
+                            // briefly; anything else is believed at once.
+                            var readyDeadline = Time.realtimeSinceStartup + SessionReadySeconds;
+                            while (true)
+                            {
+                                try { running = activeNow.ActiveSession; }
+                                catch (Exception e) { if (record.errors.Count < 20) record.errors.Add("[ActiveSession] " + e.GetType().Name + ": " + e.Message); break; }
+                                if (running == s.requestedIndex) break;
+                                if (running != 0) break; // a DIFFERENT session is running: that is the answer
+                                if (Time.realtimeSinceStartup >= readyDeadline) break;
+                                yield return null;
+                            }
                         }
                         s.observedIndex = running;
                         // A PRESENT SERVICE REPORTING ZERO is no session running,
