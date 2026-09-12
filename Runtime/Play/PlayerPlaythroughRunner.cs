@@ -388,15 +388,18 @@ namespace Strada.Core.Play
                             try { if (driver.Act()) s.actions++; }
                             catch (Exception e) { if (record.errors.Count < 20) record.errors.Add("[Act] " + e.GetType().Name + ": " + e.Message); }
                         }
-                        yield return null;
+                        // THE CAPTURE HAPPENS BEFORE THE YIELD whose delta it
+                        // distorts. Capturing after the yield stalled the frame
+                        // that had ALREADY been measured and excluded the next
+                        // one instead — the stall was counted and an innocent
+                        // interval was thrown away (Codex 2026-09-12 AB J4.5).
+                        // And the exclusion applies only when a capture was
+                        // actually written: past the frame budget Capture() does
+                        // nothing, and every fifteenth frame was discarded
+                        // anyway (AA).
                         frame++;
-                        // THE FRAME AFTER A CAPTURE is excluded because writing a
-                        // screenshot stalls it — but only when one was actually
-                        // written. Past the frame budget Capture() does nothing and
-                        // every fifteenth frame was still discarded, so a player
-                        // hitching 200 ms on those frames reported 60 fps and a
-                        // 16.7 ms worst frame (Codex 2026-09-12 AA).
-                        if (frame % FramesBetweenCaptures == 0) skipDelta = Capture(captureDir);
+                        skipDelta = frame % FramesBetweenCaptures == 0 && Capture(captureDir);
+                        yield return null;
                     }
                     s.seconds = Time.realtimeSinceStartup - playStarted;
                     wallPlaySeconds += s.seconds;
