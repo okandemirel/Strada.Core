@@ -138,6 +138,18 @@ namespace Strada.Core.Play
             public bool reachedOutcome;
             public float seconds;
             public string lastPhase = "";
+            /// <summary>The index this run ASKED for (the first session is 1).</summary>
+            public int requestedIndex;
+            /// <summary>
+            /// True when the framework started this session itself, or when the
+            /// game's IActiveSession confirmed the adopted session IS this one.
+            /// False for a session adopted from auto-start that nothing could
+            /// identify — its outcome certifies no particular content (Codex
+            /// 2026-09-12 X).
+            /// </summary>
+            public bool identityVerified;
+            /// <summary>The index the game reported as active, when it can report one; 0 otherwise.</summary>
+            public int observedIndex;
         }
 
         const int MaxFrames = 40;
@@ -281,13 +293,34 @@ namespace Strada.Core.Play
                 var allEnded = true;
                 for (var si = 0; si < indices.Count; si++)
                 {
-                    var s = new SessionRecord { index = indices[si] };
+                    var s = new SessionRecord { index = indices[si], requestedIndex = indices[si] };
                     record.sessions.Add(s);
                     if (si == 0 && record.autoStarted)
+                    {
+                        // ADOPTING WHAT THE GAME ALREADY STARTED. Which session
+                        // that is, only the game can say: without
+                        // IActiveSession the record used to carry the index we
+                        // asked for, so an auto-started level 1 certified
+                        // level 7 (Codex 2026-09-12 X).
                         s.startAccepted = true;
+                        IActiveSession active = null;
+                        try { GameBootstrapper.Services.TryGet(out active); } catch { active = null; }
+                        var observed = 0;
+                        if (active != null)
+                        {
+                            try { observed = active.ActiveSession; }
+                            catch (Exception e) { if (record.errors.Count < 20) record.errors.Add("[ActiveSession] " + e.GetType().Name + ": " + e.Message); }
+                        }
+                        s.observedIndex = observed;
+                        s.identityVerified = observed == s.requestedIndex;
+                        if (observed > 0) s.index = observed;
+                    }
                     else
                     {
                         if (si > 0) for (var settle = 0; settle < 5; settle++) yield return null;
+                        // The framework started it, so its identity is the
+                        // index it asked for.
+                        s.identityVerified = true;
                         try { s.startAccepted = driver.StartSession(s.index); }
                         catch (Exception e)
                         {
@@ -357,8 +390,13 @@ namespace Strada.Core.Play
                     File.WriteAllText(jsonPath, JsonUtility.ToJson(record, true));
                 }
                 catch (Exception e) { Debug.LogWarning("player play-through record not written: " + e.Message); }
+                // QUIT ON EVERY EXIT. `yield break` above — no bootstrap
+                // services, no registered driver — runs this block and then
+                // ends the iterator, so the player never quit and the tool
+                // waited out its whole timeout before killing it (Codex
+                // 2026-09-12 X).
+                Application.Quit(exitCode);
             }
-            Application.Quit(exitCode);
         }
 
         void Capture(string dir)
